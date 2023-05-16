@@ -1,0 +1,258 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Sat, 13 May 2023 09:47:26 +0100
+Subject: [PATCH] Update DogFacts
+
+
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/configs/DogFactsConfig.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/configs/DogFactsConfig.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..3b7d5a145d1c701198ab044949acd3aeb24f0d89
+--- /dev/null
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/configs/DogFactsConfig.java
+@@ -0,0 +1,52 @@
++package com.programmerdan.minecraft.simpleadminhacks.configs;
++
++import com.programmerdan.minecraft.simpleadminhacks.SimpleAdminHacks;
++import com.programmerdan.minecraft.simpleadminhacks.framework.SimpleHackConfig;
++import java.util.List;
++import java.util.Objects;
++import net.kyori.adventure.text.Component;
++import org.bukkit.configuration.ConfigurationSection;
++import org.jetbrains.annotations.NotNull;
++import vg.civcraft.mc.civmodcore.chat.ChatUtils;
++import vg.civcraft.mc.civmodcore.config.ConfigHelper;
++import vg.civcraft.mc.civmodcore.utilities.CivLogger;
++
++public final class DogFactsConfig extends SimpleHackConfig {
++
++	private static final CivLogger LOGGER = CivLogger.getLogger(DogFactsConfig.class);
++
++	private List<Component> announcements;
++	private long intervalTime;
++
++	public DogFactsConfig(
++			final @NotNull SimpleAdminHacks plugin,
++			final @NotNull ConfigurationSection base
++	) {
++		super(plugin, base);
++	}
++
++	@Override
++	protected void wireup(
++			final @NotNull ConfigurationSection config
++	) {
++		// Announcements
++		this.announcements = ConfigHelper.getStringList(config, "announcements")
++				.stream()
++				.map(ChatUtils::parseComponent)
++				.filter(Objects::nonNull)
++				.toList();
++		// Interval Time
++		this.intervalTime = ConfigHelper.parseTimeAsTicks(Objects.requireNonNullElse(
++				config.getString("intervalTime"), "30m"
++		));
++	}
++
++	public @NotNull List<Component> getAnnouncements() {
++		return this.announcements;
++	}
++
++	public long getIntervalInTicks() {
++		return this.intervalTime;
++	}
++
++}
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/DogFacts.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/DogFacts.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..3bfab001aa6893b6fcc2365887f5c89233420fe3
+--- /dev/null
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/DogFacts.java
+@@ -0,0 +1,79 @@
++package com.programmerdan.minecraft.simpleadminhacks.hacks;
++
++import com.programmerdan.minecraft.simpleadminhacks.SimpleAdminHacks;
++import com.programmerdan.minecraft.simpleadminhacks.configs.DogFactsConfig;
++import com.programmerdan.minecraft.simpleadminhacks.framework.SimpleHack;
++import java.util.List;
++import net.kyori.adventure.text.Component;
++import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
++import org.bukkit.Bukkit;
++import org.bukkit.configuration.ConfigurationSection;
++import org.bukkit.entity.Player;
++import org.bukkit.scheduler.BukkitTask;
++import org.jetbrains.annotations.NotNull;
++import vg.civcraft.mc.civmodcore.players.settings.PlayerSettingAPI;
++import vg.civcraft.mc.civmodcore.players.settings.impl.BooleanSetting;
++
++public final class DogFacts extends SimpleHack<DogFactsConfig> {
++
++	private final BooleanSetting disableAnnouncementsSetting;
++	private BukkitTask task;
++	private int counter;
++
++	public DogFacts(
++			final @NotNull SimpleAdminHacks plugin,
++			final @NotNull DogFactsConfig config
++	) {
++		super(plugin, config);
++		PlayerSettingAPI.registerSetting(this.disableAnnouncementsSetting = new BooleanSetting(plugin,
++				// Default Value
++				false,
++				// Display Name
++				"Disable Announcements",
++				// Slug
++				"disableAnnouncements",
++				// Description
++				"Disable Announcements?"
++		), plugin.getSettingManager().getMainMenu());
++		this.counter = 0;
++	}
++
++	public static @NotNull DogFactsConfig generate(
++			final @NotNull SimpleAdminHacks plugin,
++			final @NotNull ConfigurationSection config
++	) {
++		return new DogFactsConfig(plugin, config);
++	}
++
++	@Override
++	public void onEnable() {
++		super.onEnable();
++		final List<Component> announcements = List.copyOf(config().getAnnouncements());
++		if (announcements.size() > 0) {
++			final long intervalInTicks = config().getIntervalInTicks();
++			this.task = Bukkit.getScheduler().runTaskTimer(plugin(), () -> {
++				if (this.counter >= announcements.size()) {
++					this.counter = 0;
++				}
++				final Component announcement = announcements.get(this.counter);
++				plugin().info("Broadcasting DogFact #" + PlainTextComponentSerializer.plainText().serialize(announcement));
++				for (final Player recipient : Bukkit.getOnlinePlayers()) {
++					if (!this.disableAnnouncementsSetting.getValue(recipient.getUniqueId())) {
++						recipient.sendMessage(announcement);
++					}
++				}
++				this.counter++;
++			}, (int) (Math.random() * intervalInTicks), intervalInTicks);
++		}
++	}
++
++	@Override
++	public void onDisable() {
++		if (this.task != null) {
++			this.task.cancel();
++			this.task = null;
++		}
++		super.onDisable();
++	}
++
++}
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/DogFacts.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/DogFacts.java
+deleted file mode 100644
+index 2d6f063e61ebe6ad3aa8f760a61dea314fdfc439..0000000000000000000000000000000000000000
+--- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/DogFacts.java
++++ /dev/null
+@@ -1,69 +0,0 @@
+-package com.programmerdan.minecraft.simpleadminhacks.hacks.basic;
+-
+-import com.programmerdan.minecraft.simpleadminhacks.SimpleAdminHacks;
+-import com.programmerdan.minecraft.simpleadminhacks.framework.BasicHack;
+-import com.programmerdan.minecraft.simpleadminhacks.framework.BasicHackConfig;
+-import com.programmerdan.minecraft.simpleadminhacks.framework.autoload.AutoLoad;
+-import java.util.List;
+-import java.util.UUID;
+-import org.bukkit.Bukkit;
+-import org.bukkit.entity.Player;
+-import vg.civcraft.mc.civmodcore.config.ConfigHelper;
+-import vg.civcraft.mc.civmodcore.players.settings.PlayerSettingAPI;
+-import vg.civcraft.mc.civmodcore.players.settings.gui.MenuSection;
+-import vg.civcraft.mc.civmodcore.players.settings.impl.BooleanSetting;
+-
+-public class DogFacts extends BasicHack {
+-
+-	@AutoLoad
+-	private List<String> announcements;
+-	@AutoLoad
+-	private String intervalTime;
+-	private BooleanSetting disableAnnouncements;
+-	private int counter = 0;
+-
+-	public DogFacts(SimpleAdminHacks plugin, BasicHackConfig config) {
+-		super(plugin, config);
+-	}
+-
+-	@Override
+-	public void onEnable() {
+-		super.onEnable();
+-		startRunnable(announcements);
+-		initSettings();
+-	}
+-
+-	public void startRunnable(List<String> announcements){
+-		long interval = ConfigHelper.parseTimeAsTicks(intervalTime);
+-		int tickOffset = (int) (Math.random() * (interval));
+-		Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin ,() -> {
+-			if (announcements.isEmpty()) {
+-				return;
+-			}
+-			if (counter >= announcements.size()) {
+-				counter = 0;
+-			}
+-			String message = announcements.get(counter);
+-			plugin.info("Broadcasting DogFact #" + counter);
+-			for (Player player : Bukkit.getOnlinePlayers()) {
+-				if (getDisableAnnouncements(player.getUniqueId())){
+-					continue;
+-				}
+-				Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), "tellraw " + player.getDisplayName() + " " + message);
+-			}
+-			counter++;
+-		}, tickOffset, interval);
+-	}
+-
+-	private void initSettings() {
+-		MenuSection menu = plugin.getSettingManager().getMainMenu();
+-		disableAnnouncements =
+-				new BooleanSetting(plugin, false, "Disable Announcements", "disableAnnouncements",
+-						"Disable Announcements?");
+-		PlayerSettingAPI.registerSetting(disableAnnouncements, menu);
+-	}
+-
+-	public boolean getDisableAnnouncements(UUID uuid) {
+-		return disableAnnouncements.getValue(uuid);
+-	}
+-}
+diff --git a/src/main/resources/config.yml b/src/main/resources/config.yml
+index e034d0e47b1e4c0d32a9bf0b5584b9abdafcdb94..d51408179edf0e91ccee0389c806f5e26443695d 100644
+--- a/src/main/resources/config.yml
++++ b/src/main/resources/config.yml
+@@ -101,15 +101,6 @@ hacks:
+       - SLOW_FALLING
+   DebugWand:
+     enabled: true
+-  DogFacts:
+-    enabled: false
+-    intervalTime: 30m
+-    #Since we use the tellraw command to dispatch dogfacts now, all our announcements **MUST** be in JSON format
+-    #YAML also doesn't like JSON's usage of "" so we have to add escape characters (\) to counteract that.
+-    #Here's the site I used to make these ones: https://minecraft.tools/en/json_text.php
+-    announcements:
+-      - "[\"\",{\"text\":\"Buy \"},{\"text\":\"Dogecoin\",\"color\":\"dark_red\",\"clickEvent\":{\"action\":\"open_url\",\"value\":\"https://www.coindesk.com/price/dogecoin\"}},{\"text\":\"!\"}]"
+-      - "[\"\",{\"text\":\"Very \"},{\"text\":\"Wow!\",\"italic\":true,\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"Wow!\"}}]"
+   EventDebugHack:
+     enabled: true
+   EventHandlerList:
+@@ -272,6 +263,13 @@ hacks:
+     # Note: You can also just state "ALL" for all spawn circumstances
+     VILLAGER: ALL
+     ENDERMITE: [DISPENSE_EGG, EGG, SPAWNER_EGG]
++  DogFacts:
++    enabled: false
++    intervalTime: 30m
++    # Use https://webui.adventure.kyori.net/ to create wacky announcements!
++    announcements:
++      - "Buy <dark_red><click:open_url:https://www.coindesk.com/price/dogecoin>Dogecoin</click></dark_red>!"
++      - "Very <i><hover:show_text:'Wow!'>Wow!"
+   ElytraFeatures:
+     enabled: true
+     # Whether Elytra flight should be outright disabled

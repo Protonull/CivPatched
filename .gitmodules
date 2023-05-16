@@ -4,3 +4,6 @@
 [submodule "NameLayer"]
 	path = NameLayer
 	url = https://github.com/CivMC/NameLayer.git
+[submodule "SimpleAdminHacks"]
+	path = SimpleAdminHacks
+	url = https://github.com/CivMC/SimpleAdminHacks.git

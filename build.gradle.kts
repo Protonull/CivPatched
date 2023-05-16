@@ -69,5 +69,8 @@ subprojects {
 
         // For Aikar's ACF-Bukkit and TaskChain-Bukkit
         maven("https://repo.aikar.co/content/groups/aikar/")
+
+        // For ProtocolLib
+        maven("https://repo.dmulloy2.net/repository/public/")
     }
 }

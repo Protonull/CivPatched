@@ -1,0 +1,583 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Sat, 13 May 2023 05:16:16 +0100
+Subject: [PATCH] Allow all hacks to register themselves automatically
+
+
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/framework/BasicHack.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/framework/BasicHack.java
+index aa764902a25c93aa3260a900542bc7a790656f78..68f4f1a47bc72d139ddb97914083e4d8b9694c12 100644
+--- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/framework/BasicHack.java
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/framework/BasicHack.java
+@@ -2,7 +2,6 @@ package com.programmerdan.minecraft.simpleadminhacks.framework;
+ 
+ import com.programmerdan.minecraft.simpleadminhacks.SimpleAdminHacks;
+ import org.bukkit.configuration.ConfigurationSection;
+-import org.bukkit.event.HandlerList;
+ import org.bukkit.event.Listener;
+ 
+ public abstract class BasicHack extends SimpleHack<BasicHackConfig> implements Listener {
+@@ -11,18 +10,6 @@ public abstract class BasicHack extends SimpleHack<BasicHackConfig> implements L
+ 		super(plugin, config);
+ 	}
+ 
+-	// REMEMBER TO CALL SUPER
+-	@Override
+-	public void onEnable() {
+-		plugin().registerListener(this);
+-	}
+-
+-	// REMEMBER TO CALL SUPER
+-	@Override
+-	public void onDisable() {
+-		HandlerList.unregisterAll(this);
+-	}
+-
+ 	// YOU DON'T HAVE TO COPY THIS! It's inherited.
+ 	public static BasicHackConfig generate(final SimpleAdminHacks plugin, final ConfigurationSection config) {
+ 		return new BasicHackConfig(plugin, config);
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/framework/SimpleHack.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/framework/SimpleHack.java
+index 068fa2267adcc048da200d16514e9349f09e09be..b489813fcd0d6bb162e799c2b3873509d3fd3912 100644
+--- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/framework/SimpleHack.java
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/framework/SimpleHack.java
+@@ -15,6 +15,11 @@ import org.bukkit.configuration.ConfigurationSection;
+ import org.bukkit.util.NumberConversions;
+ import vg.civcraft.mc.civmodcore.utilities.CivLogger;
+ 
++// CivPatched Start
++import org.bukkit.event.HandlerList;
++import org.bukkit.event.Listener;
++// CivPatched End
++
+ /**
+  * Baseline structure for a managed hack.
+  *
+@@ -85,13 +90,23 @@ public abstract class SimpleHack<T extends SimpleHackConfig> {
+ 	/**
+ 	 * Called when this hack is enabled.
+ 	 */
+-	public void onEnable() { }
++	public void onEnable() {
++		// CivPatched Start
++		if (this instanceof Listener) {
++			plugin().registerListener((Listener) this);
++		}
++		// CivPatched End
++	}
+ 
+ 	/**
+ 	 * Called when this hack is disabled.
+ 	 */
+ 	public void onDisable() {
+-
++		// CivPatched Start
++		if (this instanceof Listener) {
++			HandlerList.unregisterAll((Listener) this);
++		}
++		// CivPatched End
+ 	}
+ 
+ 	/**
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/BadBoyWatch.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/BadBoyWatch.java
+index acd2386773a14590f855431ebc4a0ece582abf0b..4f20dda7412f3a36d44fa067f649ec118cfd3cc3 100644
+--- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/BadBoyWatch.java
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/BadBoyWatch.java
+@@ -100,24 +100,12 @@ public class BadBoyWatch extends SimpleHack<BadBoyWatchConfig> implements Listen
+ 		}
+ 	}
+ 
+-	@Override
+-	public void registerListeners() {
+-		if (config.isEnabled()) {
+-			plugin().log("Registering BadBoyWatcher listener");
+-			plugin().registerListener(this);
+-		}
+-	}
+-
+ 	@Override
+ 	public void dataBootstrap() {
+ 		boys = new ConcurrentHashMap<>();
+ 		lowBoys = new ConcurrentHashMap<>();
+ 	}
+ 
+-	@Override
+-	public void unregisterListeners() {
+-	}
+-
+ 	@Override
+ 	public void unregisterCommands() {
+ 	}
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/CTAnnounce.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/CTAnnounce.java
+index 6060f252a0ddc3b918d6adad744052c88db644d1..2966f8314e417ecfb1fbdae5afc9e7e3607cb821 100644
+--- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/CTAnnounce.java
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/CTAnnounce.java
+@@ -82,14 +82,6 @@ public class CTAnnounce extends SimpleHack<CTAnnounceConfig> implements Listener
+ 				);
+ 	}
+ 
+-	@Override
+-	public void registerListeners() {
+-		if (config.isEnabled()) {
+-			plugin().log("Registering CombatTagEvent listener");
+-			plugin().registerListener(this);
+-		}
+-	}
+-
+ 	@Override
+ 	public void registerCommands() {
+ 	}
+@@ -99,10 +91,6 @@ public class CTAnnounce extends SimpleHack<CTAnnounceConfig> implements Listener
+ 		lastCTAnnounce = new ConcurrentHashMap<>();
+ 	}
+ 
+-	@Override
+-	public void unregisterListeners() {
+-	}
+-
+ 	@Override
+ 	public void unregisterCommands() {
+ 	}
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/DisableAI.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/DisableAI.java
+index cd524a0708846deb863e28fa2fec24ab23fb3c50..088589b7c671320e92ce19b1499a4414249528cf 100644
+--- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/DisableAI.java
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/DisableAI.java
+@@ -10,7 +10,6 @@ import org.bukkit.craftbukkit.v1_18_R2.persistence.CraftPersistentDataContainer;
+ import org.bukkit.entity.LivingEntity;
+ import org.bukkit.event.EventHandler;
+ import org.bukkit.event.EventPriority;
+-import org.bukkit.event.HandlerList;
+ import org.bukkit.event.Listener;
+ 
+ public final class DisableAI extends SimpleHack<DisableAIConfig> implements Listener {
+@@ -25,14 +24,9 @@ public final class DisableAI extends SimpleHack<DisableAIConfig> implements List
+ 		return new DisableAIConfig(plugin, config);
+ 	}
+ 
+-	@Override
+-	public void onEnable() {
+-		plugin().registerListener(this);
+-	}
+-
+ 	@Override
+ 	public void onDisable() {
+-		HandlerList.unregisterAll(this);
++		super.onDisable(); // CivPatched
+ 		config().reset();
+ 	}
+ 
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/ElytraFeatures.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/ElytraFeatures.java
+index 08e7d58a004a61d76e48ba562dd0d4cc420b5ec5..21d2aaf6083a9e862d61b579edc266263f253868 100644
+--- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/ElytraFeatures.java
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/ElytraFeatures.java
+@@ -15,7 +15,6 @@ import org.bukkit.configuration.ConfigurationSection;
+ import org.bukkit.entity.Entity;
+ import org.bukkit.entity.Player;
+ import org.bukkit.event.EventHandler;
+-import org.bukkit.event.HandlerList;
+ import org.bukkit.event.Listener;
+ import org.bukkit.event.entity.EntityToggleGlideEvent;
+ import org.bukkit.event.player.PlayerMoveEvent;
+@@ -35,16 +34,6 @@ public final class ElytraFeatures extends SimpleHack<ElytraFeaturesConfig> imple
+ 		return new ElytraFeaturesConfig(plugin, config);
+ 	}
+ 
+-	@Override
+-	public void onEnable() {
+-		plugin().registerListener(this);
+-	}
+-
+-	@Override
+-	public void onDisable() {
+-		HandlerList.unregisterAll(this);
+-	}
+-
+ 	private boolean INTERNAL_hasBypassPermission(final Entity entity) {
+ 		return entity instanceof Player && entity.hasPermission("simpleadmin.elytrabypass");
+ 	}
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/Experimental.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/Experimental.java
+index 114847b519f037516d779b2dd633f2846a725965..4238121dfc96c65af79a9539b576d1ad08ac9df9 100644
+--- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/Experimental.java
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/Experimental.java
+@@ -29,14 +29,6 @@ public class Experimental extends SimpleHack<ExperimentalConfig> implements List
+ 		super(plugin, config);
+ 	}
+ 
+-	@Override
+-	public void registerListeners() {
+-		if (config.isEnabled()) {
+-			plugin().log("Registering experimental listeners");
+-			plugin().registerListener(this);
+-		}
+-	}
+-
+ 	@Override
+ 	public void registerCommands() {
+ 		if (config.isEnabled()) {
+@@ -49,10 +41,6 @@ public class Experimental extends SimpleHack<ExperimentalConfig> implements List
+ 	public void dataBootstrap() {
+ 	}
+ 
+-	@Override
+-	public void unregisterListeners() {
+-	}
+-
+ 	@Override
+ 	public void unregisterCommands() {
+ 	}
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/GameFeatures.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/GameFeatures.java
+index 7999232c837ba27de2d6cb517d3a3386479f46be..61df4d5024830c2536fe85932f9189091c95c408 100644
+--- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/GameFeatures.java
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/GameFeatures.java
+@@ -72,19 +72,6 @@ public class GameFeatures extends SimpleHack<GameFeaturesConfig> implements List
+ 		super(plugin, config);
+ 	}
+ 
+-	@Override
+-	public void registerListeners() {
+-		if (config != null && config.isEnabled()) {
+-			plugin().log("Registering GameFeatures listeners");
+-			plugin().registerListener(this);
+-		}
+-	}
+-
+-	@Override
+-	public void unregisterListeners() {
+-		// Bukkit does this for us.
+-	}
+-
+ 	@Override
+ 	public void registerCommands() {
+ 	}
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/GameFixes.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/GameFixes.java
+index e068e46fda8406fb2a8bb6868c503823419bd4c5..2db25bddba85a9b523ac336fc22b9bf66661e1e4 100644
+--- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/GameFixes.java
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/GameFixes.java
+@@ -22,7 +22,6 @@ import org.bukkit.configuration.ConfigurationSection;
+ import org.bukkit.entity.Player;
+ import org.bukkit.event.EventHandler;
+ import org.bukkit.event.EventPriority;
+-import org.bukkit.event.HandlerList;
+ import org.bukkit.event.Listener;
+ import org.bukkit.event.block.Action;
+ import org.bukkit.event.block.BlockBreakEvent;
+@@ -54,17 +53,11 @@ public class GameFixes extends SimpleHack<GameFixesConfig> implements Listener {
+ 
+ 	@Override
+ 	public void onDisable() {
++		super.onDisable(); // CivPatched
+ 		this.protocol.removeAllAdapters();
+-		HandlerList.unregisterAll(this);
+ 		super.onDisable();
+ 	}
+ 
+-	@Override
+-	public void onEnable() {
+-		Bukkit.getPluginManager().registerEvents(this, plugin);
+-		super.onEnable();
+-	}
+-
+ 	@Override
+ 	public String status() {
+ 		StringBuilder genStatus = new StringBuilder();
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/GameTuning.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/GameTuning.java
+index 459adcec1d70420a1d2236d885470fcfd10dd291..2ea1f88de1fea2dc803b0b0b5dc7f4a8b231107f 100644
+--- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/GameTuning.java
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/GameTuning.java
+@@ -75,19 +75,6 @@ public class GameTuning extends SimpleHack<GameTuningConfig> implements Listener
+ 		super(plugin, config);
+ 	}
+ 
+-	@Override
+-	public void registerListeners() {
+-		if (config != null && config.isEnabled()) {
+-			plugin().log("Registering GameTuning listeners");
+-			plugin().registerListener(this);
+-		}
+-	}
+-
+-	@Override
+-	public void unregisterListeners() {
+-		// Bukkit does this for us.
+-	}
+-
+ 	@Override
+ 	public void registerCommands() {
+ 		if (config.isEnabled()) {
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/HorseStats.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/HorseStats.java
+index 9302f8efd0c5cebb20e249de99fdd7e30a378ac1..0b4bd13a1e6fb49c99357cc2cf2e90a8e06c22f6 100644
+--- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/HorseStats.java
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/HorseStats.java
+@@ -54,14 +54,6 @@ public class HorseStats extends SimpleHack<HorseStatsConfig> implements Listener
+ 		}
+ 	}
+ 
+-	@Override
+-	public void registerListeners() {
+-		if (config.isEnabled()) {
+-			plugin().log("Registering HorseStats listeners");
+-			plugin().registerListener(this);
+-		}
+-	}
+-
+ 	@Override
+ 	public void registerCommands() {
+ 
+@@ -72,11 +64,6 @@ public class HorseStats extends SimpleHack<HorseStatsConfig> implements Listener
+ 
+ 	}
+ 
+-	@Override
+-	public void unregisterListeners() {
+-
+-	}
+-
+ 	@Override
+ 	public void unregisterCommands() {
+ 
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/Insight.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/Insight.java
+index 146573472710ec340dce385c23f1fad34ef65829..51511004db8b809a730396d901657bb0a7d836e3 100644
+--- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/Insight.java
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/Insight.java
+@@ -84,9 +84,6 @@ public class Insight extends SimpleHack<InsightConfig> implements CommandExecuto
+ 	@Override
+ 	public void registerListeners() {
+ 		if (config.isEnabled()) {
+-			plugin().log("Registering Insight reordering hack");
+-			plugin().registerListener(this);
+-
+ 			plugin().log("Registering Insight event instrumentations");
+ 
+ 			if (config.getInsightOn() == null) {
+@@ -236,10 +233,6 @@ public class Insight extends SimpleHack<InsightConfig> implements CommandExecuto
+ 		}
+ 	}
+ 
+-	@Override
+-	public void unregisterListeners() {
+-	}
+-
+ 	@Override
+ 	public void unregisterCommands() {
+ 	}
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/Introbook.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/Introbook.java
+index 9f90049e6165feac1ff4492d87d26c12d65f30fa..f1df582d907f48e9c1db7b38958d8dec317970af 100644
+--- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/Introbook.java
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/Introbook.java
+@@ -42,14 +42,6 @@ public class Introbook extends SimpleHack<IntrobookConfig> implements Listener,
+ 		super(plugin, config);
+ 	}
+ 
+-	@Override
+-	public void registerListeners() {
+-		if (config.isEnabled()) {
+-			plugin().log("Registering various Introbook listeners");
+-			plugin().registerListener(this);
+-		}
+-	}
+-
+ 	@Override
+ 	public void registerCommands() {
+ 		if (config.isEnabled()) {
+@@ -63,10 +55,6 @@ public class Introbook extends SimpleHack<IntrobookConfig> implements Listener,
+ 		hasBook = new HashSet<UUID>();
+ 	}
+ 
+-	@Override
+-	public void unregisterListeners() {
+-	}
+-
+ 	@Override
+ 	public void unregisterCommands() {
+ 	}
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/InvControl.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/InvControl.java
+index 50c6ca89578b94967ee41cf8242f6b2f359082c2..db16174796490e33e3648275f9b6cd7444baa384 100644
+--- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/InvControl.java
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/InvControl.java
+@@ -171,11 +171,6 @@ public class InvControl extends SimpleHack<InvControlConfig> implements CommandE
+ 		}
+ 	}
+ 
+-	@Override
+-	public void registerListeners() {
+-
+-	}
+-
+ 	@Override
+ 	public void registerCommands() {
+ 		if (config.isEnabled()) {
+@@ -197,10 +192,6 @@ public class InvControl extends SimpleHack<InvControlConfig> implements CommandE
+ 		}
+ 	}
+ 
+-	@Override
+-	public void unregisterListeners() {
+-	}
+-
+ 	@Override
+ 	public void unregisterCommands() {
+ 	}
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/NewfriendAssist.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/NewfriendAssist.java
+index ddf43e19ac819900d9a7a1053451b1fd712d77e5..a417ca2662102d37e2177f94ba65a0235eb14649 100644
+--- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/NewfriendAssist.java
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/NewfriendAssist.java
+@@ -167,14 +167,6 @@ public class NewfriendAssist extends SimpleHack<NewfriendAssistConfig> implement
+ 				);
+ 	}
+ 
+-	@Override
+-	public void registerListeners() {
+-		if (config.isEnabled()) {
+-			plugin().log("Registering PlayerJoin/Quit/KickEvent listener");
+-			plugin().registerListener(this);
+-		}
+-	}
+-
+ 	@Override
+ 	public void registerCommands() {
+ 		if (config.isEnabled()) {
+@@ -189,10 +181,6 @@ public class NewfriendAssist extends SimpleHack<NewfriendAssistConfig> implement
+ 		this.newfriendSessionTime = new HashMap<>();
+ 	}
+ 
+-	@Override
+-	public void unregisterListeners() {
+-	}
+-
+ 	@Override
+ 	public void unregisterCommands() {
+ 	}
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/ReinforcedChestBreak.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/ReinforcedChestBreak.java
+index dee661e621c7553086cfec2191831041626f914d..9491f6b8257842b3285dde8f8198c38a6be5d03f 100644
+--- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/ReinforcedChestBreak.java
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/ReinforcedChestBreak.java
+@@ -37,14 +37,6 @@ public class ReinforcedChestBreak extends SimpleHack<ReinforcedChestBreakConfig>
+ 		return new ReinforcedChestBreakConfig(plugin, config);
+ 	}
+ 
+-    @Override
+-    public void registerListeners() {
+-    	if (!config.isEnabled()) {
+-    		return;
+-    	}
+-        Bukkit.getPluginManager().registerEvents(this, plugin());
+-    }
+-
+     @Override
+     public void registerCommands() {}
+ 
+@@ -61,9 +53,6 @@ public class ReinforcedChestBreak extends SimpleHack<ReinforcedChestBreakConfig>
+         Bukkit.getScheduler().runTaskTimer(plugin(), messenger, 0, config.getDelay() * 20);
+     }
+ 
+-    @Override
+-    public void unregisterListeners() {}
+-
+     @Override
+     public void unregisterCommands() {}
+ 
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/SanityHack.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/SanityHack.java
+index 47ed60ee4a493d2961a9431f4ae3b3162368d1da..11ac5609d0c1762ed1466dc84d5450fcd7d37e3d 100644
+--- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/SanityHack.java
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/SanityHack.java
+@@ -62,14 +62,6 @@ public class SanityHack extends SimpleHack<SanityHackConfig> implements Listener
+ 		}
+ 	}
+ 
+-	@Override
+-	public void registerListeners() {
+-		if (config.isEnabled()) {
+-			plugin().log("Registering SanityHack listeners");
+-			plugin().registerListener(this);
+-		}
+-	}
+-
+ 	@Override
+ 	public void registerCommands() {
+ 	}
+@@ -79,10 +71,6 @@ public class SanityHack extends SimpleHack<SanityHackConfig> implements Listener
+ 		caughtPlayers = 0;
+ 	}
+ 
+-	@Override
+-	public void unregisterListeners() {
+-	}
+-
+ 	@Override
+ 	public void unregisterCommands() {
+ 	}
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/SaplingHack.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/SaplingHack.java
+index 021531a09ae1a5e36102092b2de8ef9746fb8307..8a34279790af08b6aa8b32ccabc176f1927868d4 100644
+--- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/SaplingHack.java
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/SaplingHack.java
+@@ -22,12 +22,6 @@ public class SaplingHack extends SimpleHack<SaplingConfig> implements Listener {
+ 		super(plugin, config);
+ 	}
+ 
+-	@Override
+-	public void onEnable() {
+-		super.onEnable();
+-		this.plugin.registerListener(this);
+-	}
+-
+ 	@EventHandler
+ 	public void onBlockBreak(BlockBreakEvent event) {
+ 		Block brokenBlock = event.getBlock();
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/TimingsHack.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/TimingsHack.java
+index a4363534498ea5efcf6e48ae9e024fc8452ba50c..4657002e6e4d8e48d3dab39ccfd6dd3beb20ce39 100644
+--- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/TimingsHack.java
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/TimingsHack.java
+@@ -325,14 +325,6 @@ public class TimingsHack extends SimpleHack<TimingsHackConfig> implements Listen
+ 		return true;
+ 	}
+ 
+-	@Override
+-	public void registerListeners() {
+-		if (!config.isEnabled()) return;
+-
+-		plugin().log("Registering listeners");
+-		plugin().registerListener(this);
+-	}
+-
+ 	@SuppressWarnings("deprecation")
+ 	@EventHandler(ignoreCancelled = true)
+ 	public void onMapInit(MapInitializeEvent event) {
+@@ -573,10 +565,6 @@ public class TimingsHack extends SimpleHack<TimingsHackConfig> implements Listen
+ 		}
+ 	}
+ 
+-	@Override
+-	public void unregisterListeners() {
+-	}
+-
+ 	@Override
+ 	public void unregisterCommands() {
+ 	}
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/ToggleLamp.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/ToggleLamp.java
+index 8ed7b8f548debbdef4d83db692497d0511ccdc54..9857d40c461b22e6c0d2499630a5fdb6e95fac63 100644
+--- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/ToggleLamp.java
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/ToggleLamp.java
+@@ -83,14 +83,6 @@ public class ToggleLamp extends SimpleHack<ToggleLampConfig> implements Listener
+ 
+ 	}
+ 
+-	@Override
+-	public void registerListeners() {
+-		if (config.isEnabled()) {
+-			plugin().log("Registering ToggleLamp listeners");
+-			plugin().registerListener(this);
+-		}
+-	}
+-
+ 	@Override
+ 	public void registerCommands() {
+ 	}
+@@ -100,10 +92,6 @@ public class ToggleLamp extends SimpleHack<ToggleLampConfig> implements Listener
+ 		rm = plugin().serverHasPlugin("Citadel") ? Citadel.getInstance().getReinforcementManager() : null;
+ 	}
+ 
+-	@Override
+-	public void unregisterListeners() {
+-	}
+-
+ 	@Override
+ 	public void unregisterCommands() {
+ 	}

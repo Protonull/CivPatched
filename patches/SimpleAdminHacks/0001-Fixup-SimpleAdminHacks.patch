@@ -1,0 +1,46 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Sat, 13 May 2023 04:47:01 +0100
+Subject: [PATCH] Fixup SimpleAdminHacks
+
+
+diff --git a/build.gradle.kts b/build.gradle.kts
+index 7bf669fe4fab8df60efb867c2f83548aa4941abd..5481a61546a6745ba37a2f26826dc8c164aea35d 100644
+--- a/build.gradle.kts
++++ b/build.gradle.kts
+@@ -1,23 +1,16 @@
+-import net.civmc.civgradle.CivGradleExtension
++group = "civ.genre.simpleadminhacks"
++version = "2.2.1"
++description = "SimpleAdminHacks"
+ 
+-plugins {
+-	id("net.civmc.civgradle") version "2.+" apply false
++configure<net.civmc.civgradle.CivGradleExtension> {
++    pluginName = project.property("description") as String
+ }
+ 
+-subprojects {
+-	apply(plugin = "java-library")
+-	apply(plugin = "maven-publish")
+-	apply(plugin = "net.civmc.civgradle")
+-
+-	configure<CivGradleExtension> {
+-		pluginName = project.property("pluginName") as String
+-	}
+-
+-	repositories {
+-		mavenCentral()
+-		maven("https://repo.civmc.net/repository/maven-public")
+-        maven("https://repo.dmulloy2.net/repository/public/")
+-        maven("https://ci.frostcast.net/plugin/repository/everything")
+-        maven("https://jitpack.io")
+-	}
++dependencies {
++    compileOnly(project(":CivModCore"))
++    compileOnly(project(":NameLayer"))
++    compileOnly("net.civmc.citadel:citadel-paper:5.1.2:dev")
++    compileOnly("net.civmc.combattagplus:paper:2.0.0-SNAPSHOT:dev")
++    compileOnly("net.civmc.banstick:banstick-paper:2.0.1:dev")
++    compileOnly("com.comphenix.protocol:ProtocolLib:4.8.0")
+ }
