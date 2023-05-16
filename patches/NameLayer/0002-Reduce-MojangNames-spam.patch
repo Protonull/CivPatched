@@ -1,0 +1,90 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Sat, 13 May 2023 04:01:40 +0100
+Subject: [PATCH] Reduce MojangNames spam
+
+
+diff --git a/src/main/java/vg/civcraft/mc/namelayer/MojangNames.java b/src/main/java/vg/civcraft/mc/namelayer/MojangNames.java
+index 087e66a6df140ab450daf10d3a03c08dbc42c021..02245bfc284cf457bbe4cbc12bec60bde4afd5c4 100644
+--- a/src/main/java/vg/civcraft/mc/namelayer/MojangNames.java
++++ b/src/main/java/vg/civcraft/mc/namelayer/MojangNames.java
+@@ -21,25 +21,27 @@ import vg.civcraft.mc.namelayer.listeners.AssociationListener;
+ 
+ public final class MojangNames {
+ 
+-	private static final Map<String, UUID> PROFILES = Collections.synchronizedMap(
+-			new TreeMap<>(String.CASE_INSENSITIVE_ORDER));
++	private static final com.google.common.collect.BiMap<String, UUID> PROFILES = com.google.common.collect.HashBiMap.create(); // CivPatched: Use BiMap instead
+ 	private static final String PROFILES_FILE = "mojang.dat";
+ 	private static final long SAVE_DELAY = 20 * 60; // 60 seconds' worth of ticks
+ 	private static BukkitTask SAVE_TASK;
++	private static int lastProfilesHash; // CivPatched: track last save hash
++
++	// CivPatched Start
++	private static Path getProfilesPath() {
++		return NameLayerPlugin.getInstance().getDataFile(PROFILES_FILE).toPath();
++	}
++	// CivPatched End
+ 
+ 	public static void init(final NameLayerPlugin plugin) {
+-		final Path mojangFile = plugin.getDataFile(PROFILES_FILE).toPath();
+ 		// Load all the profiles that already exist
+ 		Bukkit.getScheduler().runTaskAsynchronously(
+-				plugin, () -> load(plugin, mojangFile));
+-		// Set up a process of saving profiles
+-		SAVE_TASK = Bukkit.getScheduler().runTaskTimerAsynchronously(
+-				plugin, () -> save(plugin, mojangFile), SAVE_DELAY, SAVE_DELAY);
++				plugin, () -> load(plugin, getProfilesPath())); // CivPatched: Use static path getter
+ 	}
+ 
+ 	public static void reset(final NameLayerPlugin plugin) {
+ 		if (!PROFILES.isEmpty()) {
+-			save(plugin, plugin.getDataFile(PROFILES_FILE).toPath());
++			save(plugin, getProfilesPath()); // CivPatched: Use static path getter
+ 			PROFILES.clear();
+ 		}
+ 		if (SAVE_TASK != null) {
+@@ -53,6 +55,7 @@ public final class MojangNames {
+ 		try {
+ 			final byte[] data = Files.readAllBytes(file);
+ 			final CompoundTag nbt = NBTSerialization.fromBytes(data);
++			if (nbt == null) return; // CivPatched: Prevent NPE
+ 			nbt.getAllKeys().forEach(key -> PROFILES.put(key, nbt.getUUID(key)));
+ 			plugin.info("[MojangNames] Mojang profiles loaded!");
+ 		}
+@@ -65,6 +68,12 @@ public final class MojangNames {
+ 	private static void save(final NameLayerPlugin plugin, final Path file) {
+ 		final CompoundTag nbt = new CompoundTag();
+ 		PROFILES.forEach((name, uuid) -> nbt.putUUID(name, uuid)); // Ignore highlighter
++		// CivPatched Start
++		final int profilesHash = nbt.hashCode();
++		if (profilesHash == lastProfilesHash) {
++			return;
++		}
++		// CivPatched End
+ 		final byte[] data = NBTSerialization.toBytes(nbt);
+ 		try {
+ 			Files.write(file, data,
+@@ -76,6 +85,7 @@ public final class MojangNames {
+ 			plugin.warning("[MojangNames] Could not save Mojang profiles!", exception);
+ 			return;
+ 		}
++		lastProfilesHash = profilesHash; // CivPatched
+ 		plugin.info("[MojangNames] Mojang profiles saved!");
+ 	}
+ 
+@@ -117,6 +127,14 @@ public final class MojangNames {
+ 		Preconditions.checkNotNull(uuid);
+ 		Preconditions.checkArgument(!Strings.isNullOrEmpty(name));
+ 		PROFILES.put(name, uuid);
++		// CivPatched Start:
++		if (SAVE_TASK == null) {
++			SAVE_TASK = Bukkit.getScheduler().runTaskLater(NameLayerPlugin.getInstance(), () -> {
++				save(NameLayerPlugin.getInstance(), getProfilesPath());
++				SAVE_TASK = null;
++			}, SAVE_DELAY);
++		}
++		// CivPatched End
+ 	}
+ 
+ }

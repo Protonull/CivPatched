@@ -1,0 +1,54 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Sat, 13 May 2023 03:26:23 +0100
+Subject: [PATCH] Fixup NameLayer
+
+
+diff --git a/build.gradle.kts b/build.gradle.kts
+index 9754380c17ee0124c45a52a1c6697bca959d8c29..df21cc079ca2a906aaa4dc6073b8b833db43ba6b 100644
+--- a/build.gradle.kts
++++ b/build.gradle.kts
+@@ -1,21 +1,11 @@
+-import net.civmc.civgradle.CivGradleExtension
++group = "civ.genre.namelayer"
++version = "3.0.4"
++description = "NameLayer"
+ 
+-plugins {
+-	id("net.civmc.civgradle") version "2.+" apply false
++configure<net.civmc.civgradle.CivGradleExtension> {
++    pluginName = project.property("description") as String
+ }
+ 
+-subprojects {
+-	apply(plugin = "net.civmc.civgradle")
+-	apply(plugin = "java-library")
+-	apply(plugin = "maven-publish")
+-
+-	configure<CivGradleExtension> {
+-		pluginName = project.property("pluginName") as String
+-	}
+-
+-	repositories {
+-		mavenCentral()
+-		maven("https://repo.civmc.net/repository/maven-public")
+-		maven("https://jitpack.io")
+-	}
+-}
+\ No newline at end of file
++dependencies {
++    compileOnly(project(":CivModCore"))
++}
+diff --git a/src/main/resources/plugin.yml b/src/main/resources/plugin.yml
+index a8326550a7b4e02c9be2f85670bebea59159b4c1..7951b4a06e732673eb0da7bfb87d01dffe5cd2db 100644
+--- a/src/main/resources/plugin.yml
++++ b/src/main/resources/plugin.yml
+@@ -4,7 +4,7 @@ version: ${version}
+ author: Rourke750
+ authors: [BlackXnt, Maxopoly, ProgrammerDan, Tyrothalos, Scuwr, Mr_Little_Kitty]
+ depend: [CivModCore]
+-api-version: 1.16
++api-version: 1.18
+ description: NameLayer handles groups creation and management, in addition to name changes. Once you have connected to Civcraft with a name, it is permanently yours. If a name is already taken, then NameLayer will add a number to the name.
+ permissions:
+   namelayer.admin:

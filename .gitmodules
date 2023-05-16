@@ -1,3 +1,6 @@
 [submodule "CivModCore"]
 	path = CivModCore
 	url = https://github.com/CivMC/CivModCore.git
+[submodule "NameLayer"]
+	path = NameLayer
+	url = https://github.com/CivMC/NameLayer.git

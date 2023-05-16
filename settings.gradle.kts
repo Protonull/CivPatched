@@ -9,3 +9,4 @@ pluginManagement {
 rootProject.name = "CivPatched"
 
 include(":CivModCore")
+include(":NameLayer")
