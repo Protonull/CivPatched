@@ -1,0 +1,1130 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Tue, 16 May 2023 11:46:59 +0100
+Subject: [PATCH] Begone, Bungee
+
+
+diff --git a/src/main/java/com/untamedears/jukealert/commands/ClearCommand.java b/src/main/java/com/untamedears/jukealert/commands/ClearCommand.java
+index b7c3286d07b396b9e2e59f502cd26428e2c78310..2dacd6b4602e2caa885a0d5e6b534ecb6c522848 100644
+--- a/src/main/java/com/untamedears/jukealert/commands/ClearCommand.java
++++ b/src/main/java/com/untamedears/jukealert/commands/ClearCommand.java
+@@ -10,6 +10,11 @@ import com.untamedears.jukealert.util.JukeAlertPermissionHandler;
+ import org.bukkit.ChatColor;
+ import org.bukkit.entity.Player;
+ 
++// CivPatched Start
++import net.kyori.adventure.text.Component;
++import net.kyori.adventure.text.format.NamedTextColor;
++// CivPatched End
++
+ public class ClearCommand extends BaseCommand {
+ 
+ 	@CommandAlias("jaclear")
+@@ -28,6 +33,12 @@ public class ClearCommand extends BaseCommand {
+ 			return;
+ 		}
+ 		logAppender.deleteLogs();
+-		sender.sendMessage(ChatColor.GREEN + "Deleted all logs for snitch " + JAUtility.genTextComponent(snitch));
++		// CivPatched Start
++		sender.sendMessage(Component.text()
++				.color(NamedTextColor.GREEN)
++				.content("Deleted all logs for snitch ")
++				.append(JAUtility.genTextComponent(snitch))
++		);
++		// CivPatched End
+ 	}
+ }
+diff --git a/src/main/java/com/untamedears/jukealert/commands/InfoCommand.java b/src/main/java/com/untamedears/jukealert/commands/InfoCommand.java
+index 41c2941babf35bcef20d3deb281369b4cd4a5aec..fd61bbb2a5bc6f27e7c2f4e27dbf68044f60cde8 100644
+--- a/src/main/java/com/untamedears/jukealert/commands/InfoCommand.java
++++ b/src/main/java/com/untamedears/jukealert/commands/InfoCommand.java
+@@ -26,10 +26,12 @@ import java.util.concurrent.ConcurrentHashMap;
+ 
+ import net.kyori.adventure.text.Component;
+ import net.kyori.adventure.text.format.NamedTextColor;
+-import net.md_5.bungee.api.chat.TextComponent;
+-import org.bukkit.ChatColor;
+ import org.bukkit.entity.Player;
+ 
++// CivPatched Start
++import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
++// CivPatched End
++
+ public class InfoCommand extends BaseCommand {
+ 	private class FilterOptions {
+ 		public Integer snitchId;
+@@ -166,7 +168,7 @@ public class InfoCommand extends BaseCommand {
+ 			options.pageNumber = 0;
+ 		}
+ 		else if (options.pageNumber < 0) {
+-			player.sendMessage(Component.text("You cannot input a negative number here").color(NamedTextColor.RED));
++			player.sendMessage(Component.text("You cannot input a negative number here", NamedTextColor.RED)); // CivPatched
+ 			return;
+ 		}
+ 
+@@ -206,7 +208,7 @@ public class InfoCommand extends BaseCommand {
+ 			String actionTypeLowered = actionType.toLowerCase();
+ 			List<LoggableAction> logCopy = new LinkedList<>();
+ 			for (LoggableAction log : logs) {
+-				if (log.getChatRepresentationIdentifier().toLowerCase().contains(actionTypeLowered)) {
++				if (PlainTextComponentSerializer.plainText().serialize(log.getChatRepresentationIdentifier()) .toLowerCase().contains(actionTypeLowered)) { // CivPatched
+ 					logCopy.add(log);
+ 				}
+ 			}
+@@ -214,19 +216,26 @@ public class InfoCommand extends BaseCommand {
+ 		}
+ 		int initialOffset = pageLength * offset;
+ 		if (initialOffset >= logs.size()) {
+-			TextComponent reply = JAUtility.genTextComponent(snitch);
+-			reply.addExtra(ChatColor.GOLD + " has only " + logs.size() + " logs fitting your criteria");
+-			player.spigot().sendMessage(reply);
++			// CivPatched Start
++			player.sendMessage(Component.text().append(
++					JAUtility.genTextComponent(snitch),
++					Component.text(" has only " + logs.size() + " logs fitting your criteria", NamedTextColor.GOLD)
++			));
++			// CivPatched End
+ 			return;
+ 		}
+ 		int currentPageSize = Math.min(pageLength, logs.size() - initialOffset);
+ 		ListIterator<LoggableAction> iter = logs.listIterator(initialOffset);
+ 		int currentSlot = 0;
+-		TextComponent reply = new TextComponent(ChatColor.GOLD + "--- Page " + offset + " for ");
+-		reply.addExtra(JAUtility.genTextComponent(snitch));
+-		player.spigot().sendMessage(reply);
++		// CivPatched Start
++		player.sendMessage(Component.text()
++				.color(NamedTextColor.GOLD)
++				.content("--- Page " + offset + " for ")
++				.append(JAUtility.genTextComponent(snitch))
++		);
++		// CivPatched End
+ 		while (currentSlot++ < currentPageSize) {
+-			player.spigot().sendMessage(iter.next().getChatRepresentation(player.getLocation(), false, censor));
++			player.sendMessage(iter.next().getChatRepresentation(player.getLocation(), false, censor)); // CivPatched
+ 		}
+ 	}
+ }
+diff --git a/src/main/java/com/untamedears/jukealert/commands/ListCommand.java b/src/main/java/com/untamedears/jukealert/commands/ListCommand.java
+index 04dcc3023a77ee533c26019b21d4ba0f357ca870..b72394e8d22bdb411e597eaee654fad58254b778 100644
+--- a/src/main/java/com/untamedears/jukealert/commands/ListCommand.java
++++ b/src/main/java/com/untamedears/jukealert/commands/ListCommand.java
+@@ -18,7 +18,6 @@ import java.util.Arrays;
+ import java.util.Objects;
+ import java.util.stream.Collectors;
+ import javax.annotation.Nonnull;
+-import net.md_5.bungee.api.ChatColor;
+ import org.apache.commons.lang3.ArrayUtils;
+ import org.bukkit.command.CommandSender;
+ import org.bukkit.entity.Player;
+@@ -27,6 +26,10 @@ import vg.civcraft.mc.namelayer.NameAPI;
+ import vg.civcraft.mc.namelayer.command.TabCompleters.GroupTabCompleter;
+ import vg.civcraft.mc.namelayer.group.Group;
+ 
++// CivPatched Start
++import org.bukkit.ChatColor;
++// CivPatched End
++
+ public class ListCommand extends BaseCommand {
+ 
+ 	@CommandAlias("jalist")
+diff --git a/src/main/java/com/untamedears/jukealert/commands/MuteCommand.java b/src/main/java/com/untamedears/jukealert/commands/MuteCommand.java
+index d196254c375d0f0467d41db6666ee24d467c9fb6..9e226c13382473893e1fda7647b79b79c15457fa 100644
+--- a/src/main/java/com/untamedears/jukealert/commands/MuteCommand.java
++++ b/src/main/java/com/untamedears/jukealert/commands/MuteCommand.java
+@@ -7,11 +7,14 @@ import co.aikar.commands.annotation.Syntax;
+ import com.untamedears.jukealert.JukeAlert;
+ import com.untamedears.jukealert.util.JASettingsManager;
+ import java.util.List;
+-import net.md_5.bungee.api.ChatColor;
+ import org.bukkit.entity.Player;
+ import vg.civcraft.mc.namelayer.GroupManager;
+ import vg.civcraft.mc.namelayer.group.Group;
+ 
++// CivPatched Start
++import org.bukkit.ChatColor;
++// CivPatched End
++
+ public class MuteCommand extends BaseCommand {
+ 	@CommandAlias("jamute")
+ 	@Syntax("<group>")
+diff --git a/src/main/java/com/untamedears/jukealert/commands/NameCommand.java b/src/main/java/com/untamedears/jukealert/commands/NameCommand.java
+index cfb50cb2869ed4c3ea053003016bd9977e1e136e..3eaab486aca4722417cf7d06f661681d949c2ca2 100644
+--- a/src/main/java/com/untamedears/jukealert/commands/NameCommand.java
++++ b/src/main/java/com/untamedears/jukealert/commands/NameCommand.java
+@@ -10,11 +10,15 @@ import com.untamedears.jukealert.JukeAlert;
+ import com.untamedears.jukealert.model.Snitch;
+ import com.untamedears.jukealert.util.JAUtility;
+ import com.untamedears.jukealert.util.JukeAlertPermissionHandler;
+-import net.md_5.bungee.api.chat.TextComponent;
+ import org.bukkit.ChatColor;
+ import org.bukkit.entity.Player;
+ import vg.civcraft.mc.namelayer.permission.PermissionType;
+ 
++// CivPatched Start
++import net.kyori.adventure.text.Component;
++import net.kyori.adventure.text.format.NamedTextColor;
++// CivPatched End
++
+ public class NameCommand extends BaseCommand {
+ 	@CommandAlias("janame")
+ 	@Syntax("<name>")
+@@ -37,10 +41,14 @@ public class NameCommand extends BaseCommand {
+ 
+ 		String prevName = snitch.getName();
+ 		JukeAlert.getInstance().getSnitchManager().renameSnitch(snitch, newName);
+-		TextComponent lineText = new TextComponent(ChatColor.AQUA + " Changed snitch name to ");
+-		lineText.addExtra(JAUtility.genTextComponent(snitch));
+-		lineText.addExtra(ChatColor.AQUA + " from " + ChatColor.GOLD + prevName);
+-		player.spigot().sendMessage(lineText);
++		// CivPatched Start
++		player.sendMessage(Component.text().append(
++				Component.text(" Changed snitch name to ", NamedTextColor.AQUA),
++				JAUtility.genTextComponent(snitch),
++				Component.text(" from ", NamedTextColor.AQUA),
++				Component.text(prevName, NamedTextColor.GOLD)
++		));
++		// CivPatched End
+ 	}
+ 
+ 	private static PermissionType getPermission() {
+diff --git a/src/main/java/com/untamedears/jukealert/commands/ToggleLeverCommand.java b/src/main/java/com/untamedears/jukealert/commands/ToggleLeverCommand.java
+index f8caa026f57071525c5b36677e7f69a9a35773ed..8c79b1032ecb6909147769c0d31dc63354d6830f 100644
+--- a/src/main/java/com/untamedears/jukealert/commands/ToggleLeverCommand.java
++++ b/src/main/java/com/untamedears/jukealert/commands/ToggleLeverCommand.java
+@@ -9,10 +9,13 @@ import co.aikar.commands.annotation.Description;
+ import com.untamedears.jukealert.model.Snitch;
+ import com.untamedears.jukealert.model.appender.LeverToggleAppender;
+ import com.untamedears.jukealert.util.JukeAlertPermissionHandler;
+-import net.md_5.bungee.api.ChatColor;
+ import org.bukkit.entity.Player;
+ import vg.civcraft.mc.namelayer.permission.PermissionType;
+ 
++// CivPatched Start
++import org.bukkit.ChatColor;
++// CivPatched End
++
+ public class ToggleLeverCommand extends BaseCommand {
+ 
+ 	@CommandAlias("jatogglelevers")
+diff --git a/src/main/java/com/untamedears/jukealert/model/actions/abstr/LoggableAction.java b/src/main/java/com/untamedears/jukealert/model/actions/abstr/LoggableAction.java
+index 840bf20abecde5762b6b7cb3167500935a31919d..cff21256aa07029e6c70750078b5f50ec17c78ea 100644
+--- a/src/main/java/com/untamedears/jukealert/model/actions/abstr/LoggableAction.java
++++ b/src/main/java/com/untamedears/jukealert/model/actions/abstr/LoggableAction.java
+@@ -2,10 +2,14 @@ package com.untamedears.jukealert.model.actions.abstr;
+ 
+ import com.untamedears.jukealert.model.actions.ActionCacheState;
+ import com.untamedears.jukealert.model.actions.LoggedActionPersistence;
+-import net.md_5.bungee.api.chat.TextComponent;
+ import org.bukkit.Location;
+ import vg.civcraft.mc.civmodcore.inventory.gui.IClickable;
+ 
++// CivPatched Start
++import net.kyori.adventure.text.Component;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ public interface LoggableAction {
+ 
+ 	IClickable getGUIRepresentation();
+@@ -20,7 +24,7 @@ public interface LoggableAction {
+ 	 * @return TextComponent representing this instance ready for sending to a
+ 	 *         player
+ 	 */
+-	TextComponent getChatRepresentation(Location reference, boolean live, boolean censor);
++	@NotNull Component getChatRepresentation(Location reference, boolean live, boolean censor); // CivPatched
+ 
+ 	LoggedActionPersistence getPersistence();
+ 
+@@ -32,5 +36,5 @@ public interface LoggableAction {
+ 
+ 	ActionCacheState getCacheState();
+ 
+-	String getChatRepresentationIdentifier();
++	@NotNull Component getChatRepresentationIdentifier(); // CivPatched
+ }
+diff --git a/src/main/java/com/untamedears/jukealert/model/actions/abstr/LoggableBlockAction.java b/src/main/java/com/untamedears/jukealert/model/actions/abstr/LoggableBlockAction.java
+index 55cdb9768632e69206242cf1b93d688c1d4d9e52..271bc468a0f78f579bc18d926c43908132b3a89a 100644
+--- a/src/main/java/com/untamedears/jukealert/model/actions/abstr/LoggableBlockAction.java
++++ b/src/main/java/com/untamedears/jukealert/model/actions/abstr/LoggableBlockAction.java
+@@ -4,7 +4,6 @@ import com.untamedears.jukealert.model.Snitch;
+ import com.untamedears.jukealert.model.actions.LoggedActionPersistence;
+ import com.untamedears.jukealert.util.JAUtility;
+ import java.util.UUID;
+-import org.bukkit.ChatColor;
+ import org.bukkit.Location;
+ import org.bukkit.Material;
+ import org.bukkit.inventory.ItemStack;
+@@ -12,6 +11,11 @@ import vg.civcraft.mc.civmodcore.inventory.gui.DecorationStack;
+ import vg.civcraft.mc.civmodcore.inventory.gui.IClickable;
+ import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
+ 
++// CivPatched Start
++import net.kyori.adventure.text.Component;
++import net.kyori.adventure.text.format.NamedTextColor;
++// CivPatched End
++
+ public abstract class LoggableBlockAction extends LoggablePlayerAction {
+ 
+ 	protected final Location location;
+@@ -95,11 +99,20 @@ public abstract class LoggableBlockAction extends LoggablePlayerAction {
+ 		else {
+ 			// CivPatched End
+ 			is = new ItemStack(Material.STONE);
+-			ItemUtils.addLore(is,
+-					String.format("%sMaterial: %s%s", ChatColor.GOLD, ChatColor.AQUA, ItemUtils.getItemName(getMaterial())));
++			// CivPatched Start
++			ItemUtils.addComponentLore(is, Component.text().append(
++					Component.text("Material:", NamedTextColor.GOLD),
++					Component.translatable(material.translationKey(), NamedTextColor.AQUA)
++			).build());
++			// CivPatched End
+ 		}
+ 		super.enrichGUIItem(is);
+-		ItemUtils.addLore(is, ChatColor.GOLD + JAUtility.formatLocation(location, false));
++		// CivPatched Start
++		ItemUtils.addComponentLore(is, Component.text()
++				.color(NamedTextColor.GOLD)
++				.append(JAUtility.formatLocation(this.location, false, false))
++				.build());
++		// CivPatched End
+ 		return new DecorationStack(is);
+ 	}
+ 	
+diff --git a/src/main/java/com/untamedears/jukealert/model/actions/abstr/LoggablePlayerAction.java b/src/main/java/com/untamedears/jukealert/model/actions/abstr/LoggablePlayerAction.java
+index 1be31a577e5b0d7858d312999233cb7d803fcabc..6146547eac0e431d74c82c70c86d0b8c0f0b6e34 100644
+--- a/src/main/java/com/untamedears/jukealert/model/actions/abstr/LoggablePlayerAction.java
++++ b/src/main/java/com/untamedears/jukealert/model/actions/abstr/LoggablePlayerAction.java
+@@ -7,8 +7,6 @@ import com.untamedears.jukealert.model.actions.LoggedActionPersistence;
+ import com.untamedears.jukealert.util.JAUtility;
+ import java.util.UUID;
+ import java.util.concurrent.CompletableFuture;
+-import net.md_5.bungee.api.chat.TextComponent;
+-import org.bukkit.ChatColor;
+ import org.bukkit.Location;
+ import org.bukkit.Material;
+ import org.bukkit.inventory.ItemStack;
+@@ -19,6 +17,14 @@ import vg.civcraft.mc.civmodcore.inventory.gui.IClickable;
+ import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
+ import vg.civcraft.mc.namelayer.NameAPI;
+ 
++// CivPatched Start
++import java.util.List;
++import net.kyori.adventure.text.Component;
++import net.kyori.adventure.text.TextComponent;
++import net.kyori.adventure.text.format.NamedTextColor;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ public abstract class LoggablePlayerAction extends PlayerAction implements LoggableAction {
+ 	
+ 	private ActionCacheState state;
+@@ -62,39 +68,56 @@ public abstract class LoggablePlayerAction extends PlayerAction implements Logga
+ 	}
+ 	
+ 	@Override
+-	public TextComponent getChatRepresentation(Location reference, boolean live, boolean censor) {
+-		Location referenceLoc = getLocationForStringRepresentation();
+-		boolean sameWorld = JAUtility.isSameWorld(referenceLoc, reference);
+-		String referenceLocText = censor ? "[*** *** ***]" : JAUtility.formatLocation(referenceLoc, !sameWorld);
+-
+-		TextComponent comp = new TextComponent(
+-				String.format("%s%s  %s%s  ", ChatColor.GOLD, getChatRepresentationIdentifier(), ChatColor.GREEN, NameAPI.getCurrentName(getPlayer())));
++	// CivPatched Start
++	public @NotNull Component getChatRepresentation(Location reference, boolean live, boolean censor) {
++		final Location referenceLoc = getLocationForStringRepresentation();
++		final boolean sameWorld = JAUtility.isSameWorld(referenceLoc, reference);
++		final TextComponent.Builder component = Component.text().append(
++				Component.text().color(NamedTextColor.GOLD).append(getChatRepresentationIdentifier()),
++				Component.text("  "),
++				Component.text(NameAPI.getCurrentName(getPlayer()), NamedTextColor.GREEN),
++				Component.text("  ")
++		);
+ 		if (live) {
+-			comp.addExtra(JAUtility.genTextComponent(snitch));
+-			comp.addExtra(String.format("  %s%s", ChatColor.YELLOW, referenceLocText));
++			component.append(
++					JAUtility.genTextComponent(this.snitch),
++					Component.text()
++							.color(NamedTextColor.YELLOW)
++							.content("  ")
++							.append(JAUtility.formatLocation(referenceLoc, !sameWorld, censor))
++			);
+ 		}
+ 		else {
+-			//dont need to explicitly list location when retrieving logs and its the snitch location
+-			if (referenceLoc != snitch.getLocation()) {
+-				comp.addExtra(String.format("%s%s ", ChatColor.YELLOW, referenceLocText));
++			// We don't need to include the location if the location is the snitch's location
++			if (referenceLoc != this.snitch.getLocation()) {
++				component.append(Component.text()
++						.color(NamedTextColor.YELLOW)
++						.append(JAUtility.formatLocation(referenceLoc, !sameWorld, censor)));
+ 			}
+-			comp.addExtra(new TextComponent(ChatColor.AQUA + getFormattedTime()));
++			component.append(Component.text(getFormattedTime(), NamedTextColor.AQUA));
+ 		}
+-		return comp;
++		return component.build();
+ 	}
++	// CivPatched End
+ 	
+ 	protected void enrichGUIItem(ItemStack item) {
+-		if (item.getType().isAir()) {
+-			JukeAlert.getInstance().getLogger().info("Tried to enrich air");
++		// CivPatched Start
++		if (!ItemUtils.isValidItem(item)) {
++			JukeAlert.getInstance().getLogger().info("Tried to enrich invalid item: [" + item + "]");
+ 			item = new ItemStack(Material.STONE);
+ 		}
+-		ItemUtils.addLore(item, String.format("%sPlayer: %s", ChatColor.GOLD, getPlayerName()),
+-				String.format("%sTime: %s", ChatColor.LIGHT_PURPLE,getFormattedTime()));
+-		ItemUtils.setDisplayName(item, ChatColor.GOLD + getGUIName());
+-	}
+-	
+-	protected String getGUIName() {
+-		return getChatRepresentationIdentifier();
++		item.editMeta((meta) -> {
++			meta.displayName(Component.text()
++					.color(NamedTextColor.GOLD)
++					.append(getChatRepresentationIdentifier())
++					.build()
++			);
++			meta.lore(List.of(
++					Component.text("Player: " + getPlayerName(), NamedTextColor.GOLD),
++					Component.text("Time: " + getFormattedTime(), NamedTextColor.LIGHT_PURPLE)
++			));
++		});
++		// CivPatched End
+ 	}
+ 	
+ 	protected Location getLocationForStringRepresentation() {
+diff --git a/src/main/java/com/untamedears/jukealert/model/actions/impl/BlockBreakAction.java b/src/main/java/com/untamedears/jukealert/model/actions/impl/BlockBreakAction.java
+index b92cd40c04681e13e83ea2be4a40e61f26b936ea..4f2e570753e07a7da0a06e2c514a0f5c52b0eb4e 100644
+--- a/src/main/java/com/untamedears/jukealert/model/actions/impl/BlockBreakAction.java
++++ b/src/main/java/com/untamedears/jukealert/model/actions/impl/BlockBreakAction.java
+@@ -7,6 +7,11 @@ import java.util.UUID;
+ import org.bukkit.Location;
+ import org.bukkit.Material;
+ 
++// CivPatched Start
++import net.kyori.adventure.text.Component;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ public class BlockBreakAction extends LoggableBlockAction {
+ 	
+ 	public static final String ID = "BLOCK_BREAK";
+@@ -25,8 +30,10 @@ public class BlockBreakAction extends LoggableBlockAction {
+ 	}
+ 
+ 	@Override
+-	public String getChatRepresentationIdentifier() {
+-		return "Break";
++	// CivPatched Start
++	public @NotNull Component getChatRepresentationIdentifier() {
++		return Component.text("Break");
++		// CivPatched End
+ 	}
+ 
+ }
+diff --git a/src/main/java/com/untamedears/jukealert/model/actions/impl/BlockPlaceAction.java b/src/main/java/com/untamedears/jukealert/model/actions/impl/BlockPlaceAction.java
+index 61d6225cea24e99c47bea43d0808072b2eda02b7..cd458a042a9640dbebb06bb4ab69aa84dcca9b7f 100644
+--- a/src/main/java/com/untamedears/jukealert/model/actions/impl/BlockPlaceAction.java
++++ b/src/main/java/com/untamedears/jukealert/model/actions/impl/BlockPlaceAction.java
+@@ -7,6 +7,11 @@ import java.util.UUID;
+ import org.bukkit.Location;
+ import org.bukkit.Material;
+ 
++// CivPatched Start
++import net.kyori.adventure.text.Component;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ public class BlockPlaceAction extends LoggableBlockAction {
+ 
+ 	public static final String ID = "BLOCK_PLACE";
+@@ -25,8 +30,10 @@ public class BlockPlaceAction extends LoggableBlockAction {
+ 	}
+ 
+ 	@Override
+-	public String getChatRepresentationIdentifier() {
+-		return "Place";
++	// CivPatched Start
++	public @NotNull Component getChatRepresentationIdentifier() {
++		return Component.text("Place");
++		// CivPatched End
+ 	}
+ 
+ }
+diff --git a/src/main/java/com/untamedears/jukealert/model/actions/impl/DestroyVehicleAction.java b/src/main/java/com/untamedears/jukealert/model/actions/impl/DestroyVehicleAction.java
+index 7658d75b83f336642c140f1ff84db23ac2b7c6fa..e9add767e14b8049c4f4ac6c5d134471a43464a4 100644
+--- a/src/main/java/com/untamedears/jukealert/model/actions/impl/DestroyVehicleAction.java
++++ b/src/main/java/com/untamedears/jukealert/model/actions/impl/DestroyVehicleAction.java
+@@ -9,7 +9,11 @@ import org.bukkit.Material;
+ import org.bukkit.inventory.ItemStack;
+ import vg.civcraft.mc.civmodcore.inventory.gui.DecorationStack;
+ import vg.civcraft.mc.civmodcore.inventory.gui.IClickable;
+-import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
++
++// CivPatched Start
++import net.kyori.adventure.text.Component;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
+ 
+ public class DestroyVehicleAction extends LoggablePlayerVictimAction {
+ 	
+@@ -39,8 +43,13 @@ public class DestroyVehicleAction extends LoggablePlayerVictimAction {
+ 	}
+ 
+ 	@Override
+-	public String getChatRepresentationIdentifier() {
+-		return "Broke " + ItemUtils.getItemName(getVehicle());
++	// CivPatched Start
++	public @NotNull Component getChatRepresentationIdentifier() {
++		return Component.text()
++				.content("Broke ")
++				.append(Component.translatable(getVehicle().translationKey()))
++				.build();
++		// CivPatched End
+ 	}
+ 
+ }
+diff --git a/src/main/java/com/untamedears/jukealert/model/actions/impl/DismountEntityAction.java b/src/main/java/com/untamedears/jukealert/model/actions/impl/DismountEntityAction.java
+index c92832e0d2629cc81d2f325999761ceabb59c7d4..abade05e3b2bcfec0ac42e9ed7b233bb7e049f5d 100644
+--- a/src/main/java/com/untamedears/jukealert/model/actions/impl/DismountEntityAction.java
++++ b/src/main/java/com/untamedears/jukealert/model/actions/impl/DismountEntityAction.java
+@@ -9,6 +9,11 @@ import org.bukkit.inventory.ItemStack;
+ import vg.civcraft.mc.civmodcore.inventory.gui.DecorationStack;
+ import vg.civcraft.mc.civmodcore.inventory.gui.IClickable;
+ 
++// CivPatched Start
++import net.kyori.adventure.text.Component;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ public class DismountEntityAction extends LoggablePlayerVictimAction {
+ 	
+ 	public static final String ID = "DISMOUNT_ENTITY";
+@@ -30,8 +35,10 @@ public class DismountEntityAction extends LoggablePlayerVictimAction {
+ 	}
+ 
+ 	@Override
+-	public String getChatRepresentationIdentifier() {
+-		return "Dismounted " + getVictim();
++	// CivPatched Start
++	public @NotNull Component getChatRepresentationIdentifier() {
++		return Component.text("Dismounted " + getVictim());
++		// CivPatched End
+ 	}
+ 
+ }
+diff --git a/src/main/java/com/untamedears/jukealert/model/actions/impl/EmptyBucketAction.java b/src/main/java/com/untamedears/jukealert/model/actions/impl/EmptyBucketAction.java
+index 1b105b9a842b386d2db3d011c56c4da82cfc5e6a..7d4412f1e997eaedc402967073fc3bec0e620371 100644
+--- a/src/main/java/com/untamedears/jukealert/model/actions/impl/EmptyBucketAction.java
++++ b/src/main/java/com/untamedears/jukealert/model/actions/impl/EmptyBucketAction.java
+@@ -6,6 +6,11 @@ import java.util.UUID;
+ import org.bukkit.Location;
+ import org.bukkit.Material;
+ 
++// CivPatched Start
++import net.kyori.adventure.text.Component;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ public class EmptyBucketAction extends LoggableBlockAction {
+ 	
+ 	public static final String ID = "EMPTY_BUCKET";
+@@ -15,8 +20,10 @@ public class EmptyBucketAction extends LoggableBlockAction {
+ 	}
+ 
+ 	@Override
+-	public String getChatRepresentationIdentifier() {
+-		return "Emptied bucket";
++	// CivPatched Start
++	public @NotNull Component getChatRepresentationIdentifier() {
++		return Component.text("Emptied bucket");
++		// CivPatched End
+ 	}
+ 
+ 
+diff --git a/src/main/java/com/untamedears/jukealert/model/actions/impl/EnterFieldAction.java b/src/main/java/com/untamedears/jukealert/model/actions/impl/EnterFieldAction.java
+index c19857aba76bfe341ddbbc8865aa41c4c75d5bf7..f07c8c06bea57c805617186b873b75a6e2af84b6 100644
+--- a/src/main/java/com/untamedears/jukealert/model/actions/impl/EnterFieldAction.java
++++ b/src/main/java/com/untamedears/jukealert/model/actions/impl/EnterFieldAction.java
+@@ -7,6 +7,11 @@ import java.util.UUID;
+ import org.bukkit.Bukkit;
+ import vg.civcraft.mc.civmodcore.inventory.gui.IClickable;
+ 
++// CivPatched Start
++import net.kyori.adventure.text.Component;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ public class EnterFieldAction extends LoggablePlayerAction {
+ 
+ 	public static final String ID = "ENTRY";
+@@ -31,7 +36,9 @@ public class EnterFieldAction extends LoggablePlayerAction {
+ 	}
+ 
+ 	@Override
+-	public String getChatRepresentationIdentifier() {
+-		return "Enter";
++	// CivPatched Start
++	public @NotNull Component getChatRepresentationIdentifier() {
++		return Component.text("Enter");
++		// CivPatched End
+ 	}
+ }
+diff --git a/src/main/java/com/untamedears/jukealert/model/actions/impl/EnterVehicleAction.java b/src/main/java/com/untamedears/jukealert/model/actions/impl/EnterVehicleAction.java
+index 83610f6bb56b79fd0eeaf9af93fab30dfdadebe4..eaf014a78347fc36046fcf189a50ae250f6c743a 100644
+--- a/src/main/java/com/untamedears/jukealert/model/actions/impl/EnterVehicleAction.java
++++ b/src/main/java/com/untamedears/jukealert/model/actions/impl/EnterVehicleAction.java
+@@ -9,7 +9,11 @@ import org.bukkit.Material;
+ import org.bukkit.inventory.ItemStack;
+ import vg.civcraft.mc.civmodcore.inventory.gui.DecorationStack;
+ import vg.civcraft.mc.civmodcore.inventory.gui.IClickable;
+-import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
++
++// CivPatched Start
++import net.kyori.adventure.text.Component;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
+ 
+ public class EnterVehicleAction extends LoggablePlayerVictimAction {
+ 
+@@ -39,8 +43,13 @@ public class EnterVehicleAction extends LoggablePlayerVictimAction {
+ 	}
+ 
+ 	@Override
+-	public String getChatRepresentationIdentifier() {
+-		return "Entered " + ItemUtils.getItemName(getVehicle());
++	// CivPatched Start
++	public @NotNull Component getChatRepresentationIdentifier() {
++		return Component.text()
++				.content("Entered ")
++				.append(Component.translatable(getVehicle().translationKey()))
++				.build();
++		// CivPatched End
+ 	}
+ 
+ }
+diff --git a/src/main/java/com/untamedears/jukealert/model/actions/impl/ExitVehicleAction.java b/src/main/java/com/untamedears/jukealert/model/actions/impl/ExitVehicleAction.java
+index 3ffaabd408675f031d9ee6e8e728dcfdc1d62e91..ecbd2892be86e3178b32ef160d433e7e50266635 100644
+--- a/src/main/java/com/untamedears/jukealert/model/actions/impl/ExitVehicleAction.java
++++ b/src/main/java/com/untamedears/jukealert/model/actions/impl/ExitVehicleAction.java
+@@ -9,7 +9,11 @@ import org.bukkit.Material;
+ import org.bukkit.inventory.ItemStack;
+ import vg.civcraft.mc.civmodcore.inventory.gui.DecorationStack;
+ import vg.civcraft.mc.civmodcore.inventory.gui.IClickable;
+-import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
++
++// CivPatched Start
++import net.kyori.adventure.text.Component;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
+ 
+ public class ExitVehicleAction extends LoggablePlayerVictimAction {
+ 
+@@ -39,8 +43,13 @@ public class ExitVehicleAction extends LoggablePlayerVictimAction {
+ 	}
+ 	
+ 	@Override
+-	public String getChatRepresentationIdentifier() {
+-		return "Exited " + ItemUtils.getItemName(getVehicle());
++	// CivPatched Start
++	public @NotNull Component getChatRepresentationIdentifier() {
++		return Component.text()
++				.content("Exited ")
++				.append(Component.translatable(getVehicle().translationKey()))
++				.build();
++		// CivPatched End
+ 	}
+ 
+ }
+diff --git a/src/main/java/com/untamedears/jukealert/model/actions/impl/FillBucketAction.java b/src/main/java/com/untamedears/jukealert/model/actions/impl/FillBucketAction.java
+index 8ad5abaa0ff67d29f93684003d09bea3f3b6aa48..a2df374f1f9524b0add7abeba0c0759b0963972f 100644
+--- a/src/main/java/com/untamedears/jukealert/model/actions/impl/FillBucketAction.java
++++ b/src/main/java/com/untamedears/jukealert/model/actions/impl/FillBucketAction.java
+@@ -6,6 +6,11 @@ import java.util.UUID;
+ import org.bukkit.Location;
+ import org.bukkit.Material;
+ 
++// CivPatched Start
++import net.kyori.adventure.text.Component;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ public class FillBucketAction extends LoggableBlockAction {
+ 	
+ 	public static final String ID = "FILL_BUCKET";
+@@ -15,8 +20,10 @@ public class FillBucketAction extends LoggableBlockAction {
+ 	}
+ 
+ 	@Override
+-	public String getChatRepresentationIdentifier() {
+-		return "Filled bucket";
++	// CivPatched Start
++	public @NotNull Component getChatRepresentationIdentifier() {
++		return Component.text("Filled bucket");
++		// CivPatched End
+ 	}
+ 
+ 
+diff --git a/src/main/java/com/untamedears/jukealert/model/actions/impl/IgniteBlockAction.java b/src/main/java/com/untamedears/jukealert/model/actions/impl/IgniteBlockAction.java
+index e0ac97836003dd73197bf41b804da1cc63c9a69b..8570e0feb8abfe10bed01c0a10643c7a0b9e4a53 100644
+--- a/src/main/java/com/untamedears/jukealert/model/actions/impl/IgniteBlockAction.java
++++ b/src/main/java/com/untamedears/jukealert/model/actions/impl/IgniteBlockAction.java
+@@ -10,6 +10,11 @@ import org.bukkit.inventory.ItemStack;
+ import vg.civcraft.mc.civmodcore.inventory.gui.DecorationStack;
+ import vg.civcraft.mc.civmodcore.inventory.gui.IClickable;
+ 
++// CivPatched Start
++import net.kyori.adventure.text.Component;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ public class IgniteBlockAction extends LoggablePlayerAction  {
+ 	
+ 	public static final String ID = "IGNITE_BLOCK";
+@@ -51,8 +56,10 @@ public class IgniteBlockAction extends LoggablePlayerAction  {
+ 	}
+ 
+ 	@Override
+-	public String getChatRepresentationIdentifier() {
+-		return "Ignited";
++	// CivPatched Start
++	public @NotNull Component getChatRepresentationIdentifier() {
++		return Component.text("Ignited");
++		// CivPatched End
+ 	}
+ 
+ }
+diff --git a/src/main/java/com/untamedears/jukealert/model/actions/impl/KillLivingEntityAction.java b/src/main/java/com/untamedears/jukealert/model/actions/impl/KillLivingEntityAction.java
+index 886ade5c45e2ade9a185a6af9e2626bae02e5836..672eda9f5c1a940b444db27a4aabd511a878f263 100644
+--- a/src/main/java/com/untamedears/jukealert/model/actions/impl/KillLivingEntityAction.java
++++ b/src/main/java/com/untamedears/jukealert/model/actions/impl/KillLivingEntityAction.java
+@@ -9,6 +9,11 @@ import org.bukkit.inventory.ItemStack;
+ import vg.civcraft.mc.civmodcore.inventory.gui.DecorationStack;
+ import vg.civcraft.mc.civmodcore.inventory.gui.IClickable;
+ 
++// CivPatched Start
++import net.kyori.adventure.text.Component;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ public class KillLivingEntityAction extends LoggablePlayerVictimAction {
+ 	
+ 	public static final String ID = "KILL_MOB";
+@@ -30,8 +35,10 @@ public class KillLivingEntityAction extends LoggablePlayerVictimAction {
+ 	}
+ 	
+ 	@Override
+-	public String getChatRepresentationIdentifier() {
+-		return "Killed " + getVictim();
++	// CivPatched Start
++	public @NotNull Component getChatRepresentationIdentifier() {
++		return Component.text("Killed " + getVictim());
++		// CivPatched End
+ 	}
+ 
+ }
+diff --git a/src/main/java/com/untamedears/jukealert/model/actions/impl/KillPlayerAction.java b/src/main/java/com/untamedears/jukealert/model/actions/impl/KillPlayerAction.java
+index f4ea35d8f8914404a360ff24320d78f78d48cdb4..76fdedea056c74c2f41254b6b7b9cd0079c593e3 100644
+--- a/src/main/java/com/untamedears/jukealert/model/actions/impl/KillPlayerAction.java
++++ b/src/main/java/com/untamedears/jukealert/model/actions/impl/KillPlayerAction.java
+@@ -11,6 +11,11 @@ import vg.civcraft.mc.civmodcore.inventory.gui.IClickable;
+ import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
+ import vg.civcraft.mc.namelayer.NameAPI;
+ 
++// CivPatched Start
++import net.kyori.adventure.text.Component;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ public class KillPlayerAction extends LoggablePlayerVictimAction {
+ 	
+ 	public static final String ID = "KILL_PLAYER";
+@@ -36,8 +41,10 @@ public class KillPlayerAction extends LoggablePlayerVictimAction {
+ 	}
+ 	
+ 	@Override
+-	public String getChatRepresentationIdentifier() {
+-		return "Killed " + getVictimName();
++	// CivPatched Start
++	public @NotNull Component getChatRepresentationIdentifier() {
++		return Component.text("Killed " + getVictimName());
++		// CivPatched End
+ 	}
+ 
+ 	@Override
+diff --git a/src/main/java/com/untamedears/jukealert/model/actions/impl/LeaveFieldAction.java b/src/main/java/com/untamedears/jukealert/model/actions/impl/LeaveFieldAction.java
+index 4722f5b2148085b4935059c3b5f345cb1e6da68a..b0532716b1be6fb54ec8e2fb69140244f202f3eb 100644
+--- a/src/main/java/com/untamedears/jukealert/model/actions/impl/LeaveFieldAction.java
++++ b/src/main/java/com/untamedears/jukealert/model/actions/impl/LeaveFieldAction.java
+@@ -5,6 +5,11 @@ import com.untamedears.jukealert.model.actions.abstr.LoggablePlayerAction;
+ import java.util.UUID;
+ import vg.civcraft.mc.civmodcore.inventory.gui.IClickable;
+ 
++// CivPatched Start
++import net.kyori.adventure.text.Component;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ public class LeaveFieldAction extends LoggablePlayerAction {
+ 
+ 	public static final String ID = "LEAVE";
+@@ -24,8 +29,10 @@ public class LeaveFieldAction extends LoggablePlayerAction {
+ 	}
+ 
+ 	@Override
+-	public String getChatRepresentationIdentifier() {
+-		return "Leave";
++	// CivPatched Start
++	public @NotNull Component getChatRepresentationIdentifier() {
++		return Component.text("Leave");
++		// CivPatched End
+ 	}
+ 
+ }
+diff --git a/src/main/java/com/untamedears/jukealert/model/actions/impl/LoginAction.java b/src/main/java/com/untamedears/jukealert/model/actions/impl/LoginAction.java
+index 70db32d5ff0e7166c9051ae1cbb9d10d75146c8d..794f23242f1b6f4fa6e5b80c25cd5c5adf4900a7 100644
+--- a/src/main/java/com/untamedears/jukealert/model/actions/impl/LoginAction.java
++++ b/src/main/java/com/untamedears/jukealert/model/actions/impl/LoginAction.java
+@@ -5,9 +5,14 @@ import com.untamedears.jukealert.model.Snitch;
+ import com.untamedears.jukealert.model.actions.abstr.LoggablePlayerAction;
+ import java.util.UUID;
+ import org.bukkit.Bukkit;
+-import org.bukkit.ChatColor;
+ import vg.civcraft.mc.civmodcore.inventory.gui.IClickable;
+ 
++// CivPatched Start
++import net.kyori.adventure.text.Component;
++import net.kyori.adventure.text.format.TextDecoration;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ public class LoginAction extends LoggablePlayerAction {
+ 
+ 	public static final String ID = "LOGIN";
+@@ -32,7 +37,12 @@ public class LoginAction extends LoggablePlayerAction {
+ 	}
+ 
+ 	@Override
+-	public String getChatRepresentationIdentifier() {
+-		return ChatColor.BOLD + "Login";
++	// CivPatched Start
++	public @NotNull Component getChatRepresentationIdentifier() {
++		return Component.text()
++				.decoration(TextDecoration.BOLD, TextDecoration.State.TRUE)
++				.content("Login")
++				.build();
++		// CivPatched End
+ 	}
+ }
+diff --git a/src/main/java/com/untamedears/jukealert/model/actions/impl/LogoutAction.java b/src/main/java/com/untamedears/jukealert/model/actions/impl/LogoutAction.java
+index f39d63316f19b1eb841d49a25350b3938e3f758b..846b76821448c02dfff50f6a65d467014b1bf415 100644
+--- a/src/main/java/com/untamedears/jukealert/model/actions/impl/LogoutAction.java
++++ b/src/main/java/com/untamedears/jukealert/model/actions/impl/LogoutAction.java
+@@ -5,9 +5,14 @@ import com.untamedears.jukealert.model.Snitch;
+ import com.untamedears.jukealert.model.actions.abstr.LoggablePlayerAction;
+ import java.util.UUID;
+ import org.bukkit.Bukkit;
+-import org.bukkit.ChatColor;
+ import vg.civcraft.mc.civmodcore.inventory.gui.IClickable;
+ 
++// CivPatched Start
++import net.kyori.adventure.text.Component;
++import net.kyori.adventure.text.format.TextDecoration;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ public class LogoutAction extends LoggablePlayerAction {
+ 
+ 	public static final String ID = "LOGOUT";
+@@ -32,7 +37,12 @@ public class LogoutAction extends LoggablePlayerAction {
+ 	}
+ 
+ 	@Override
+-	public String getChatRepresentationIdentifier() {
+-		return ChatColor.BOLD + "Logout";
++	// CivPatched Start
++	public @NotNull Component getChatRepresentationIdentifier() {
++		return Component.text()
++				.decoration(TextDecoration.BOLD, TextDecoration.State.TRUE)
++				.content("Logout")
++				.build();
++		// CivPatched End
+ 	}
+ }
+diff --git a/src/main/java/com/untamedears/jukealert/model/actions/impl/MountEntityAction.java b/src/main/java/com/untamedears/jukealert/model/actions/impl/MountEntityAction.java
+index 03dd87808ba9eec8130fcae9db080bdc689890ea..052a13b53d1369a2da23fb496d66c679f4e7f5c2 100644
+--- a/src/main/java/com/untamedears/jukealert/model/actions/impl/MountEntityAction.java
++++ b/src/main/java/com/untamedears/jukealert/model/actions/impl/MountEntityAction.java
+@@ -9,6 +9,11 @@ import org.bukkit.inventory.ItemStack;
+ import vg.civcraft.mc.civmodcore.inventory.gui.DecorationStack;
+ import vg.civcraft.mc.civmodcore.inventory.gui.IClickable;
+ 
++// CivPatched Start
++import net.kyori.adventure.text.Component;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ public class MountEntityAction extends LoggablePlayerVictimAction {
+ 
+ 	public static final String ID = "MOUNT_ENTITY";
+@@ -25,8 +30,10 @@ public class MountEntityAction extends LoggablePlayerVictimAction {
+ 	}
+ 	
+ 	@Override
+-	public String getChatRepresentationIdentifier() {
+-		return "Mounted " + getVictim();
++	// CivPatched Start
++	public @NotNull Component getChatRepresentationIdentifier() {
++		return Component.text("Mounted " + getVictim());
++		// CivPatched End
+ 	}
+ 
+ 	@Override
+diff --git a/src/main/java/com/untamedears/jukealert/model/actions/impl/OpenContainerAction.java b/src/main/java/com/untamedears/jukealert/model/actions/impl/OpenContainerAction.java
+index e745d99221166234495a3ace7deacd56638c7655..6ceb7f036fd14995285b4d6bbf6a44c79694a701 100644
+--- a/src/main/java/com/untamedears/jukealert/model/actions/impl/OpenContainerAction.java
++++ b/src/main/java/com/untamedears/jukealert/model/actions/impl/OpenContainerAction.java
+@@ -6,6 +6,11 @@ import java.util.UUID;
+ import org.bukkit.Location;
+ import org.bukkit.Material;
+ 
++// CivPatched Start
++import net.kyori.adventure.text.Component;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ public class OpenContainerAction extends LoggableBlockAction {
+ 	
+ 	public static final String ID = "OPEN_CONTAINER";
+@@ -15,8 +20,10 @@ public class OpenContainerAction extends LoggableBlockAction {
+ 	}
+ 
+ 	@Override
+-	public String getChatRepresentationIdentifier() {
+-		return "Opened";
++	// CivPatched Start
++	public @NotNull Component getChatRepresentationIdentifier() {
++		return Component.text("Opened");
++		// CivPatched End
+ 	}
+ 
+ 	@Override
+diff --git a/src/main/java/com/untamedears/jukealert/model/appender/BroadcastEntryAppender.java b/src/main/java/com/untamedears/jukealert/model/appender/BroadcastEntryAppender.java
+index 4fd73646053c06032ca36c38e48dc3618d2da830..27b69caf824c8ff95fe5b41fa6362f60037229ee 100644
+--- a/src/main/java/com/untamedears/jukealert/model/appender/BroadcastEntryAppender.java
++++ b/src/main/java/com/untamedears/jukealert/model/appender/BroadcastEntryAppender.java
+@@ -9,12 +9,20 @@ import com.untamedears.jukealert.util.JASettingsManager;
+ import com.untamedears.jukealert.util.JAUtility;
+ import com.untamedears.jukealert.util.JukeAlertPermissionHandler;
+ import java.util.UUID;
+-import net.md_5.bungee.api.chat.TextComponent;
+ import org.bukkit.Bukkit;
+ import org.bukkit.ChatColor;
+ import org.bukkit.configuration.ConfigurationSection;
+ import org.bukkit.entity.Player;
+ 
++// CivPatched Start
++import net.kyori.adventure.text.Component;
++import net.kyori.adventure.text.TextComponent;
++import net.kyori.adventure.text.format.NamedTextColor;
++import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
++import org.bukkit.Location;
++import vg.civcraft.mc.civmodcore.world.WorldUtils;
++// CivPatched End
++
+ public class BroadcastEntryAppender extends ConfigurableSnitchAppender<LimitedActionTriggerConfig> {
+ 
+ 	public static final String ID = "broadcast";
+@@ -48,18 +56,36 @@ public class BroadcastEntryAppender extends ConfigurableSnitchAppender<LimitedAc
+ 				continue;
+ 			}
+ 			if (snitch.hasPermission(uuid, JukeAlertPermissionHandler.getSnitchAlerts())) {
+-				TextComponent comp = log.getChatRepresentation(player.getLocation(), true, false);
++				// CivPatched Start
++				final TextComponent.Builder comp = Component.text().append(
++						log.getChatRepresentation(player.getLocation(), true, false)
++				);
++				// CivPatched End
+ 
+ 				if (settings.shouldShowDirections(uuid)) {
+-					comp.addExtra(String.format("  %s", JAUtility.genDirections(snitch, player)));
++					// CivPatched Start
++					final Location snitchLocation = this.snitch.getLocation();
++					final Location playerLocation = player.getLocation();
++					if (WorldUtils.doLocationsHaveSameWorld(snitchLocation, playerLocation)) {
++						comp.append(Component.text()
++								.color(NamedTextColor.GREEN)
++								.content("  ")
++								.append(
++										Component.text("[" + Math.round(playerLocation.distance(snitchLocation)) + "m "),
++										Component.text(JAUtility.getCardinal(playerLocation, snitchLocation), NamedTextColor.RED),
++										Component.text("]")
++								)
++						);
++					}
++					// CivPatched End
+ 				}
+ 				if (settings.monocolorAlerts(uuid)) {
+-					String raw = comp.toPlainText();
++					String raw = PlainTextComponentSerializer.plainText().serialize(comp.build()); // CivPatched
+ 					raw = ChatColor.stripColor(raw);
+ 					player.sendMessage(ChatColor.AQUA + raw);
+ 				}
+ 				else {
+-					player.spigot().sendMessage(comp);
++					player.sendMessage(comp); // CivPatched
+ 				}
+ 			}
+ 		}
+diff --git a/src/main/java/com/untamedears/jukealert/util/JAUtility.java b/src/main/java/com/untamedears/jukealert/util/JAUtility.java
+index 9bf9a4942e6233fb31c4dae017500384ecdc3e4b..d206f15448b2181eeec5e65dfe84e9b1860065ca 100644
+--- a/src/main/java/com/untamedears/jukealert/util/JAUtility.java
++++ b/src/main/java/com/untamedears/jukealert/util/JAUtility.java
+@@ -6,10 +6,6 @@ import com.untamedears.jukealert.model.Snitch;
+ import java.util.Collection;
+ import java.util.Iterator;
+ import java.util.UUID;
+-import net.md_5.bungee.api.chat.HoverEvent;
+-import net.md_5.bungee.api.chat.TextComponent;
+-import net.md_5.bungee.api.chat.hover.content.Text;
+-import org.bukkit.ChatColor;
+ import org.bukkit.Location;
+ import org.bukkit.Material;
+ import org.bukkit.block.Block;
+@@ -17,6 +13,15 @@ import org.bukkit.entity.Player;
+ import org.bukkit.util.BlockIterator;
+ import vg.civcraft.mc.namelayer.permission.PermissionType;
+ 
++// CivPatched Start
++import net.kyori.adventure.text.Component;
++import net.kyori.adventure.text.TextComponent;
++import net.kyori.adventure.text.event.HoverEvent;
++import net.kyori.adventure.text.format.NamedTextColor;
++import org.apache.commons.lang3.StringUtils;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ // Static methods only
+ public final class JAUtility {
+ 
+@@ -64,20 +69,43 @@ public final class JAUtility {
+ 		return null;
+ 	}
+ 
+-	public static TextComponent genTextComponent(Snitch snitch) {
+-		String name = snitch.getName().isEmpty() ? snitch.getType().getName() : snitch.getName();
+-		TextComponent textComponent = new TextComponent(ChatColor.AQUA + name);
+-		addSnitchHoverText(textComponent, snitch);
+-		return textComponent;
+-	}
+-
+-	public static String genDirections(Snitch snitch, Player player) {
+-		if (snitch.getLocation().getWorld().equals(player.getLocation().getWorld())) {
+-			return String.format("%s[%sm %s%s%s]", ChatColor.GREEN, Math.round(player.getLocation().distance(snitch.getLocation())), ChatColor.RED, getCardinal(player.getLocation(), snitch.getLocation()), ChatColor.GREEN);
+-		} else {
+-			return ""; // Can't get directions to another world
+-		}
++	// CivPatched Start
++	public static @NotNull Component genTextComponent(
++			final @NotNull Snitch snitch
++	) {
++		final String snitchName = snitch.getName();
++		return Component.text()
++				.color(NamedTextColor.AQUA)
++				.content(StringUtils.isNotBlank(snitchName) ? snitchName : snitch.getType().getName())
++				.hoverEvent(HoverEvent.showText(() -> {
++					final Location location = snitch.getLocation();
++					final TextComponent.Builder hoverText = Component.text();
++					hoverText.append(
++							Component.text("Location: ", NamedTextColor.GOLD),
++							Component.text("(%s) [%d %d %d]".formatted(
++									location.getWorld().getName(),
++									location.getBlockX(),
++									location.getBlockY(),
++									location.getBlockZ()
++							), NamedTextColor.AQUA)
++					);
++					if (StringUtils.isNotBlank(snitchName)) {
++						hoverText.append(
++								Component.newline(),
++								Component.text("Name: ", NamedTextColor.GOLD),
++								Component.text(snitchName, NamedTextColor.AQUA)
++						);
++					}
++					hoverText.append(
++							Component.newline(),
++							Component.text("Group: ", NamedTextColor.GOLD),
++							Component.text(snitch.getGroup().getName(), NamedTextColor.AQUA)
++					);
++					return hoverText.build();
++				}))
++				.build();
+ 	}
++	// CivPatched End
+ 
+ 	public static String getCardinal(Location start, Location end) {
+ 		double dX = start.getBlockX() - end.getBlockX();
+@@ -104,18 +132,6 @@ public final class JAUtility {
+ 		}
+ 	}
+ 
+-	public static void addSnitchHoverText(TextComponent text, Snitch snitch) {
+-		StringBuilder sb = new StringBuilder();
+-		Location loc = snitch.getLocation();
+-		sb.append(String.format("%sLocation: %s(%s) [%d %d %d]%n", ChatColor.GOLD, ChatColor.AQUA,
+-				loc.getWorld().getName(), loc.getBlockX(), loc.getBlockY(), loc.getBlockZ()));
+-		if (!snitch.getName().isEmpty()) {
+-			sb.append(String.format("%sName: %s%s%n", ChatColor.GOLD, ChatColor.AQUA, snitch.getName()));
+-		}
+-		sb.append(String.format("%sGroup: %s%s", ChatColor.GOLD, ChatColor.AQUA, snitch.getGroup().getName()));
+-		text.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new Text(sb.toString())));
+-	}
+-
+ 	public static Material parseMaterial(String id) {
+ 		try {
+ 			return Material.valueOf(id);
+@@ -128,13 +144,33 @@ public final class JAUtility {
+ 		return loc1.getWorld().getUID().equals(loc2.getWorld().getUID());
+ 	}
+ 
+-	public static String formatLocation(Location location, boolean includeWorld) {
+-		if (includeWorld) {
+-			return String.format("[%s %d %d %d]", location.getWorld().getName(), location.getBlockX(), location.getBlockY(),
+-					location.getBlockZ());
++	// CivPatched Start
++	public static @NotNull Component formatLocation(
++			final @NotNull Location location,
++			final boolean includeWorld,
++			final boolean censor
++	) {
++		if (censor) {
++			return Component.text(includeWorld ?
++					"[**** *** *** ***]" :
++					"[*** *** ***]"
++			);
+ 		}
+-		return String.format("[%d %d %d]", location.getBlockX(), location.getBlockY(), location.getBlockZ());
++		return Component.text(includeWorld ?
++				"[%s %d %d %d]".formatted(
++						location.getWorld().getName(),
++						location.getBlockX(),
++						location.getBlockY(),
++						location.getBlockZ()
++				) :
++				"[%d %d %d]".formatted(
++						location.getBlockX(),
++						location.getBlockY(),
++						location.getBlockZ()
++				)
++		);
+ 	}
++	// CivPatched End
+ 
+ 	public static Material getVehicle(String vehicle) {
+ 		switch (vehicle) {

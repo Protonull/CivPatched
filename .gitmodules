@@ -7,3 +7,6 @@
 [submodule "SimpleAdminHacks"]
 	path = SimpleAdminHacks
 	url = https://github.com/CivMC/SimpleAdminHacks.git
+[submodule "JukeAlert"]
+	path = JukeAlert
+	url = https://github.com/CivMC/JukeAlert.git

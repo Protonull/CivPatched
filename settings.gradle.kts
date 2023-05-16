@@ -11,3 +11,4 @@ rootProject.name = "CivPatched"
 include(":CivModCore")
 include(":NameLayer")
 include(":SimpleAdminHacks")
+include(":JukeAlert")
