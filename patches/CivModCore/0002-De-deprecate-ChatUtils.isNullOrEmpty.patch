@@ -1,0 +1,20 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Sat, 13 May 2023 09:37:35 +0100
+Subject: [PATCH] De-deprecate ChatUtils.isNullOrEmpty
+
+The deprecation is a lie! It's an accidental leftover from move to Kyori
+
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java
+index c4f678ad5fdb2a2cb917186b93f098f7d9d037c0..8730e4e3bf6a0c829296cbf16cdd248519a4bf93 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java
+@@ -202,8 +202,6 @@ public final class ChatUtils {
+ 	 *
+ 	 * @param component The component to test if null or empty.
+ 	 * @return Returns true if the component is null or has no visible content.
+-	 * 
+-	 * @deprecated Has been deprecated due to Paper's move to Kyori's Adventure.
+ 	 */
+ 	public static boolean isNullOrEmpty(@Nullable final Component component) {
+ 		if (component == null || component == Component.empty()) {

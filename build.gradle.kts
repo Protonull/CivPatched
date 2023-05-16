@@ -66,5 +66,8 @@ subprojects {
         mavenCentral()
         maven("https://jitpack.io")
         maven("https://repo.civmc.net/repository/maven-public")
+
+        // For Aikar's ACF-Bukkit and TaskChain-Bukkit
+        maven("https://repo.aikar.co/content/groups/aikar/")
     }
 }

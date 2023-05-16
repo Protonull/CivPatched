@@ -1,0 +1,23 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Sat, 13 May 2023 09:53:15 +0100
+Subject: [PATCH] Fix Aikar commands quirk
+
+Commands need to be registered last otherwise custom contexts (handlers for non-String paramters) wont be found and the command registration will fail.
+
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/commands/CommandManager.java b/src/main/java/vg/civcraft/mc/civmodcore/commands/CommandManager.java
+index 9ddec69108166c28d097ddf42b4972a92e1dd78a..284ee6049c0b8657318014c017735f425990aa55 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/commands/CommandManager.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/commands/CommandManager.java
+@@ -76,9 +76,9 @@ public class CommandManager extends BukkitCommandManager {
+ 			}
+ 		}, plugin);
+ 
+-		registerCommands();
+-		registerCompletions(getCommandCompletions());
+ 		registerContexts(getCommandContexts());
++		registerCompletions(getCommandCompletions());
++		registerCommands();
+ 	}
+ 
+ 	/**

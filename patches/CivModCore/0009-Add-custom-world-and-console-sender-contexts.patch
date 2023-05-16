@@ -1,0 +1,59 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Sat, 13 May 2023 10:22:46 +0100
+Subject: [PATCH] Add custom world and console sender contexts
+
+
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/commands/CommandManager.java b/src/main/java/vg/civcraft/mc/civmodcore/commands/CommandManager.java
+index 284ee6049c0b8657318014c017735f425990aa55..206f76ef7b65486ca6d457d7a4a5a373a3cee3e1 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/commands/CommandManager.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/commands/CommandManager.java
+@@ -27,6 +27,14 @@ import org.bukkit.event.player.PlayerLoginEvent;
+ import org.bukkit.plugin.Plugin;
+ import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
+ import vg.civcraft.mc.civmodcore.utilities.CivLogger;
++import vg.civcraft.mc.civmodcore.utilities.UuidUtils;
++
++// CivPatched Start
++import co.aikar.commands.InvalidCommandArgument;
++import co.aikar.commands.MinecraftMessageKeys;
++import org.bukkit.World;
++import org.bukkit.command.ConsoleCommandSender;
++// CivPatched End
+ 
+ /**
+  * Command registration class wrapper around {@link BukkitCommandManager}.
+@@ -114,6 +122,33 @@ public class CommandManager extends BukkitCommandManager {
+ 	 *                 {@link #getCommandContexts()}.
+ 	 */
+ 	public void registerContexts(@Nonnull final CommandContexts<BukkitCommandExecutionContext> contexts) {
++		// CivPatched Start
++		contexts.registerIssuerAwareContext(ConsoleCommandSender.class, (context) -> {
++			if (context.getSender() instanceof final ConsoleCommandSender console) {
++				return console;
++			}
++			throw new InvalidCommandArgument("Command can only be called from console!", false);
++		});
++		// Override ACF Bukkit's default behaviour of falling back to the sender's world.
++		contexts.registerContext(World.class, (context) -> {
++			final String firstArg = context.getFirstArg();
++			final World world;
++			// Test UUID
++			final UUID worldUUID = UuidUtils.fromString(firstArg);
++			if (worldUUID != null) {
++				world = Bukkit.getWorld(worldUUID);
++			}
++			else {
++				// Otherwise, get from name
++				world = Bukkit.getWorld(firstArg);
++			}
++			if (world != null) {
++				context.popFirstArg();
++				return world;
++			}
++			throw new InvalidCommandArgument(MinecraftMessageKeys.INVALID_WORLD);
++		});
++		// CivPatched End
+ 	}
+ 
+ 	/**

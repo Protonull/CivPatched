@@ -1,0 +1,72 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Sat, 13 May 2023 09:57:24 +0100
+Subject: [PATCH] Deprecate PlayerMoveBlockEvent
+
+PlayerMoveBlockEvent was added back in Civclassics to make it easier to listen to *block* movements, since PlayerMoveEvent triggers on any movement, regardless of how minuscule. But now that PlayerMoveEvent now has hasExplicitlyChangedBlock(), this can be deprecated.
+
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/events/CustomEventMapper.java b/src/main/java/vg/civcraft/mc/civmodcore/events/CustomEventMapper.java
+index d17d0ca3db25837b0c1bd769eef5f8aa32a26e3f..39f77416a505c7f170179434d67ad4f857613694 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/events/CustomEventMapper.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/events/CustomEventMapper.java
+@@ -1,12 +1,9 @@
+ package vg.civcraft.mc.civmodcore.events;
+ 
+-import org.bukkit.Bukkit;
+-import org.bukkit.Location;
+ import org.bukkit.event.EventHandler;
+ import org.bukkit.event.EventPriority;
+ import org.bukkit.event.Listener;
+ import org.bukkit.event.player.PlayerMoveEvent;
+-import vg.civcraft.mc.civmodcore.world.WorldUtils;
+ 
+ public class CustomEventMapper implements Listener {
+ 
+@@ -14,20 +11,18 @@ public class CustomEventMapper implements Listener {
+ 	 * Glue map for {@link PlayerMoveBlockEvent}.
+ 	 * @param event The event to map from.
+ 	 */
++	@Deprecated // CivPatched
+ 	@EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+ 	public void detectPlayerMoveBlock(PlayerMoveEvent event) {
+-		Location formerLocation = event.getFrom();
+-		Location latterLocation = event.getTo();
+-		// If no block movement has occurred, exit out
+-		if (!WorldUtils.doLocationsHaveSameWorld(formerLocation, latterLocation)
+-				|| formerLocation.getBlockX() != latterLocation.getBlockX()
+-				|| formerLocation.getBlockY() != latterLocation.getBlockY()
+-				|| formerLocation.getBlockZ() != latterLocation.getBlockZ()) {
+-			return;
++		// CivPatched Start
++		if (event.hasExplicitlyChangedBlock()) {
++			final var better = new PlayerMoveBlockEvent(event.getPlayer(), event.getFrom(), event.getTo());
++			better.callEvent();
++			if (better.isCancelled()) {
++				event.setCancelled(true);
++			}
+ 		}
+-		PlayerMoveBlockEvent better = new PlayerMoveBlockEvent(event.getPlayer(), formerLocation, latterLocation);
+-		Bukkit.getPluginManager().callEvent(better);
+-		event.setCancelled(better.isCancelled());
++		// CivPatched End
+ 	}
+ 
+ }
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/events/PlayerMoveBlockEvent.java b/src/main/java/vg/civcraft/mc/civmodcore/events/PlayerMoveBlockEvent.java
+index f1e6a7fc24a3ebc9aad8e407fd72cd16c6d1e43b..41319743b012bbf1deb2718704a37eaa1983d856 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/events/PlayerMoveBlockEvent.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/events/PlayerMoveBlockEvent.java
+@@ -5,6 +5,13 @@ import org.bukkit.entity.Player;
+ import org.bukkit.event.HandlerList;
+ import org.bukkit.event.player.PlayerMoveEvent;
+ 
++// CivPatched Start
++/**
++ * @deprecated Please listen to {@link PlayerMoveEvent} instead and check for
++ *             {@link PlayerMoveEvent#hasExplicitlyChangedBlock()}.
++ */
++@Deprecated
++// CivPatched End
+ public class PlayerMoveBlockEvent extends PlayerMoveEvent {
+ 
+ 	private static final HandlerList handlers = new HandlerList();

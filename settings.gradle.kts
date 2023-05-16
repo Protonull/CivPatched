@@ -7,3 +7,5 @@ pluginManagement {
 }
 
 rootProject.name = "CivPatched"
+
+include(":CivModCore")

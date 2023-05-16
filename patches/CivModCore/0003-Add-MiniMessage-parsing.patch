@@ -1,0 +1,40 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Sat, 13 May 2023 09:44:10 +0100
+Subject: [PATCH] Add MiniMessage parsing
+
+
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java
+index 8730e4e3bf6a0c829296cbf16cdd248519a4bf93..7744f9e39c6264b1d575995bf650064576eb10dc 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java
+@@ -210,6 +210,29 @@ public final class ChatUtils {
+ 		return StringUtils.isBlank(PlainTextComponentSerializer.plainText().serialize(component));
+ 	}
+ 
++	// CivPatched Start
++	/**
++	 * Parses a MiniMessage component, ensuring that a Component instance is
++	 * only returned if and only if there's actual text content.
++	 */
++	public static @Nullable Component parseComponent(final @Nonnull String raw) {
++		if (StringUtils.isBlank(raw)) {
++			return null;
++		}
++		final Component component;
++		try {
++			component = MiniMessage.miniMessage().deserialize(raw);
++		}
++		catch (final Throwable thrown) {
++			return null;
++		}
++		if (isNullOrEmpty(component)) {
++			return null;
++		}
++		return component;
++	}
++	// CivPatched End
++
+ 	/**
+ 	 * <p>Determines whether a given base component is null or empty.</p>
+ 	 *

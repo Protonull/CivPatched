@@ -1,0 +1,143 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Sat, 13 May 2023 10:04:27 +0100
+Subject: [PATCH] Add DefaultDatasource
+
+Allows other plugins to use CivModCore's database
+
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java b/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java
+index 687d38aa2a5198691727c405b946f33225ed8f6d..eb434c68cf818630eaed73a10c0421b543db6945 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java
+@@ -9,6 +9,7 @@ import vg.civcraft.mc.civmodcore.chat.dialog.DialogManager;
+ import vg.civcraft.mc.civmodcore.commands.CommandManager;
+ import vg.civcraft.mc.civmodcore.commands.StatCommand;
+ import vg.civcraft.mc.civmodcore.dao.DatabaseCredentials;
++import vg.civcraft.mc.civmodcore.dao.DefaultDatasource;
+ import vg.civcraft.mc.civmodcore.dao.ManagedDatasource;
+ import vg.civcraft.mc.civmodcore.events.CustomEventMapper;
+ import vg.civcraft.mc.civmodcore.inventory.gui.ClickableInventoryListener;
+@@ -44,6 +45,7 @@ public final class CivModCorePlugin extends ACivMod {
+ 	public void onEnable() {
+ 		instance = this;
+ 		registerConfigClass(DatabaseCredentials.class);
++		registerConfigClass(DefaultDatasource.class); // CivPatched
+ 		// Save default resources
+ 		saveDefaultResource("enchants.yml");
+ 		super.onEnable();
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java b/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
+index 9f26a8331e60bb40d32445f63eaca95c22d80e84..f97a3302ec85ade984eb77b28bc67c76789f81d9 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
+@@ -38,11 +38,55 @@ import vg.civcraft.mc.civmodcore.world.model.GlobalYLimitedArea;
+ import vg.civcraft.mc.civmodcore.world.model.IArea;
+ import vg.civcraft.mc.civmodcore.world.model.RectangleArea;
+ 
++// CivPatched Start
++import org.jetbrains.annotations.NotNull;
++import vg.civcraft.mc.civmodcore.ACivMod;
++import vg.civcraft.mc.civmodcore.dao.DatabaseCredentials;
++import vg.civcraft.mc.civmodcore.dao.DefaultDatasource;
++import vg.civcraft.mc.civmodcore.dao.ManagedDatasource;
++import vg.civcraft.mc.civmodcore.utilities.CivLogger;
++// CivPatched End
++
+ @UtilityClass
+ public final class ConfigHelper {
+ 
+ 	private static final Logger LOGGER = Bukkit.getLogger();
+ 
++	// CivPatched Start
++	/**
++	 * Attempts to retrieve a ManagedDatasource (aka a database connection) from the config at a given key.
++	 *
++	 * @param config The configuration section to get the ManagedDatasource from.
++	 * @param key The key of the ManagedDatasource.
++	 * @param plugin The owning plugin of the ManagedDatasource.
++	 * @return Returns a new ManagedDatasource if found, null otherwise.
++	 */
++	public @Nullable ManagedDatasource getManagedDatasource(
++			final @NotNull ConfigurationSection config,
++			final @NotNull String key,
++			final @NotNull ACivMod plugin
++	) {
++		final Object value = config.get(key, null);
++		if (value instanceof final DatabaseCredentials credentials) {
++			return ManagedDatasource.construct(plugin, credentials);
++		}
++		if (value instanceof final DefaultDatasource connection) {
++			return connection.getManagedDatasource();
++		}
++		if (value instanceof final ConfigurationSection section) {
++			final var logger = CivLogger.getLogger(plugin.getClass(), ConfigHelper.class);
++			logger.warning("Deprecated database definition at [" + config.getCurrentPath() + "." + key + "]");
++			final DatabaseCredentials credentials = DatabaseCredentials.deserialize(section.getValues(false));
++			if (credentials == null) {
++				logger.warning("Deprecated database definition at [" + config.getCurrentPath() + "." + key + "] could not be deserialized into credentials!");
++				return null;
++			}
++			return ManagedDatasource.construct(plugin, credentials);
++		}
++		return null;
++	}
++	// CivPatched End
++
+ 	/**
+ 	 * Retrieves the configuration section at the given key on the given configuration section.
+ 	 *
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/dao/DefaultDatasource.java b/src/main/java/vg/civcraft/mc/civmodcore/dao/DefaultDatasource.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..8ac5c108163854fe704f1c2430fd22f458f8298b
+--- /dev/null
++++ b/src/main/java/vg/civcraft/mc/civmodcore/dao/DefaultDatasource.java
+@@ -0,0 +1,49 @@
++package vg.civcraft.mc.civmodcore.dao;
++
++import java.util.Map;
++import lombok.AccessLevel;
++import lombok.NoArgsConstructor;
++import org.bukkit.configuration.serialization.ConfigurationSerializable;
++import org.jetbrains.annotations.NotNull;
++import org.jetbrains.annotations.Nullable;
++import vg.civcraft.mc.civmodcore.CivModCorePlugin;
++
++/**
++ * <p>This class is to be used in <i>other</i> plugin configs so that they can piggyback off CivModCode's database
++ * connection instead of defining, parsing, and instantiating their own.</p>
++ *
++ * <p>Example usage: <pre>{@code
++ * database:
++ *   ==: vg.civcraft.mc.civmodcore.dao.DefaultDatasource
++ * }</pre>
++ *
++ * <p>No other values are needed, nor are considered, so any other information, such as the username/hostname/etc can be
++ * commented out to reduce confusion.</p>
++ *
++ * <p><b>BE WARNED! IF YOU'RE PLANNING ON USING THIS, YOU WILL NEED TO SET YOUR POOL SIZE TO A MUCH HIGHER VALUE IN
++ * YOUR CIVMODCORE'S CONFIG!</b></p>
++ *
++ * @author CivPatched
++ */
++@NoArgsConstructor(access = AccessLevel.PRIVATE)
++public final class DefaultDatasource implements ConfigurationSerializable {
++
++    private static final DefaultDatasource INSTANCE = new DefaultDatasource();
++
++    /**
++     * @return Returns CivModCore's database connection, which <i>may</i> be null.
++     */
++    public @Nullable ManagedDatasource getManagedDatasource() {
++        return CivModCorePlugin.getInstance().getDatabase();
++    }
++
++    @Override
++    public @NotNull Map<String, Object> serialize() {
++        return Map.of();
++    }
++
++    public static @NotNull DefaultDatasource deserialize(final @NotNull Map<String, Object> data) {
++        return INSTANCE;
++    }
++
++}
+\ No newline at end of file

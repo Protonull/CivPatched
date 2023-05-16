@@ -1,0 +1,177 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Sat, 13 May 2023 18:05:03 +0100
+Subject: [PATCH] Relocate asTranslatable to ChatUtils
+
+
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java
+index 7744f9e39c6264b1d575995bf650064576eb10dc..4b1814d2b53a72b18fe467f96653a324c98bfc8c 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java
+@@ -26,6 +26,13 @@ import org.jetbrains.annotations.Contract;
+ import org.jetbrains.annotations.NotNull;
+ import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
+ 
++// CivPatched Start
++import net.kyori.adventure.text.TranslatableComponent;
++import net.kyori.adventure.translation.Translatable;
++import org.bukkit.potion.PotionType;
++import vg.civcraft.mc.civmodcore.inventory.items.PotionUtils;
++// CivPatched End
++
+ @UtilityClass
+ public final class ChatUtils {
+ 
+@@ -418,12 +425,21 @@ public final class ChatUtils {
+ 					.content("<null item>")
+ 					.build());
+ 		}
+-		return HoverEvent.showItem(
+-				item.getType().getKey(),
+-				item.getAmount()
+-				// TODO: There's a variant of this method that includes an NBT compound. My guess is to include display
+-				//       name and lore, perhaps also enchantments, etc..
+-		);
++		return item.asHoverEvent(); // CivPatched
++	}
++
++	// CivPatched Start
++	/**
++	 * Convenience method that converts a translatable object into a translation component. Be aware of other
++	 * translatable utilities such as {@link PotionUtils#asTranslatable(PotionType)} regarding specific cases,
++	 * particularly when the objects do not inherit from {@link Translatable}.
++	 *
++	 * @param translatable The translatable object to wrap.
++	 * @return Returns a translation-component that can be used in components.
++	 */
++	public @NotNull TranslatableComponent asTranslatable(final @NotNull Translatable translatable) {
++		return Component.translatable(translatable.translationKey());
+ 	}
++	// CivPatched End
+ 
+ }
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/entities/EntityUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/entities/EntityUtils.java
+index 129b5d9686b1fc8fda6985b0f2d6efa06161725e..ba9e4ce3707edd368d0674137dbf913213c2efd5 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/entities/EntityUtils.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/entities/EntityUtils.java
+@@ -3,7 +3,6 @@ package vg.civcraft.mc.civmodcore.entities;
+ import com.google.common.base.Strings;
+ import javax.annotation.Nonnull;
+ import lombok.experimental.UtilityClass;
+-import net.kyori.adventure.text.Component;
+ import net.kyori.adventure.text.TranslatableComponent;
+ import org.bukkit.entity.EntityType;
+ 
+@@ -42,8 +41,9 @@ public final class EntityUtils {
+ 	 * @param entityType The entity type to translate.
+ 	 * @return Returns a translatable component based on the given entity type.
+ 	 */
++	@Deprecated // CivPatched
+ 	public static TranslatableComponent asTranslatable(@Nonnull final EntityType entityType) {
+-		return Component.translatable(entityType.translationKey());
++		return vg.civcraft.mc.civmodcore.chat.ChatUtils.asTranslatable(entityType); // CivPatched
+ 	}
+ 
+ }
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/EnchantUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/EnchantUtils.java
+index 3264efa21b3703098748e7a967f8d1d5a9049e2c..8e682a6f8ed353c3e93a47ee28dc8f648a5335f6 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/EnchantUtils.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/EnchantUtils.java
+@@ -13,7 +13,6 @@ import java.util.stream.Collectors;
+ import javax.annotation.Nonnull;
+ import javax.annotation.Nullable;
+ import lombok.experimental.UtilityClass;
+-import net.kyori.adventure.text.Component;
+ import net.kyori.adventure.text.TranslatableComponent;
+ import org.apache.commons.collections4.CollectionUtils;
+ import org.bukkit.configuration.file.YamlConfiguration;
+@@ -108,9 +107,10 @@ public final class EnchantUtils {
+ 	 * @param enchant The enchantment to get a translatable component for.
+ 	 * @return Returns a translatable component for the given enchantment.
+ 	 */
++	@Deprecated // CivPatched
+ 	@Nonnull
+ 	public static TranslatableComponent asTranslatable(@Nonnull final Enchantment enchant) {
+-		return Component.translatable(enchant.translationKey());
++		return vg.civcraft.mc.civmodcore.chat.ChatUtils.asTranslatable(enchant); // CivPatched
+ 	}
+ 
+ 	/**
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemUtils.java
+index 091414d37aec82924aef713676d5bd6f9bee122f..d83314248359d0897dd01ca07ce65bce02446e4f 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemUtils.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemUtils.java
+@@ -28,9 +28,10 @@ public final class ItemUtils {
+ 	 * @param item The item to get a translatable component for.
+ 	 * @return Returns a translatable component of the given item.
+ 	 */
++	@Deprecated // CivPatched
+ 	@Nonnull
+ 	public static TranslatableComponent asTranslatable(@Nonnull final ItemStack item) {
+-		return Component.translatable(item.translationKey());
++		return vg.civcraft.mc.civmodcore.chat.ChatUtils.asTranslatable(item); // CivPatched
+ 	}
+ 
+ 	/**
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MaterialUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MaterialUtils.java
+index 60959ec9dbc94b0a3e993bf77ecdb79a75ba1c4e..e3f8f3da497dbc0dffa524e9c7988f1e9a95f6b1 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MaterialUtils.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MaterialUtils.java
+@@ -7,7 +7,6 @@ import java.util.List;
+ import javax.annotation.Nonnull;
+ import javax.annotation.Nullable;
+ import lombok.experimental.UtilityClass;
+-import net.kyori.adventure.text.Component;
+ import net.kyori.adventure.text.TranslatableComponent;
+ import org.apache.commons.lang3.StringUtils;
+ import org.bukkit.Material;
+@@ -52,9 +51,10 @@ public final class MaterialUtils {
+ 	 * @param material The material to translate.
+ 	 * @return Returns a translatable component based on the given material.
+ 	 */
++	@Deprecated // CivPatched
+ 	@Nonnull
+ 	public static TranslatableComponent asTranslatable(@Nonnull final Material material) {
+-		return Component.translatable(material.translationKey());
++		return vg.civcraft.mc.civmodcore.chat.ChatUtils.asTranslatable(material); // CivPatched
+ 	}
+ 
+ 	/**
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/PotionUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/PotionUtils.java
+index 571c3ee4cb70375000ade0afe1dbb31363977e18..4493bd922e7a78fc9870dd58b312fc29f50f8b9b 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/PotionUtils.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/PotionUtils.java
+@@ -7,7 +7,6 @@ import javax.annotation.Nullable;
+ import lombok.experimental.UtilityClass;
+ import net.kyori.adventure.text.Component;
+ import net.kyori.adventure.text.TranslatableComponent;
+-import net.minecraft.world.effect.MobEffect;
+ import org.apache.commons.lang3.tuple.Pair;
+ import org.bukkit.Material;
+ import org.bukkit.inventory.ItemStack;
+@@ -56,23 +55,10 @@ public final class PotionUtils {
+ 	 * @param effect The potion effect to get a translatable component for.
+ 	 * @return Returns a translatable component for the given potion effect.
+ 	 */
+-	@SuppressWarnings("deprecation")
++	@Deprecated // CivPatched
+ 	@Nonnull
+ 	public static TranslatableComponent asTranslatable(@Nonnull final PotionEffectType effect) {
+-		final MobEffect mojang = MobEffect.byId(effect.getId());
+-		assert mojang != null;
+-		final String key = mojang.getDescriptionId(); // Gets the translation key
+-		// If the obfuscation has changed, look for a method on MobEffectList like:
+-		//
+-		//    protected String b() {
+-		//        if (this.d == null) {
+-		//            this.d = SystemUtils.a("effect", IRegistry.V.getKey(this));
+-		//        }
+-		//        return this.d;
+-		//    }
+-		//
+-		// then use whatever method calls that method
+-		return Component.translatable(key);
++		return vg.civcraft.mc.civmodcore.chat.ChatUtils.asTranslatable(effect); // CivPatched
+ 	}
+ 
+ 	/**

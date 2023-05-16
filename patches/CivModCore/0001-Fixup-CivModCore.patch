@@ -1,0 +1,87 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Sat, 13 May 2023 06:32:39 +0100
+Subject: [PATCH] Fixup CivModCore
+
+
+diff --git a/build.gradle.kts b/build.gradle.kts
+index 59aa4b7b2ea86655902bd5b5e140e77003b8e65a..e26fefa23071ee21936262f2d4d2724c727acafa 100644
+--- a/build.gradle.kts
++++ b/build.gradle.kts
+@@ -1,23 +1,16 @@
+-import net.civmc.civgradle.CivGradleExtension
++group = "civ.genre.civmodcore"
++version = "2.3.5"
++description = "CivModCore"
+ 
+-plugins {
+-	id("net.civmc.civgradle") version "2.+" apply false
++configure<net.civmc.civgradle.CivGradleExtension> {
++	pluginName = project.property("description") as String
+ }
+ 
+-subprojects {
+-	apply(plugin = "java-library")
+-	apply(plugin = "maven-publish")
+-	apply(plugin = "net.civmc.civgradle")
+-
+-	configure<CivGradleExtension> {
+-		pluginName = project.property("pluginName") as String
+-	}
+-
+-	repositories {
+-		mavenCentral()
+-        maven("https://repo.aikar.co/content/groups/aikar/")
+-        maven("https://libraries.minecraft.net")
+-
+-		maven("https://jitpack.io")
+-	}
++dependencies {
++	api("com.zaxxer:HikariCP:5.0.1")
++	api("co.aikar:acf-bukkit:0.5.0-SNAPSHOT")
++	api("co.aikar:taskchain-bukkit:3.7.2")
++	api("com.github.IPVP-MC:canvas:91ec97f076")
++	api("org.apache.commons:commons-collections4:4.4")
++	api("com.google.code.findbugs:jsr305:3.0.2")
+ }
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java b/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java
+index b42c2547061518f92bafe8438fab105213510095..687d38aa2a5198691727c405b946f33225ed8f6d 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java
+@@ -16,7 +16,6 @@ import vg.civcraft.mc.civmodcore.inventory.items.EnchantUtils;
+ import vg.civcraft.mc.civmodcore.inventory.items.MoreTags;
+ import vg.civcraft.mc.civmodcore.inventory.items.SpawnEggUtils;
+ import vg.civcraft.mc.civmodcore.inventory.items.TreeTypeUtils;
+-import vg.civcraft.mc.civmodcore.maps.MapColours;
+ import vg.civcraft.mc.civmodcore.players.scoreboard.bottom.BottomLineAPI;
+ import vg.civcraft.mc.civmodcore.players.scoreboard.side.ScoreBoardAPI;
+ import vg.civcraft.mc.civmodcore.players.scoreboard.side.ScoreBoardListener;
+@@ -29,7 +28,6 @@ import vg.civcraft.mc.civmodcore.world.locations.chunkmeta.api.ChunkMetaAPI;
+ import vg.civcraft.mc.civmodcore.world.locations.chunkmeta.stat.LoadStatisticManager;
+ import vg.civcraft.mc.civmodcore.world.locations.global.CMCWorldDAO;
+ import vg.civcraft.mc.civmodcore.world.locations.global.WorldIDManager;
+-import vg.civcraft.mc.civmodcore.world.operations.ChunkOperationManager;
+ 
+ public final class CivModCorePlugin extends ACivMod {
+ 
+@@ -79,12 +77,10 @@ public final class CivModCorePlugin extends ACivMod {
+ 		registerListener(new ScoreBoardListener());
+ 		registerListener(new CustomEventMapper());
+ 		registerListener(new WorldTracker());
+-		registerListener(ChunkOperationManager.INSTANCE);
+ 		// Register commands
+ 		this.commands = new CommandManager(this);
+ 		this.commands.init();
+ 		this.commands.registerCommand(new ConfigCommand());
+-		this.commands.registerCommand(ChunkOperationManager.INSTANCE);
+ 		this.commands.registerCommand(new StatCommand());
+ 		// Load APIs
+ 		EnchantUtils.loadEnchantAbbreviations(this);
+@@ -92,7 +88,6 @@ public final class CivModCorePlugin extends ACivMod {
+ 		SpawnEggUtils.init();
+ 		TreeTypeUtils.init();
+ 		BottomLineAPI.init();
+-		MapColours.init();
+ 		this.skinCache = new SkinCache(this, this.config.getSkinCacheThreads());
+ 
+ 		if (this.config.getChunkLoadingStatistics())

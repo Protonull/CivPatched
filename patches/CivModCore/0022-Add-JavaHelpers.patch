@@ -1,0 +1,35 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Sun, 14 May 2023 17:37:50 +0100
+Subject: [PATCH] Add JavaHelpers
+
+
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/JavaHelpers.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/JavaHelpers.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..0efd7387edd4e60705e719f37ac0fc86671e0dcd
+--- /dev/null
++++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/JavaHelpers.java
+@@ -0,0 +1,23 @@
++package vg.civcraft.mc.civmodcore.utilities;
++
++import java.util.function.Supplier;
++import lombok.experimental.UtilityClass;
++import org.jetbrains.annotations.NotNull;
++
++/**
++ * @author CivPatched
++ */
++@UtilityClass
++public class JavaHelpers {
++
++    /**
++     * Convenience function to yield a value from multiple lines, inline.
++     * Keep an eye on: https://openjdk.org/jeps/447
++     */
++    public static <T> T yield(
++            final @NotNull Supplier<T> supplier
++    ) {
++        return supplier.get();
++    }
++
++}
