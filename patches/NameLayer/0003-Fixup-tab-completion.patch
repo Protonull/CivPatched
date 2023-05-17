@@ -25,43 +25,96 @@ index 3ca900be41f79b8c687f07735d82084888c17d24..d0146db724500d3dc8b1ced2bd2cfe03
  	}
  }
 diff --git a/src/main/java/vg/civcraft/mc/namelayer/command/commands/AcceptInvite.java b/src/main/java/vg/civcraft/mc/namelayer/command/commands/AcceptInvite.java
-index 0ef446e86d902e58749d13dc8a585016d154ace6..07db34525f79130d3d000b168af05f6c7ff98d71 100644
+index 0ef446e86d902e58749d13dc8a585016d154ace6..78350e815c8a4beef803b9d4bbcfe5f8714abdf5 100644
 --- a/src/main/java/vg/civcraft/mc/namelayer/command/commands/AcceptInvite.java
 +++ b/src/main/java/vg/civcraft/mc/namelayer/command/commands/AcceptInvite.java
-@@ -51,8 +51,10 @@ public class AcceptInvite extends BaseCommandMiddle {
+@@ -1,20 +1,16 @@
+ package vg.civcraft.mc.namelayer.command.commands;
+ 
+-import co.aikar.commands.BukkitCommandCompletionContext;
+ import co.aikar.commands.annotation.CommandAlias;
+ import co.aikar.commands.annotation.CommandCompletion;
+ import co.aikar.commands.annotation.Description;
+ import co.aikar.commands.annotation.Syntax;
+-import java.util.List;
+ import java.util.UUID;
+ import net.kyori.adventure.text.Component;
+ import net.kyori.adventure.text.format.NamedTextColor;
+ import org.bukkit.entity.Player;
+-import vg.civcraft.mc.civmodcore.commands.TabComplete;
+ import vg.civcraft.mc.namelayer.GroupManager.PlayerType;
+ import vg.civcraft.mc.namelayer.NameAPI;
+ import vg.civcraft.mc.namelayer.command.BaseCommandMiddle;
+-import vg.civcraft.mc.namelayer.command.TabCompleters.InviteTabCompleter;
+ import vg.civcraft.mc.namelayer.group.Group;
+ import vg.civcraft.mc.namelayer.listeners.PlayerListener;
+ 
+@@ -51,8 +47,4 @@ public class AcceptInvite extends BaseCommandMiddle {
  		p.sendMessage(Component.text("You have successfully been added to the group as a " + type.name() +".").color(NamedTextColor.GREEN));
  	}
  
-+	/* // CivPatched
- 	@TabComplete("NL_Invites")
- 	public List<String> tabComplete(BukkitCommandCompletionContext context) {
- 		return InviteTabCompleter.complete(context.getInput(), context.getPlayer());
- 	}
-+	*/ // CivPatched
+-	@TabComplete("NL_Invites")
+-	public List<String> tabComplete(BukkitCommandCompletionContext context) {
+-		return InviteTabCompleter.complete(context.getInput(), context.getPlayer());
+-	}
  }
 diff --git a/src/main/java/vg/civcraft/mc/namelayer/command/commands/GetDefaultGroup.java b/src/main/java/vg/civcraft/mc/namelayer/command/commands/GetDefaultGroup.java
-index e733f625178f56d5d55bbef55c60b23dc4aae954..95da837fd40fcd25aea07fd2fe264b55866b219f 100644
+index e733f625178f56d5d55bbef55c60b23dc4aae954..69d3f7aefa853695cddc886ca8b23329c012f338 100644
 --- a/src/main/java/vg/civcraft/mc/namelayer/command/commands/GetDefaultGroup.java
 +++ b/src/main/java/vg/civcraft/mc/namelayer/command/commands/GetDefaultGroup.java
-@@ -28,6 +28,7 @@ public class GetDefaultGroup extends BaseCommandMiddle {
+@@ -2,14 +2,11 @@ package vg.civcraft.mc.namelayer.command.commands;
+ 
+ import co.aikar.commands.annotation.CommandAlias;
+ import co.aikar.commands.annotation.Description;
+-import java.util.List;
+ import java.util.UUID;
+ import org.bukkit.ChatColor;
+-import org.bukkit.command.CommandSender;
+ import org.bukkit.entity.Player;
+ import vg.civcraft.mc.namelayer.NameAPI;
+ import vg.civcraft.mc.namelayer.command.BaseCommandMiddle;
+-import vg.civcraft.mc.namelayer.command.TabCompleters.GroupTabCompleter;
+ 
+ public class GetDefaultGroup extends BaseCommandMiddle {
+ 
+@@ -28,14 +25,4 @@ public class GetDefaultGroup extends BaseCommandMiddle {
  		}
  	}
  
-+	/* // CivPatched
- 	public List<String> tabComplete(CommandSender sender, String[] args) {
- 		if (!(sender instanceof Player))
- 			return null;
-@@ -38,4 +39,5 @@ public class GetDefaultGroup extends BaseCommandMiddle {
- 			return GroupTabCompleter.complete(null, null, (Player)sender);
- 		}
- 	}
-+	*/ // CivPatched
+-	public List<String> tabComplete(CommandSender sender, String[] args) {
+-		if (!(sender instanceof Player))
+-			return null;
+-
+-		if (args.length == 1)
+-			return GroupTabCompleter.complete(args[0], null, (Player) sender);
+-		else{
+-			return GroupTabCompleter.complete(null, null, (Player)sender);
+-		}
+-	}
  }
 diff --git a/src/main/java/vg/civcraft/mc/namelayer/command/commands/GroupStats.java b/src/main/java/vg/civcraft/mc/namelayer/command/commands/GroupStats.java
-index 17d517e3c5a84f66aa27d1e4986f3c8cc2ec4093..b72864d4b437e2fa292be4b839e8b53df3baa01d 100644
+index 17d517e3c5a84f66aa27d1e4986f3c8cc2ec4093..614be6a6d3025f10b49a66f4536811515aac3eaa 100644
 --- a/src/main/java/vg/civcraft/mc/namelayer/command/commands/GroupStats.java
 +++ b/src/main/java/vg/civcraft/mc/namelayer/command/commands/GroupStats.java
-@@ -24,6 +24,7 @@ public class GroupStats extends BaseCommandMiddle {
+@@ -4,17 +4,14 @@ import co.aikar.commands.annotation.CommandAlias;
+ import co.aikar.commands.annotation.CommandPermission;
+ import co.aikar.commands.annotation.Description;
+ import co.aikar.commands.annotation.Syntax;
+-import java.util.List;
+ import java.util.UUID;
+ import org.bukkit.Bukkit;
+ import org.bukkit.ChatColor;
+-import org.bukkit.command.CommandSender;
+ import org.bukkit.entity.Player;
+ import vg.civcraft.mc.namelayer.GroupManager.PlayerType;
+ import vg.civcraft.mc.namelayer.NameAPI;
+ import vg.civcraft.mc.namelayer.NameLayerPlugin;
+ import vg.civcraft.mc.namelayer.command.BaseCommandMiddle;
+-import vg.civcraft.mc.namelayer.command.TabCompleters.GroupTabCompleter;
+ import vg.civcraft.mc.namelayer.group.Group;
+ import vg.civcraft.mc.namelayer.permission.PermissionType;
+ 
+@@ -24,6 +21,7 @@ public class GroupStats extends BaseCommandMiddle {
  	@CommandPermission("namelayer.admin")
  	@Syntax("<group>")
  	@Description("Get stats about a group.")
@@ -69,34 +122,54 @@ index 17d517e3c5a84f66aa27d1e4986f3c8cc2ec4093..b72864d4b437e2fa292be4b839e8b53d
  	public void execute(Player sender, String groupName) {
  		Player p = (Player) sender;
  		Group g = gm.getGroup(groupName);
-@@ -46,6 +47,7 @@ public class GroupStats extends BaseCommandMiddle {
+@@ -46,17 +44,6 @@ public class GroupStats extends BaseCommandMiddle {
  		Bukkit.getScheduler().runTaskAsynchronously(NameLayerPlugin.getInstance(), new StatsMessage(p, g));
  	}
  
-+	/* // CivPatched
- 	public List<String> tabComplete(CommandSender sender, String[] args) {
- 		if (!(sender instanceof Player))
- 			return null;
-@@ -56,6 +58,7 @@ public class GroupStats extends BaseCommandMiddle {
- 			return GroupTabCompleter.complete(null, null, (Player) sender);
- 		}
- 	}
-+	*/ // CivPatched
- 
+-	public List<String> tabComplete(CommandSender sender, String[] args) {
+-		if (!(sender instanceof Player))
+-			return null;
+-
+-		if (args.length > 0)
+-			return GroupTabCompleter.complete(args[args.length - 1], null, (Player) sender);
+-		else {
+-			return GroupTabCompleter.complete(null, null, (Player) sender);
+-		}
+-	}
+-
  	public class StatsMessage implements Runnable{
  
+ 		private final Player p;
 diff --git a/src/main/java/vg/civcraft/mc/namelayer/command/commands/RejectInvite.java b/src/main/java/vg/civcraft/mc/namelayer/command/commands/RejectInvite.java
-index ea9ceea01f6ff1fc489f00ae1788f0228ff65b30..dcba93974f4dfbd96194b7b726f0d5acac77ada6 100644
+index ea9ceea01f6ff1fc489f00ae1788f0228ff65b30..20834971e02a577d232147c9830f6d875f92c6e4 100644
 --- a/src/main/java/vg/civcraft/mc/namelayer/command/commands/RejectInvite.java
 +++ b/src/main/java/vg/civcraft/mc/namelayer/command/commands/RejectInvite.java
-@@ -48,8 +48,10 @@ public class RejectInvite extends BaseCommandMiddle {
+@@ -1,19 +1,15 @@
+ package vg.civcraft.mc.namelayer.command.commands;
+ 
+-import co.aikar.commands.BukkitCommandCompletionContext;
+ import co.aikar.commands.annotation.CommandAlias;
+ import co.aikar.commands.annotation.CommandCompletion;
+ import co.aikar.commands.annotation.Description;
+ import co.aikar.commands.annotation.Syntax;
+-import java.util.List;
+ import java.util.UUID;
+ import org.bukkit.ChatColor;
+ import org.bukkit.entity.Player;
+-import vg.civcraft.mc.civmodcore.commands.TabComplete;
+ import vg.civcraft.mc.namelayer.GroupManager;
+ import vg.civcraft.mc.namelayer.NameAPI;
+ import vg.civcraft.mc.namelayer.command.BaseCommandMiddle;
+-import vg.civcraft.mc.namelayer.command.TabCompleters.InviteTabCompleter;
+ import vg.civcraft.mc.namelayer.group.Group;
+ import vg.civcraft.mc.namelayer.listeners.PlayerListener;
+ 
+@@ -48,8 +44,4 @@ public class RejectInvite extends BaseCommandMiddle {
  		player.sendMessage(ChatColor.GREEN + "You've successfully declined that group invitation.");
  	}
  
-+	/* // CivPatched
- 	@TabComplete("NL_Invites")
- 	public List<String> tabComplete(BukkitCommandCompletionContext context) {
- 		return InviteTabCompleter.complete(context.getInput(), context.getPlayer());
- 	}
-+	*/ // CivPatched
+-	@TabComplete("NL_Invites")
+-	public List<String> tabComplete(BukkitCommandCompletionContext context) {
+-		return InviteTabCompleter.complete(context.getInput(), context.getPlayer());
+-	}
  }

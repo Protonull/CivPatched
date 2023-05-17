@@ -5,7 +5,7 @@ Subject: [PATCH] Relocate asTranslatable to ChatUtils
 
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java
-index 7744f9e39c6264b1d575995bf650064576eb10dc..4b1814d2b53a72b18fe467f96653a324c98bfc8c 100644
+index 0963777348de47826a647a0ac251356e046cc058..72876fd5a969a3283f2862c4c1fe2fc4a0a5c7e8 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java
 @@ -26,6 +26,13 @@ import org.jetbrains.annotations.Contract;

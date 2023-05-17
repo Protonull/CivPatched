@@ -5,7 +5,7 @@ Subject: [PATCH] Add MiniMessage parsing
 
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java
-index 8730e4e3bf6a0c829296cbf16cdd248519a4bf93..7744f9e39c6264b1d575995bf650064576eb10dc 100644
+index 8730e4e3bf6a0c829296cbf16cdd248519a4bf93..0963777348de47826a647a0ac251356e046cc058 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java
 @@ -210,6 +210,29 @@ public final class ChatUtils {
@@ -17,7 +17,7 @@ index 8730e4e3bf6a0c829296cbf16cdd248519a4bf93..7744f9e39c6264b1d575995bf6500645
 +	 * Parses a MiniMessage component, ensuring that a Component instance is
 +	 * only returned if and only if there's actual text content.
 +	 */
-+	public static @Nullable Component parseComponent(final @Nonnull String raw) {
++	public static @Nullable Component parseComponent(final String raw) {
 +		if (StringUtils.isBlank(raw)) {
 +			return null;
 +		}

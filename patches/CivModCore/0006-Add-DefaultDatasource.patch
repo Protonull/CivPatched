@@ -6,18 +6,21 @@ Subject: [PATCH] Add DefaultDatasource
 Allows other plugins to use CivModCore's database
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java b/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java
-index 687d38aa2a5198691727c405b946f33225ed8f6d..eb434c68cf818630eaed73a10c0421b543db6945 100644
+index 687d38aa2a5198691727c405b946f33225ed8f6d..f9abc279c092866bf929ad389959c9f4771e9323 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java
-@@ -9,6 +9,7 @@ import vg.civcraft.mc.civmodcore.chat.dialog.DialogManager;
- import vg.civcraft.mc.civmodcore.commands.CommandManager;
- import vg.civcraft.mc.civmodcore.commands.StatCommand;
- import vg.civcraft.mc.civmodcore.dao.DatabaseCredentials;
+@@ -29,6 +29,10 @@ import vg.civcraft.mc.civmodcore.world.locations.chunkmeta.stat.LoadStatisticMan
+ import vg.civcraft.mc.civmodcore.world.locations.global.CMCWorldDAO;
+ import vg.civcraft.mc.civmodcore.world.locations.global.WorldIDManager;
+ 
++// CivPatched Start
 +import vg.civcraft.mc.civmodcore.dao.DefaultDatasource;
- import vg.civcraft.mc.civmodcore.dao.ManagedDatasource;
- import vg.civcraft.mc.civmodcore.events.CustomEventMapper;
- import vg.civcraft.mc.civmodcore.inventory.gui.ClickableInventoryListener;
-@@ -44,6 +45,7 @@ public final class CivModCorePlugin extends ACivMod {
++// CivPatched End
++
+ public final class CivModCorePlugin extends ACivMod {
+ 
+ 	private static CivModCorePlugin instance;
+@@ -44,6 +48,7 @@ public final class CivModCorePlugin extends ACivMod {
  	public void onEnable() {
  		instance = this;
  		registerConfigClass(DatabaseCredentials.class);
