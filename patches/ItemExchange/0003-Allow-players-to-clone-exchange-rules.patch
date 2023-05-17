@@ -1,0 +1,38 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Wed, 17 May 2023 17:01:19 +0100
+Subject: [PATCH] Allow players to clone exchange rules
+
+
+diff --git a/src/main/java/com/untamedears/itemexchange/commands/CreateCommand.java b/src/main/java/com/untamedears/itemexchange/commands/CreateCommand.java
+index 02345c9d5a544363461c05d0738c1609c510f613..47f9a5d92e989eb13f5b4df26910f1d6a78a1f97 100644
+--- a/src/main/java/com/untamedears/itemexchange/commands/CreateCommand.java
++++ b/src/main/java/com/untamedears/itemexchange/commands/CreateCommand.java
+@@ -24,6 +24,10 @@ import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
+ import vg.civcraft.mc.civmodcore.inventory.items.MaterialUtils;
+ import vg.civcraft.mc.civmodcore.world.WorldUtils;
+ 
++// CivPatched Start
++import vg.civcraft.mc.civmodcore.inventory.InventoryUtils;
++// CivPatched End
++
+ /**
+  * Commands class involved in creating shop exchange rules
+  */
+@@ -124,7 +128,15 @@ public final class CreateCommand extends BaseCommand {
+ 			throw new InvalidCommandArgument("You must be holding an item to do that.");
+ 		}
+ 		if (Utilities.isExchangeRule(held)) {
+-			throw new InvalidCommandArgument("You cannot create a rule from a rule.", false);
++			// CivPatched Start
++			if (InventoryUtils.safelyAddItemsToInventory(player.getInventory(), new ItemStack[] { held.clone() })) {
++				player.sendMessage(ChatColor.GREEN + "Cloned exchange successfully.");
++			}
++			else {
++				player.sendMessage(ChatColor.RED + "Could not clone that exchange.");
++			}
++			return;
++			// CivPatched
+ 		}
+ 		Utilities.givePlayerExchangeRule(player, new ExchangeRule(type, held));
+ 		player.sendMessage(CREATION_SUCCESS);

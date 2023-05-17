@@ -1,0 +1,30 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Wed, 17 May 2023 17:31:38 +0100
+Subject: [PATCH] Prevent NPEs from item deserialisation
+
+
+diff --git a/src/main/java/com/untamedears/itemexchange/rules/BulkExchangeRule.java b/src/main/java/com/untamedears/itemexchange/rules/BulkExchangeRule.java
+index cd25c2e3ed66abe71ceeaea4dfefd1677c023a65..45507062e10bab9e2eb8774cc5e911a717b0d3c1 100644
+--- a/src/main/java/com/untamedears/itemexchange/rules/BulkExchangeRule.java
++++ b/src/main/java/com/untamedears/itemexchange/rules/BulkExchangeRule.java
+@@ -83,6 +83,7 @@ public record BulkExchangeRule(List<ExchangeRule> rules) implements ExchangeData
+ 		}
+ 		// From NBT
+ 		final var itemNBT = NBTSerialization.fromItem(item);
++		if (itemNBT == null) return null; // CivPatched: Prevent NPE
+ 		if (itemNBT.hasKeyOfType(BULK_KEY, NBTType.COMPOUND)) {
+ 			final var rulesNBT = itemNBT.getCompound(BULK_KEY).getCompoundArray(RULES_KEY);
+ 			final var rules = new ArrayList<ExchangeRule>(rulesNBT.length);
+diff --git a/src/main/java/com/untamedears/itemexchange/rules/ExchangeRule.java b/src/main/java/com/untamedears/itemexchange/rules/ExchangeRule.java
+index 5e6a61ccfbf58d13f66c2cdafd37239e2cb38d7d..77923d0702b39ad36ef50b5833a23b5a0b315929 100644
+--- a/src/main/java/com/untamedears/itemexchange/rules/ExchangeRule.java
++++ b/src/main/java/com/untamedears/itemexchange/rules/ExchangeRule.java
+@@ -457,6 +457,7 @@ public final class ExchangeRule implements ExchangeData {
+ 			return null;
+ 		}
+ 		final var itemNBT = NBTSerialization.fromItem(item);
++		if (itemNBT == null) return null; // CivPatched: Prevent NPE
+ 		if (itemNBT.hasKeyOfType(RULE_KEY, NBTType.COMPOUND)) {
+ 			return fromNBT(itemNBT.getCompound(RULE_KEY));
+ 		}
