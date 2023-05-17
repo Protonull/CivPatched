@@ -1,0 +1,403 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Wed, 17 May 2023 13:56:58 +0100
+Subject: [PATCH] Overhaul SafeOreBreak
+
+
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/configs/SafeOreBreakConfig.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/configs/SafeOreBreakConfig.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..84c2e036b5c56ecb92cf58cb65c4a82fa3fc251f
+--- /dev/null
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/configs/SafeOreBreakConfig.java
+@@ -0,0 +1,95 @@
++package com.programmerdan.minecraft.simpleadminhacks.configs;
++
++import com.programmerdan.minecraft.simpleadminhacks.SimpleAdminHacks;
++import com.programmerdan.minecraft.simpleadminhacks.framework.SimpleHackConfig;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.Objects;
++import org.apache.commons.lang3.StringUtils;
++import org.bukkit.Material;
++import org.bukkit.configuration.ConfigurationSection;
++import org.jetbrains.annotations.NotNull;
++import vg.civcraft.mc.civmodcore.config.ConfigHelper;
++import vg.civcraft.mc.civmodcore.inventory.items.MaterialUtils;
++import vg.civcraft.mc.civmodcore.utilities.CivLogger;
++
++/**
++ * @author CivPatched
++ */
++public final class SafeOreBreakConfig extends SimpleHackConfig {
++	private static final CivLogger LOGGER = CivLogger.getLogger(SafeOreBreakConfig.class);
++
++	private final List<OreConfig> oreConfigs = new ArrayList<>();
++
++	public SafeOreBreakConfig(
++			final @NotNull SimpleAdminHacks plugin,
++			final @NotNull ConfigurationSection base
++	) {
++		super(plugin, base);
++	}
++
++	@Override
++	protected void wireup(
++			final @NotNull ConfigurationSection config
++	) {
++		this.oreConfigs.clear();
++		if (config.get("ores") instanceof final ConfigurationSection oresSection) {
++			for (final String id : oresSection.getKeys(false)) {
++				if (!(oresSection.get(id) instanceof final ConfigurationSection oreSection)) {
++					LOGGER.warning("Ore[" + id + "] is not a config section!");
++					continue;
++				}
++
++				final String name = oreSection.getString("name");
++				if (StringUtils.isBlank(name)) {
++					LOGGER.warning("Ore[" + id + "] doesn't have a name!");
++					continue;
++				}
++
++				final boolean enabledByDefault = oreSection.getBoolean("enabledByDefault", false);
++
++				final List<Material> blocks = ConfigHelper.getStringList(config, "blocks")
++						.stream()
++						.map((raw) -> {
++							final Material match = MaterialUtils.getMaterial(raw);
++							if (match == null) {
++								LOGGER.warning("Ore[" + id + "]'s listed material [" + raw + "] isn't a valid material!");
++								return null;
++							}
++							if (!match.isBlock()) {
++								LOGGER.warning("Ore[" + id + "]'s listed material [" + raw + "] isn't a block material!");
++								return null;
++							}
++							return match;
++						})
++						.filter(Objects::nonNull)
++						.toList();
++				if (blocks.size() < 1) {
++					LOGGER.warning("Ore[" + id + "] doesn't list any block materials!");
++					continue;
++				}
++
++				this.oreConfigs.add(new OreConfig(
++						id,
++						name,
++						enabledByDefault,
++						blocks
++				));
++			}
++		}
++	}
++
++	public record OreConfig(
++			@NotNull String id,
++			@NotNull String name,
++			boolean enabledByDefault,
++			@NotNull List<@NotNull Material> blocks
++	) {
++
++	}
++
++	public @NotNull List<@NotNull OreConfig> getOreConfigs() {
++		return List.copyOf(this.oreConfigs);
++	}
++
++}
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/SafeOreBreak.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/SafeOreBreak.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..5db1ee345203df1a515fed96ad1c020cce3810ff
+--- /dev/null
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/SafeOreBreak.java
+@@ -0,0 +1,100 @@
++package com.programmerdan.minecraft.simpleadminhacks.hacks;
++
++import com.programmerdan.minecraft.simpleadminhacks.SimpleAdminHacks;
++import com.programmerdan.minecraft.simpleadminhacks.configs.SafeOreBreakConfig;
++import com.programmerdan.minecraft.simpleadminhacks.framework.SimpleHack;
++import java.util.HashMap;
++import java.util.Map;
++import java.util.UUID;
++import net.kyori.adventure.text.Component;
++import net.kyori.adventure.text.format.NamedTextColor;
++import org.apache.commons.lang3.StringUtils;
++import org.bukkit.GameMode;
++import org.bukkit.Material;
++import org.bukkit.configuration.ConfigurationSection;
++import org.bukkit.enchantments.Enchantment;
++import org.bukkit.event.EventHandler;
++import org.bukkit.event.Listener;
++import org.bukkit.event.block.BlockBreakEvent;
++import org.bukkit.inventory.ItemFlag;
++import org.bukkit.inventory.ItemStack;
++import org.jetbrains.annotations.NotNull;
++import vg.civcraft.mc.civmodcore.players.settings.PlayerSettingAPI;
++import vg.civcraft.mc.civmodcore.players.settings.gui.MenuSection;
++import vg.civcraft.mc.civmodcore.players.settings.impl.BooleanSetting;
++
++/**
++ * @author CivPatched
++ */
++public final class SafeOreBreak extends SimpleHack<SafeOreBreakConfig> implements Listener {
++
++	private final Map<Material, BooleanSetting> blockSettings = new HashMap<>();
++
++	public SafeOreBreak(
++			final @NotNull SimpleAdminHacks plugin,
++			final @NotNull SafeOreBreakConfig config
++	) {
++		super(plugin, config);
++	}
++
++	public static @NotNull SafeOreBreakConfig generate(
++			final @NotNull SimpleAdminHacks plugin,
++			final @NotNull ConfigurationSection config
++	) {
++		return new SafeOreBreakConfig(plugin, config);
++	}
++
++	@Override
++	public void onEnable() {
++		super.onEnable();
++		final MenuSection mainMenu = plugin().getSettingManager().getMainMenu();
++		for (final SafeOreBreakConfig.OreConfig ore : config().getOreConfigs()) {
++			final Material buttonMaterial = ore.blocks().get(0);
++			final var setting = new BooleanSetting(
++					plugin(),
++					ore.enabledByDefault(),
++					"Safe " + ore.name() + " break",
++					"safeOreBreak_" + ore.id(),
++					"Prevents you from breaking " + StringUtils.join(ore.blocks(), ",") + " without a silk touch pickaxe."
++			) {
++				@Override
++				public ItemStack getGuiRepresentation(final @NotNull UUID player) {
++					final ItemStack item;
++					if (getValue(player)) {
++						item = new ItemStack(buttonMaterial);
++						item.addUnsafeEnchantment(Enchantment.DURABILITY, 1);
++						item.addItemFlags(ItemFlag.HIDE_ENCHANTS);
++					}
++					else {
++						item = new ItemStack(buttonMaterial);
++					}
++					applyInfoToItemStack(item, player);
++					return item;
++				}
++			};
++			PlayerSettingAPI.registerSetting(setting, mainMenu);
++			for (final Material blockMaterial : ore.blocks()) {
++				this.blockSettings.put(blockMaterial, setting);
++			}
++		}
++	}
++
++	@EventHandler(ignoreCancelled = true)
++	public void onOreBreak(final BlockBreakEvent event) {
++		if (event.getPlayer().getGameMode() != GameMode.SURVIVAL) {
++			return;
++		}
++		final BooleanSetting setting = this.blockSettings.get(event.getBlock().getType());
++		if (setting == null) {
++			return;
++		}
++		if (event.getPlayer().getInventory().getItemInMainHand().containsEnchantment(Enchantment.SILK_TOUCH)) {
++			return;
++		}
++		if (!setting.getValue(event.getPlayer())) {
++			return;
++		}
++		event.setCancelled(true);
++		event.getPlayer().sendMessage(Component.text("A SimpleAdminHacks /config option is preventing you from breaking that without silk touch.", NamedTextColor.RED));
++	}
++}
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/SafeOreBreak.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/SafeOreBreak.java
+deleted file mode 100644
+index 20e6eb97e5f4d89ccede56ea5e6fc9e877fd7098..0000000000000000000000000000000000000000
+--- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/SafeOreBreak.java
++++ /dev/null
+@@ -1,132 +0,0 @@
+-package com.programmerdan.minecraft.simpleadminhacks.hacks.basic;
+-
+-import com.programmerdan.minecraft.simpleadminhacks.SimpleAdminHacks;
+-import com.programmerdan.minecraft.simpleadminhacks.framework.BasicHack;
+-import com.programmerdan.minecraft.simpleadminhacks.framework.BasicHackConfig;
+-import com.programmerdan.minecraft.simpleadminhacks.framework.autoload.AutoLoad;
+-import java.util.ArrayList;
+-import java.util.List;
+-import java.util.UUID;
+-import net.kyori.adventure.text.Component;
+-import net.kyori.adventure.text.format.NamedTextColor;
+-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+-import org.bukkit.GameMode;
+-import org.bukkit.Material;
+-import org.bukkit.enchantments.Enchantment;
+-import org.bukkit.event.EventHandler;
+-import org.bukkit.event.block.BlockBreakEvent;
+-import org.bukkit.inventory.ItemFlag;
+-import org.bukkit.inventory.ItemStack;
+-import org.bukkit.plugin.java.JavaPlugin;
+-import vg.civcraft.mc.civmodcore.inventory.items.MaterialUtils;
+-import vg.civcraft.mc.civmodcore.players.settings.PlayerSettingAPI;
+-import vg.civcraft.mc.civmodcore.players.settings.gui.MenuSection;
+-import vg.civcraft.mc.civmodcore.players.settings.impl.BooleanSetting;
+-
+-public final class SafeOreBreak extends BasicHack {
+-
+-	@AutoLoad
+-	private List<List<String>> ores;
+-
+-	private final List<BooleanOreSetting> oreSettings = new ArrayList<>();
+-	private final List<List<Material>> breakOres = new ArrayList<>();
+-
+-	public SafeOreBreak(final SimpleAdminHacks plugin, final BasicHackConfig config) {
+-		super(plugin, config);
+-	}
+-
+-	@Override
+-	public void onEnable() {
+-		super.onEnable();
+-
+-		MenuSection mainMenu = plugin.getSettingManager().getMainMenu();
+-
+-		OUTER:
+-		for (List<String> parts : ores) {
+-			List<Material> materialParts = new ArrayList<>(parts.size());
+-
+-			for (String part : parts) {
+-				Material material = MaterialUtils.getMaterial(part);
+-				if (material == null) {
+-					logger.warning("Invalid material '" + part + "'. Skipping.");
+-					continue OUTER;
+-				}
+-				materialParts.add(material);
+-			}
+-
+-			breakOres.add(materialParts);
+-			String materialName = PlainTextComponentSerializer.plainText().serialize(Component.translatable(materialParts.get(0)));
+-			BooleanOreSetting setting = new BooleanOreSetting(plugin, true,
+-					"Safe " + materialName + " break",
+-					"safeOreBreak_" + materialParts.get(0).getKey().getKey(),
+-					"Prevents you from breaking " + materialName
+-							+ " without a silk touch pickaxe.",
+-					materialParts.get(0));
+-			oreSettings.add(setting);
+-			PlayerSettingAPI.registerSetting(setting, mainMenu);
+-		}
+-	}
+-
+-	@Override
+-	public void onDisable() {
+-		super.onDisable();
+-	}
+-
+-	@EventHandler(ignoreCancelled = true)
+-	public void onOreBreak(BlockBreakEvent event) {
+-		if (event.getPlayer().getGameMode() != GameMode.SURVIVAL) {
+-			return;
+-		}
+-
+-		ItemStack item = event.getPlayer().getInventory().getItemInMainHand();
+-		if (item.hasItemMeta() && item.getItemMeta().hasEnchant(Enchantment.SILK_TOUCH)) {
+-			return;
+-		}
+-
+-		OUTER:
+-		for (int i = 0; i < breakOres.size(); i++) {
+-			List<Material> list = breakOres.get(i);
+-			for (Material material : list) {
+-				if (material == event.getBlock().getType()) {
+-					Boolean value = oreSettings.get(i).getValue(event.getPlayer());
+-
+-					if (!value) {
+-						continue OUTER;
+-					}
+-
+-					event.getPlayer().sendMessage(Component.text(
+-									"A SimpleAdminHacks /config option is preventing you from breaking that ore without a silk touch pickaxe.")
+-							.color(NamedTextColor.RED));
+-
+-					event.setCancelled(true);
+-					return;
+-				}
+-			}
+-		}
+-	}
+-
+-	private static class BooleanOreSetting extends BooleanSetting {
+-
+-		private final Material ore;
+-
+-		public BooleanOreSetting(JavaPlugin owningPlugin, Boolean defaultValue, String name, String identifier,
+-							  String description, Material ore) {
+-			super(owningPlugin, defaultValue, name, identifier, description);
+-			this.ore = ore;
+-		}
+-
+-		@Override
+-		public ItemStack getGuiRepresentation(UUID player) {
+-			ItemStack item;
+-			if (getValue(player)) {
+-				item = new ItemStack(ore);
+-				item.addUnsafeEnchantment(Enchantment.DURABILITY, 1);
+-				item.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+-			} else {
+-				item = new ItemStack(ore);
+-			}
+-			applyInfoToItemStack(item, player);
+-			return item;
+-		}
+-	}
+-}
+diff --git a/src/main/resources/config.yml b/src/main/resources/config.yml
+index 2a2497c70cf1ec8c22eb902860fbca351e733956..3c63378623b30d4a8ed415336953709f4ec1dc26 100644
+--- a/src/main/resources/config.yml
++++ b/src/main/resources/config.yml
+@@ -198,13 +198,6 @@ hacks:
+     ghastChance: 0.07
+     witherSkeletonChance: 0.05
+     witherHeadDropChance: 0.04
+-  SafeOreBreak:
+-    enabled: true
+-    ores:
+-      - [DIAMOND_ORE,DEEPSLATE_DIAMOND_ORE]
+-      - [COAL_ORE,DEEPSLATE_COAL_ORE]
+-      - [REDSTONE_ORE,DEEPSLATE_REDSTONE_ORE]
+-      - [LAPIS_ORE,DEEPSLATE_LAPIS_ORE]
+   ShipOutOfLuck:
+     enabled: true
+     # The list of Material's that boats cannot be placed on and will eject passengers
+@@ -468,6 +461,33 @@ hacks:
+     # in seconds
+     delay: 180
+     message: "&4%player% is raiding a chest at %x% %y% %z%."
++  SafeOreBreak:
++    enabled: true
++    ores:
++      DIAMOND:
++        name: Diamonds
++        enabledByDefault: true
++        blocks:
++          - DIAMOND_ORE
++          - DEEPSLATE_DIAMOND_ORE
++      COAL:
++        name: Coal
++        enabledByDefault: false
++        blocks:
++          - COAL_ORE
++          - DEEPSLATE_COAL_ORE
++      REDSTONE:
++        name: Redstone
++        enabledByDefault: false
++        blocks:
++          - REDSTONE_ORE
++          - DEEPSLATE_REDSTONE_ORE
++      LAPIS:
++        name: Lapis lazuli
++        enabledByDefault: false
++        blocks:
++          - LAPIS_ORE
++          - DEEPSLATE_LAPIS_ORE
+   #Used to roll a dice on whether to drop an additional sapling on block break or leaf decay
+   SaplingHack:
+     enabled: true

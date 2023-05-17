@@ -1,15 +1,15 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
 Date: Sat, 13 May 2023 09:47:26 +0100
-Subject: [PATCH] Update DogFacts
+Subject: [PATCH] Overhaul DogFacts
 
 
 diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/configs/DogFactsConfig.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/configs/DogFactsConfig.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..3b7d5a145d1c701198ab044949acd3aeb24f0d89
+index 0000000000000000000000000000000000000000..812c87bc04246e1f1093c60013001c6880d6c416
 --- /dev/null
 +++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/configs/DogFactsConfig.java
-@@ -0,0 +1,52 @@
+@@ -0,0 +1,55 @@
 +package com.programmerdan.minecraft.simpleadminhacks.configs;
 +
 +import com.programmerdan.minecraft.simpleadminhacks.SimpleAdminHacks;
@@ -23,6 +23,9 @@ index 0000000000000000000000000000000000000000..3b7d5a145d1c701198ab044949acd3ae
 +import vg.civcraft.mc.civmodcore.config.ConfigHelper;
 +import vg.civcraft.mc.civmodcore.utilities.CivLogger;
 +
++/**
++ * @author CivPatched
++ */
 +public final class DogFactsConfig extends SimpleHackConfig {
 +
 +	private static final CivLogger LOGGER = CivLogger.getLogger(DogFactsConfig.class);
@@ -64,10 +67,10 @@ index 0000000000000000000000000000000000000000..3b7d5a145d1c701198ab044949acd3ae
 +}
 diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/DogFacts.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/DogFacts.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..3bfab001aa6893b6fcc2365887f5c89233420fe3
+index 0000000000000000000000000000000000000000..620b0812fa7afaebadd31da01540c3f951fb2a49
 --- /dev/null
 +++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/DogFacts.java
-@@ -0,0 +1,79 @@
+@@ -0,0 +1,82 @@
 +package com.programmerdan.minecraft.simpleadminhacks.hacks;
 +
 +import com.programmerdan.minecraft.simpleadminhacks.SimpleAdminHacks;
@@ -84,6 +87,9 @@ index 0000000000000000000000000000000000000000..3bfab001aa6893b6fcc2365887f5c892
 +import vg.civcraft.mc.civmodcore.players.settings.PlayerSettingAPI;
 +import vg.civcraft.mc.civmodcore.players.settings.impl.BooleanSetting;
 +
++/**
++ * @author CivPatched
++ */
 +public final class DogFacts extends SimpleHack<DogFactsConfig> {
 +
 +	private final BooleanSetting disableAnnouncementsSetting;
