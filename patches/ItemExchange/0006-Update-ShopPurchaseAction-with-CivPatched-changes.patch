@@ -1,0 +1,34 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Wed, 17 May 2023 23:39:34 +0100
+Subject: [PATCH] Update ShopPurchaseAction with CivPatched changes
+
+
+diff --git a/src/main/java/com/untamedears/itemexchange/glues/jukealert/ShopPurchaseAction.java b/src/main/java/com/untamedears/itemexchange/glues/jukealert/ShopPurchaseAction.java
+index dca15c1a225eed8699def63607207adaf7ead3ee..3756b148947cccc9c911dc1f482b6e677b88ef8d 100644
+--- a/src/main/java/com/untamedears/itemexchange/glues/jukealert/ShopPurchaseAction.java
++++ b/src/main/java/com/untamedears/itemexchange/glues/jukealert/ShopPurchaseAction.java
+@@ -14,6 +14,10 @@ import vg.civcraft.mc.civmodcore.inventory.gui.DecorationStack;
+ import vg.civcraft.mc.civmodcore.inventory.gui.IClickable;
+ import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
+ 
++// CivPatched Start
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ public final class ShopPurchaseAction extends LoggablePlayerAction {
+ 
+ 	public static final String IDENTIFIER = "SHOP_PURCHASE_ACTION";
+@@ -39,8 +43,10 @@ public final class ShopPurchaseAction extends LoggablePlayerAction {
+ 	}
+ 
+ 	@Override
+-	protected String getChatRepresentationIdentifier() {
+-		return "ItemExchange purchase";
++	// CivPatched Start
++	public @NotNull Component getChatRepresentationIdentifier() {
++		return Component.text("ItemExchange purchase");
++		// CivPatched End
+ 	}
+ 
+ 	@Override
