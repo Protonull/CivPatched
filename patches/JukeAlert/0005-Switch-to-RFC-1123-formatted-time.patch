@@ -1,0 +1,19 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Wed, 17 May 2023 15:56:30 +0100
+Subject: [PATCH] Switch to RFC 1123 formatted time
+
+
+diff --git a/src/main/java/com/untamedears/jukealert/model/actions/abstr/PlayerAction.java b/src/main/java/com/untamedears/jukealert/model/actions/abstr/PlayerAction.java
+index 285ff255f55c8cdabbb8103d86b29731877ceab5..e10d4f445115f0d677fb608e8dd9c0c28c0ddfcb 100644
+--- a/src/main/java/com/untamedears/jukealert/model/actions/abstr/PlayerAction.java
++++ b/src/main/java/com/untamedears/jukealert/model/actions/abstr/PlayerAction.java
+@@ -9,7 +9,7 @@ import vg.civcraft.mc.namelayer.NameAPI;
+ 
+ public abstract class PlayerAction extends SnitchAction {
+ 
+-	private static final DateTimeFormatter timeFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
++	private static final DateTimeFormatter timeFormatter = DateTimeFormatter.RFC_1123_DATE_TIME; // CivPatched: Switch to RFC 1123, eg: "Tue, 3 Jun 2008 11:05:30 GMT"
+ 
+ 	protected final UUID player;
+ 
