@@ -1,0 +1,172 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Wed, 17 May 2023 16:37:38 +0100
+Subject: [PATCH] Defer repairable-checking to CivModCore
+
+
+diff --git a/src/main/java/com/untamedears/itemexchange/ItemExchangeConfig.java b/src/main/java/com/untamedears/itemexchange/ItemExchangeConfig.java
+index 98cd95c3a470ffd8bc81671b035c294f8750349a..2fa1664289973376d0ef17603468e7fdab3e72cf 100644
+--- a/src/main/java/com/untamedears/itemexchange/ItemExchangeConfig.java
++++ b/src/main/java/com/untamedears/itemexchange/ItemExchangeConfig.java
+@@ -23,7 +23,6 @@ public final class ItemExchangeConfig extends ConfigParser {
+ 	private static final Set<Material> SUCCESS_BUTTON_BLOCKS = new HashSet<>();
+ 	private static final ItemStack RULE_ITEM = new ItemStack(Material.STONE_BUTTON);
+ 	private static boolean CREATE_FROM_SHOP = true;
+-	private static final Set<Material> ITEMS_CAN_REPAIR = new HashSet<>();
+ 	private static final Set<Material> RELAY_COMPATIBLE_BLOCKS = new HashSet<>();
+ 	private static int RELAY_RECURSION_LIMIT;
+ 	private static int RELAY_REACH_DISTANCE;
+@@ -40,7 +39,6 @@ public final class ItemExchangeConfig extends ConfigParser {
+ 		parseSuccessButtonBlocks(config.getStringList("successButtonBlocks"));
+ 		parseRuleItem(config.getString("ruleItem"));
+ 		parseCreateFromShop(config.getBoolean("createShopFromChest", true));
+-		parseRepairableItems(config.getStringList("repairables"));
+ 		parseShopRelay(config.getConfigurationSection("shopRelay"));
+ 		return true;
+ 	}
+@@ -50,7 +48,6 @@ public final class ItemExchangeConfig extends ConfigParser {
+ 		SUCCESS_BUTTON_BLOCKS.clear();
+ 		RULE_ITEM.setType(Material.STONE_BUTTON);
+ 		CREATE_FROM_SHOP = true;
+-		ITEMS_CAN_REPAIR.clear();
+ 		RELAY_COMPATIBLE_BLOCKS.clear();
+ 		RELAY_RECURSION_LIMIT = 0;
+ 		RELAY_REACH_DISTANCE = 0;
+@@ -133,26 +130,6 @@ public final class ItemExchangeConfig extends ConfigParser {
+ 		LOGGER.info("Create Shop From Shop Block: " + (config ? "ENABLED" : "DISABLED"));
+ 	}
+ 
+-	private void parseRepairableItems(final List<String> config) {
+-		for (final String raw : config) {
+-			final Material material = MaterialUtils.getMaterial(raw);
+-			if (material == null) {
+-				LOGGER.warn("Could not parse repairable material: " + raw);
+-				continue;
+-			}
+-			if (!material.isItem()) {
+-				LOGGER.warn("Repairable material is not an item: " + raw);
+-				continue;
+-			}
+-			if (ITEMS_CAN_REPAIR.contains(material)) {
+-				LOGGER.warn("Repairable material duplicate: " + raw);
+-				continue;
+-			}
+-			LOGGER.info("Repairable material parsed: " + material.name());
+-			ITEMS_CAN_REPAIR.add(material);
+-		}
+-	}
+-
+ 	private void parseShopRelay(final ConfigurationSection config) {
+ 		if (config == null) {
+ 			LOGGER.info("Skipping relay parsing: section is missing.");
+@@ -260,10 +237,6 @@ public final class ItemExchangeConfig extends ConfigParser {
+ 		return BULK_RULE_RECIPE;
+ 	}
+ 
+-	public static boolean canRepairItem(Material material) {
+-		return ITEMS_CAN_REPAIR.contains(material);
+-	}
+-
+ 	public static Set<Material> getRelayCompatibleBlocks() {
+ 		return Collections.unmodifiableSet(RELAY_COMPATIBLE_BLOCKS);
+ 	}
+diff --git a/src/main/java/com/untamedears/itemexchange/rules/modifiers/RepairModifier.java b/src/main/java/com/untamedears/itemexchange/rules/modifiers/RepairModifier.java
+index c732c6275cf5cf7b394e988405aec86f2ea88dc7..ffc5d06e495bf929759d6b75499a3331b39c5001 100644
+--- a/src/main/java/com/untamedears/itemexchange/rules/modifiers/RepairModifier.java
++++ b/src/main/java/com/untamedears/itemexchange/rules/modifiers/RepairModifier.java
+@@ -9,7 +9,6 @@ import co.aikar.commands.annotation.Subcommand;
+ import co.aikar.commands.annotation.Syntax;
+ import com.google.common.base.Strings;
+ import com.google.common.collect.Lists;
+-import com.untamedears.itemexchange.ItemExchangeConfig;
+ import com.untamedears.itemexchange.commands.SetCommand;
+ import com.untamedears.itemexchange.rules.ExchangeRule;
+ import com.untamedears.itemexchange.rules.interfaces.Modifier;
+@@ -25,6 +24,10 @@ import org.bukkit.inventory.meta.Repairable;
+ import vg.civcraft.mc.civmodcore.nbt.wrappers.NBTCompound;
+ import vg.civcraft.mc.civmodcore.utilities.MoreClassUtils;
+ 
++// CivPatched Start
++import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
++// CivPatched End
++
+ /**
+  * <p>This additional represents a repair level condition.</p>
+  *
+@@ -45,10 +48,7 @@ public final class RepairModifier extends ModifierData {
+ 
+ 	@Override
+ 	public RepairModifier construct(ItemStack item) {
+-		if (!ItemExchangeConfig.canRepairItem(item.getType())) {
+-			return null;
+-		}
+-		Repairable meta = MoreClassUtils.castOrNull(Repairable.class, item.getItemMeta());
++		final Repairable meta = ItemUtils.getRepairable(item); // CivPatched
+ 		if (meta == null) {
+ 			return null;
+ 		}
+diff --git a/src/main/resources/config.yml b/src/main/resources/config.yml
+index 2b26e6bc71293121aad9a03639e42b1ee724f247..877bd30a30bdbc7e312b787b668892f0ef4ac82e 100644
+--- a/src/main/resources/config.yml
++++ b/src/main/resources/config.yml
+@@ -24,60 +24,6 @@ ruleItem: "STONE_BUTTON"
+ # Allows players to create a shop by looking at a valid shop block with an acceptable format of items
+ createShopFromChest: true
+ 
+-repairables:
+-  - "DIAMOND_HELMET"
+-  - "DIAMOND_CHESTPLATE"
+-  - "DIAMOND_LEGGINGS"
+-  - "DIAMOND_BOOTS"
+-  - "GOLDEN_HELMET"
+-  - "GOLDEN_CHESTPLATE"
+-  - "GOLDEN_LEGGINGS"
+-  - "GOLDEN_BOOTS"
+-  - "IRON_HELMET"
+-  - "IRON_CHESTPLATE"
+-  - "IRON_LEGGINGS"
+-  - "IRON_BOOTS"
+-  - "CHAINMAIL_HELMET"
+-  - "CHAINMAIL_CHESTPLATE"
+-  - "CHAINMAIL_LEGGINGS"
+-  - "CHAINMAIL_BOOTS"
+-  - "LEATHER_HELMET"
+-  - "LEATHER_CHESTPLATE"
+-  - "LEATHER_LEGGINGS"
+-  - "LEATHER_BOOTS"
+-  - "DIAMOND_SWORD"
+-  - "GOLDEN_SWORD"
+-  - "IRON_SWORD"
+-  - "STONE_SWORD"
+-  - "WOODEN_SWORD"
+-  - "DIAMOND_AXE"
+-  - "GOLDEN_AXE"
+-  - "IRON_AXE"
+-  - "STONE_AXE"
+-  - "WOODEN_AXE"
+-  - "DIAMOND_PICKAXE"
+-  - "GOLDEN_PICKAXE"
+-  - "IRON_PICKAXE"
+-  - "STONE_PICKAXE"
+-  - "WOODEN_PICKAXE"
+-  - "DIAMOND_SHOVEL"
+-  - "GOLDEN_SHOVEL"
+-  - "IRON_SHOVEL"
+-  - "STONE_SHOVEL"
+-  - "WOODEN_SHOVEL"
+-  - "DIAMOND_HOE"
+-  - "GOLDEN_HOE"
+-  - "IRON_HOE"
+-  - "STONE_HOE"
+-  - "WOODEN_HOE"
+-  - "BOW"
+-  - "SHEARS"
+-  - "FISHING_ROD"
+-  - "FLINT_AND_STEEL"
+-  - "CARROT_ON_A_STICK"
+-  - "SHIELD"
+-  - "ENCHANTED_BOOK"
+-
+ shopRelay:
+   # The blocks that can be used as shop relay blocks (must be valid block materials and distinct from shop blocks)
+   relayBlocks:
