@@ -223,7 +223,7 @@ index 2d6f063e61ebe6ad3aa8f760a61dea314fdfc439..00000000000000000000000000000000
 -	}
 -}
 diff --git a/src/main/resources/config.yml b/src/main/resources/config.yml
-index e034d0e47b1e4c0d32a9bf0b5584b9abdafcdb94..d51408179edf0e91ccee0389c806f5e26443695d 100644
+index 25e03643362eb9434bc62e5124b61e25aaa45d4c..2a2497c70cf1ec8c22eb902860fbca351e733956 100644
 --- a/src/main/resources/config.yml
 +++ b/src/main/resources/config.yml
 @@ -101,15 +101,6 @@ hacks:
@@ -239,10 +239,10 @@ index e034d0e47b1e4c0d32a9bf0b5584b9abdafcdb94..d51408179edf0e91ccee0389c806f5e2
 -    announcements:
 -      - "[\"\",{\"text\":\"Buy \"},{\"text\":\"Dogecoin\",\"color\":\"dark_red\",\"clickEvent\":{\"action\":\"open_url\",\"value\":\"https://www.coindesk.com/price/dogecoin\"}},{\"text\":\"!\"}]"
 -      - "[\"\",{\"text\":\"Very \"},{\"text\":\"Wow!\",\"italic\":true,\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"Wow!\"}}]"
-   EventDebugHack:
-     enabled: true
    EventHandlerList:
-@@ -272,6 +263,13 @@ hacks:
+     enabled: true
+   GoldBlockElevators:
+@@ -270,6 +261,13 @@ hacks:
      # Note: You can also just state "ALL" for all spawn circumstances
      VILLAGER: ALL
      ENDERMITE: [DISPENSE_EGG, EGG, SPAWNER_EGG]

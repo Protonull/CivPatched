@@ -17,5 +17,8 @@ git rm -rfq ".editorconfig"
 # Remove Github workflows
 git rm -rfq  ".github"
 
+# Remove old classes
+git rm -rfq "src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/EventDebugHack.java"
+
 git commit --quiet -m "Reset SimpleAdminHacks"
 git checkout --quiet -B master upstream

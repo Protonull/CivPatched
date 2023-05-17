@@ -44,3 +44,16 @@ index 7bf669fe4fab8df60efb867c2f83548aa4941abd..5481a61546a6745ba37a2f26826dc8c1
 +    compileOnly("net.civmc.banstick:banstick-paper:2.0.1:dev")
 +    compileOnly("com.comphenix.protocol:ProtocolLib:4.8.0")
  }
+diff --git a/src/main/resources/config.yml b/src/main/resources/config.yml
+index e034d0e47b1e4c0d32a9bf0b5584b9abdafcdb94..25e03643362eb9434bc62e5124b61e25aaa45d4c 100644
+--- a/src/main/resources/config.yml
++++ b/src/main/resources/config.yml
+@@ -110,8 +110,6 @@ hacks:
+     announcements:
+       - "[\"\",{\"text\":\"Buy \"},{\"text\":\"Dogecoin\",\"color\":\"dark_red\",\"clickEvent\":{\"action\":\"open_url\",\"value\":\"https://www.coindesk.com/price/dogecoin\"}},{\"text\":\"!\"}]"
+       - "[\"\",{\"text\":\"Very \"},{\"text\":\"Wow!\",\"italic\":true,\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"Wow!\"}}]"
+-  EventDebugHack:
+-    enabled: true
+   EventHandlerList:
+     enabled: true
+   GoldBlockElevators:
