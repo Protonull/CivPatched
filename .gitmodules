@@ -10,3 +10,6 @@
 [submodule "JukeAlert"]
 	path = JukeAlert
 	url = https://github.com/CivMC/JukeAlert.git
+[submodule "ItemExchange"]
+	path = ItemExchange
+	url = https://github.com/CivMC/ItemExchange.git
