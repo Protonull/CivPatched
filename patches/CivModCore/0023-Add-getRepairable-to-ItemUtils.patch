@@ -6,7 +6,7 @@ Subject: [PATCH] Add getRepairable to ItemUtils
 This is pretty identical to getDamageable, except it returns the Repairable type instead.
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemUtils.java
-index d83314248359d0897dd01ca07ce65bce02446e4f..252aff1bc6d8fa9033c215213cf0f166edb7bdf3 100644
+index f84ec069bd4bd46c38f473c1eb06d47bce8576c5..52423d06f81d3f61ca410b9df8c42117f5159024 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemUtils.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemUtils.java
 @@ -18,6 +18,10 @@ import org.bukkit.inventory.meta.ItemMeta;

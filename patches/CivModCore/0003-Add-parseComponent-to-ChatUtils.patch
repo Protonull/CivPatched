@@ -1,37 +1,33 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
 Date: Sat, 13 May 2023 09:44:10 +0100
-Subject: [PATCH] Add MiniMessage parsing
+Subject: [PATCH] Add parseComponent to ChatUtils
 
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java
-index 8730e4e3bf6a0c829296cbf16cdd248519a4bf93..0963777348de47826a647a0ac251356e046cc058 100644
+index 8730e4e3bf6a0c829296cbf16cdd248519a4bf93..a2fe7efbfeb264a735852a24afda17e0c77c0095 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java
-@@ -210,6 +210,29 @@ public final class ChatUtils {
+@@ -210,6 +210,25 @@ public final class ChatUtils {
  		return StringUtils.isBlank(PlainTextComponentSerializer.plainText().serialize(component));
  	}
  
 +	// CivPatched Start
 +	/**
-+	 * Parses a MiniMessage component, ensuring that a Component instance is
-+	 * only returned if and only if there's actual text content.
++	 * Attempts to parse a component from a raw string using MiniMessage unless
++	 * the string contains legacy section formatting.
 +	 */
-+	public static @Nullable Component parseComponent(final String raw) {
-+		if (StringUtils.isBlank(raw)) {
++	public static @Contract("!null -> !null") @Nullable Component parseComponent(final String raw) {
++		if (raw == null) {
 +			return null;
 +		}
-+		final Component component;
-+		try {
-+			component = MiniMessage.miniMessage().deserialize(raw);
++		if (raw.isBlank()) {
++			return Component.empty();
 +		}
-+		catch (final Throwable thrown) {
-+			return null;
++		if (raw.contains("§")) {
++			return LegacyComponentSerializer.legacySection().deserialize(raw);
 +		}
-+		if (isNullOrEmpty(component)) {
-+			return null;
-+		}
-+		return component;
++		return MiniMessage.miniMessage().deserialize(raw);
 +	}
 +	// CivPatched End
 +

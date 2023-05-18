@@ -1,0 +1,32 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Thu, 18 May 2023 14:07:33 +0100
+Subject: [PATCH] Allow ItemMap to parse serialised items
+
+
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java b/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
+index f97a3302ec85ade984eb77b28bc67c76789f81d9..f7bf058b8f144a294f5ff755667297ca7125efca 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
+@@ -177,9 +177,18 @@ public final class ConfigHelper {
+ 			return result;
+ 		}
+ 		for (final String key : config.getKeys(false)) {
+-			ConfigurationSection current = config.getConfigurationSection(key);
+-			ItemMap partMap = parseItemMapDirectly(current);
+-			result.merge(partMap);
++			// CivPatched Start
++			final Object value = config.get(key, null);
++			if (value instanceof final ConfigurationSection current) {
++				result.merge(parseItemMapDirectly(current));
++			}
++			else if (value instanceof final ItemStack item) {
++				result.addItemStack(item);
++			}
++			else {
++				LOGGER.warning("ItemMap segment at \"" + key + "\" cannot be parsed!");
++			}
++			// CivPatched End
+ 		}
+ 		return result;
+ 	}
