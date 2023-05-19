@@ -1,0 +1,55 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Fri, 19 May 2023 21:51:11 +0100
+Subject: [PATCH] Yeet sendOwnKills setting
+
+Why this was ever added is beyond comprehension.
+
+diff --git a/src/main/java/vg/civcraft/mc/civchat2/listeners/KillListener.java b/src/main/java/vg/civcraft/mc/civchat2/listeners/KillListener.java
+index 05ebb27ec0d96bd12df1dd40cd2ac2cfa61e8477..f29f99b5263c0f50d083d0a31b3ebf3e7e3fac03 100644
+--- a/src/main/java/vg/civcraft/mc/civchat2/listeners/KillListener.java
++++ b/src/main/java/vg/civcraft/mc/civchat2/listeners/KillListener.java
+@@ -34,9 +34,6 @@ public class KillListener implements Listener {
+ 			return;
+ 		}
+ 		Player killer = victim.getKiller();
+-		if (!settingsMan.getSendOwnKills(killer.getUniqueId())) {
+-			return;
+-		}
+ 		String itemDescriptor;
+ 		ItemStack item = killer.getInventory().getItemInMainHand();
+ 		if (item == null || MaterialUtils.isAir(item.getType())) {
+diff --git a/src/main/java/vg/civcraft/mc/civchat2/utility/CivChat2SettingsManager.java b/src/main/java/vg/civcraft/mc/civchat2/utility/CivChat2SettingsManager.java
+index 59eada35f0c826ce3ab0af2476d880a2da8f6f5b..3045ca53e62f8a98c9127f9601b48e87bc210ff1 100644
+--- a/src/main/java/vg/civcraft/mc/civchat2/utility/CivChat2SettingsManager.java
++++ b/src/main/java/vg/civcraft/mc/civchat2/utility/CivChat2SettingsManager.java
+@@ -14,7 +14,6 @@ public class CivChat2SettingsManager {
+ 
+ 	private BooleanSetting showJoins;
+ 	private BooleanSetting showLeaves;
+-	private BooleanSetting sendOwnKills;
+ 	private BooleanSetting receiveKills;
+ 	private BooleanSetting receiveKillsFromIgnoredPlayers;
+ 	private BooleanSetting showChatGroup;
+@@ -37,10 +36,6 @@ public class CivChat2SettingsManager {
+ 				"Should player leave messages be shown?");
+ 		PlayerSettingAPI.registerSetting(showLeaves, menu);
+ 
+-		sendOwnKills = new BooleanSetting(CivChat2.getInstance(), true, "Broadcast your kills", "civChatBroadcastKills",
+-				"Should kills you make be broadcasted to nearby players?");
+-		PlayerSettingAPI.registerSetting(sendOwnKills, menu);
+-
+ 		receiveKills = new BooleanSetting(CivChat2.getInstance(), true, "Receive kill broadcasts",
+ 				"civChatReceiveKills", "Do you want to receive broadcasts for nearby kills");
+ 		PlayerSettingAPI.registerSetting(receiveKills, menu);
+@@ -74,10 +69,6 @@ public class CivChat2SettingsManager {
+ 		return showLeaves.getValue(uuid);
+ 	}
+ 	
+-	public boolean getSendOwnKills(UUID uuid) {
+-		return sendOwnKills.getValue(uuid);
+-	}
+-	
+ 	public boolean getReceiveKills(UUID uuid) {
+ 		return receiveKills.getValue(uuid);
+ 	}

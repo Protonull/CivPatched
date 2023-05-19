@@ -13,3 +13,6 @@
 [submodule "ItemExchange"]
 	path = ItemExchange
 	url = https://github.com/CivMC/ItemExchange.git
+[submodule "CivChat2"]
+	path = CivChat2
+	url = https://github.com/CivMC/CivChat2.git
