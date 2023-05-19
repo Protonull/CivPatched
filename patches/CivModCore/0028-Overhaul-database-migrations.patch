@@ -1,0 +1,463 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Fri, 19 May 2023 02:36:47 +0100
+Subject: [PATCH] Overhaul database migrations
+
+
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/dao/DatabaseMigration.java b/src/main/java/vg/civcraft/mc/civmodcore/dao/DatabaseMigration.java
+index 852aabcc189759aa7078a530f57c8d496f62f250..7ed48b4dd45b4dffe0d34d88c463684b40cabd9d 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/dao/DatabaseMigration.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/dao/DatabaseMigration.java
+@@ -1,56 +1,107 @@
+ package vg.civcraft.mc.civmodcore.dao;
+ 
++import java.sql.Connection;
+ import java.sql.SQLException;
+-import javax.annotation.Nonnull;
+-import org.apache.commons.lang3.ArrayUtils;
++import java.sql.SQLWarning;
++import java.sql.Statement;
++import java.util.List;
++import java.util.logging.Level;
++import java.util.logging.Logger;
++import org.apache.commons.lang3.StringUtils;
++import org.jetbrains.annotations.NotNull;
+ 
+ /**
+- * Interface to allow for more object-oriented based migration. I've noticed as plugins get older, their DAOs get
+- * larger and larger to accommodate more and more migrations. This interface allows migrations to be split up into
+- * individually functional classes with the convention of NEVER using plugin APIs: that anything the migration needs
+- * to do should be encapsulated within the migration class.
++ * This interface allows for a more object-oriented approach to migrations
++ * modelled after Kyori components. I've noticed as plugins get older, their
++ * DAOs get progressively larger as more and more migrations are added. This
++ * interface encourages developers to split these migrations up into individual
++ * classes with the convention of total encapsulation.
++ *
++ * @author CivPatched
+  */
++@FunctionalInterface
+ public interface DatabaseMigration {
++    /**
++     * Executes a query.
++     * @param logger The logger that should be specific to this particular migration.
++     * @param connection The connection to use for any queries.
++     * @return Returns whether the migration can continue.
++     */
++    boolean execute(
++            @NotNull Logger logger,
++            @NotNull Connection connection
++    ) throws SQLException;
+ 
+-	/**
+-	 * @return Returns this migration's id -- 0, 1, 2, etc, must be unique.
+-	 */
+-	int getMigrationId();
++    /**
++     * Run a number of queries in sequence.
++     */
++    static @NotNull DatabaseMigration sequence(
++            @NotNull DatabaseMigration @NotNull ... queries
++    ) {
++        return sequence(List.of(queries));
++    }
+ 
+-	/**
+-	 * @return Returns whether errors in this migration should be ignored.
+-	 */
+-	default boolean shouldIgnoreErrors() {
+-		return false;
+-	}
++    /**
++     * Run a number of queries in sequence.
++     */
++    static @NotNull DatabaseMigration sequence(
++            @NotNull List<@NotNull DatabaseMigration> queries
++    ) {
++        return (logger, connection) -> {
++            for (final DatabaseMigration query : queries) {
++                if (!query.execute(logger, connection)) {
++                    return false;
++                }
++            }
++            return true;
++        };
++    }
+ 
+-	/**
+-	 * @return Returns this migration's queries. Each query will be run in sequences. Must not be null or empty!
+-	 */
+-	@Nonnull
+-	String[] getMigrationQueries();
+-
+-	/**
+-	 * An optional callback that'll run after the migration has completed.
+-	 *
+-	 * @return Returns whether the callback completed successfully.
+-	 */
+-	default boolean migrationCallback(@Nonnull final ManagedDatasource datasource) throws SQLException {
+-		return true;
+-	}
+-
+-	/**
+-	 * @param datasource The datasource to register this migration to.
+-	 */
+-	default void registerMigration(@Nonnull final ManagedDatasource datasource) {
+-		final var queries = getMigrationQueries();
+-		if (ArrayUtils.isEmpty(queries)) {
+-			throw new IllegalArgumentException("Migration queries cannot be null or empty!");
+-		}
+-		datasource.registerMigration(getMigrationId(),
+-				shouldIgnoreErrors(),
+-				() -> migrationCallback(datasource),
+-				queries);
+-	}
++    /**
++     * Run a basic string query.
++     */
++    static @NotNull DatabaseMigration query(
++            final @NotNull String query
++    ) {
++        return query(query, false);
++    }
+ 
++    /**
++     * Run a basic string query.
++     *
++     * @param ignoreErrors Whether errors that occur as a result of the query can be ignored.
++     */
++    static @NotNull DatabaseMigration query(
++            final @NotNull String query,
++            final boolean ignoreErrors
++    ) {
++        if (StringUtils.isBlank(query)) {
++            throw new IllegalArgumentException("Query cannot be null or blank!");
++        }
++        return (logger, connection) -> {
++            try (final Statement statement = connection.createStatement()) {
++                statement.executeUpdate(query);
++                boolean hadErrors = false;
++                if (!ignoreErrors) { // if we ignore errors we totally ignore warnings.
++                    SQLWarning warning = statement.getWarnings();
++                    while (warning != null) {
++                        hadErrors = true;
++                        logger.warning("Warning: " + warning.getMessage());
++                        warning = warning.getNextWarning();
++                    }
++                }
++                return !hadErrors;
++            }
++            catch (final SQLException thrown) {
++                if (!ignoreErrors) {
++                    logger.warning("Ignoring error: " + thrown.getMessage());
++                    return true;
++                }
++                else {
++                    logger.log(Level.SEVERE, "Failed: ", thrown);
++                    return false;
++                }
++            }
++        };
++    }
+ }
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/dao/ManagedDatasource.java b/src/main/java/vg/civcraft/mc/civmodcore/dao/ManagedDatasource.java
+index 61429ec3b1155b6e7955325f216dd62c388435d2..8d3a9c18c41518235fcabcfb53da14828dad8cbb 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/dao/ManagedDatasource.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/dao/ManagedDatasource.java
+@@ -4,10 +4,7 @@ import java.sql.Connection;
+ import java.sql.PreparedStatement;
+ import java.sql.ResultSet;
+ import java.sql.SQLException;
+-import java.sql.SQLWarning;
+ import java.sql.Statement;
+-import java.util.ArrayList;
+-import java.util.List;
+ import java.util.NavigableMap;
+ import java.util.TreeMap;
+ import java.util.concurrent.Callable;
+@@ -17,11 +14,17 @@ import java.util.concurrent.Future;
+ import java.util.concurrent.TimeoutException;
+ import java.util.logging.Level;
+ import javax.annotation.Nonnull;
+-import javax.annotation.Nullable;
+ import org.bukkit.plugin.Plugin;
+ import vg.civcraft.mc.civmodcore.ACivMod;
+ import vg.civcraft.mc.civmodcore.utilities.CivLogger;
+-import vg.civcraft.mc.civmodcore.utilities.MoreCollectionUtils;
++
++// CivPatched Start
++import java.util.Arrays;
++import java.util.logging.Logger;
++import org.jetbrains.annotations.NotNull;
++import org.jetbrains.annotations.Nullable;
++import vg.civcraft.mc.civmodcore.utilities.MoreMapUtils;
++// CivPatched End
+ 
+ /**
+  * Plugins should replace their custom Database handlers with an instance of ManagedDatasource.
+@@ -121,7 +124,7 @@ public class ManagedDatasource {
+ 	private final Plugin plugin;
+ 	private final ConnectionPool connections;
+ 	private final ExecutorService postExecutor;
+-	private final TreeMap<Integer, Migration> migrations;
++	private final TreeMap<Integer, DatabaseMigration> migrations; // CivPatched
+ 	private int firstMigration;
+ 	private int lastMigration;
+ 
+@@ -209,6 +212,21 @@ public class ManagedDatasource {
+ 		return new ManagedDatasource(logger, plugin, connections);
+ 	}
+ 
++	// CivPatched Start
++	public void registerMigration(
++			final int id,
++			final @NotNull DatabaseMigration migration
++	) {
++		this.migrations.put(id, migration);
++		if (id > this.lastMigration) {
++			this.lastMigration = id;
++		}
++		if (id < this.firstMigration) {
++			this.firstMigration = id;
++		}
++	}
++	// CivPatched End
++
+ 	/**
+ 	 * Use this to register a migration. After all migrations have been registered, call {@link #updateDatabase()}.
+ 	 *
+@@ -218,6 +236,7 @@ public class ManagedDatasource {
+ 	 * @param ignoreErrors Indicates if errors in this migration should be ignored.
+ 	 * @param queries The queries to run, in sequence.
+ 	 */
++	@Deprecated // CivPatched
+ 	public void registerMigration(final int id,
+ 								  final boolean ignoreErrors,
+ 								  final String... queries) {
+@@ -234,17 +253,50 @@ public class ManagedDatasource {
+ 	 * @param callback An optional callback that'll run after the migration has completed.
+ 	 * @param queries The queries to run, in sequence.
+ 	 */
++	@Deprecated // CivPatched
+ 	public void registerMigration(final int id,
+ 								  final boolean ignoreErrors,
+ 								  final Callable<Boolean> callback,
+ 								  final String... queries) {
+-		this.migrations.put(id, new Migration(ignoreErrors, callback, queries));
+-		if (id > this.lastMigration) {
+-			this.lastMigration = id;
+-		}
+-		if (id < this.firstMigration) {
+-			this.firstMigration = id;
+-		}
++		// CivPatched Start
++		final DatabaseMigration sequence = DatabaseMigration.sequence(
++				Arrays.stream(queries)
++						.map(DatabaseMigration::query)
++						.toList()
++		);
++		registerMigration(id, (logger, connection) -> {
++			if (!sequence.execute(logger, connection)) {
++				return false;
++			}
++			if (callback != null) {
++				final Future<Boolean> doing = this.postExecutor.submit(callback);
++				try {
++					if (doing.get()) {
++						logger.info("Post Call Complete");
++					}
++					else {
++						if (ignoreErrors) {
++							logger.warning("Post Call indicated failure; ignored.");
++						}
++						else {
++							logger.severe("Post Call failed!");
++							return false;
++						}
++					}
++				}
++				catch (final Throwable exception) {
++					if (ignoreErrors) {
++						logger.warning("Post Call indicated failure; ignored: " + exception.getMessage());
++					}
++					else {
++						logger.log(Level.SEVERE, "Post Call failed!", exception);
++						return false;
++					}
++				}
++			}
++			return true;
++		});
++		// CivPatched End
+ 	}
+ 
+ 	/**
+@@ -293,7 +345,7 @@ public class ManagedDatasource {
+ 			releaseLock();
+ 			return false;
+ 		}
+-		final NavigableMap<Integer, Migration> newApply = this.migrations.tailMap(currentLevel, false);
++		final NavigableMap<Integer, DatabaseMigration> newApply = this.migrations.tailMap(currentLevel, false); // CivPatched
+ 		try {
+ 			if (newApply.size() > 0) {
+ 				this.logger.info(String.format("%s database is behind, %s migrations found",
+@@ -321,110 +373,56 @@ public class ManagedDatasource {
+ 		}
+ 	}
+ 
+-	private boolean doMigrations(final NavigableMap<Integer, Migration> migrations) {
+-		try {
+-			for (final Integer id : migrations.keySet()) {
+-				this.logger.info("Migration " +  id + " ] Applying");
+-				final Migration migration = migrations.get(id);
+-				if (migration == null) {
+-					continue; // huh?
+-				}
+-				if (doMigration(id, migration.migrations, migration.ignoreErrors, migration.postMigration)) {
+-					this.logger.info("Migration " +  id + " ] Successful");
+-					try (final Connection connection = getConnection();
+-						 final PreparedStatement statement = connection.prepareStatement(RECORD_MIGRATION)) {
+-						statement.setString(1, this.plugin.getName());
+-						statement.setInt(2, id);
+-						if (statement.executeUpdate() < 1) {
+-							this.logger.warning("Might not have recorded migration " + id + " occurrence successfully.");
+-						}
+-					}
+-					catch (final SQLException exception) {
+-						this.logger.warning("Failed to record migration " + id + " occurrence successfully.");
+-						this.logger.log(Level.SEVERE, "Full Error: ", exception);
+-						return false;
+-					}
+-				}
+-				else {
+-					this.logger.info("Migration " +  id + " ] Failed");
+-					return false;
+-				}
++	// CivPatched Start
++	private boolean doMigrations(final NavigableMap<Integer, DatabaseMigration> migrations) {
++		for (final var entry : migrations.entrySet()) {
++			if (!MoreMapUtils.validEntry(entry)) {
++				continue;
+ 			}
+-			return true;
+-		}
+-		catch (final Throwable exception) {
+-			this.logger.log(Level.SEVERE, "Unexpected failure during migrations", exception);
+-			return false;
+-		}
+-	}
+ 
+-	private boolean doMigration(final Integer migration,
+-								final List<String> queries,
+-								final boolean ignoreErrors,
+-								final Callable<Boolean> post) {
+-		try (final Connection connection = getConnection()) {
+-			for (final String query : queries) {
+-				try (final Statement statement = connection.createStatement()) {
+-					statement.executeUpdate(query);
+-					if (!ignoreErrors) { // if we ignore errors we totally ignore warnings.
+-						SQLWarning warning = statement.getWarnings();
+-						while (warning != null) {
+-							this.logger.warning("Migration " + migration + " ] Warning: " + warning.getMessage());
+-							// TODO: add verbose check
+-							warning = warning.getNextWarning();
+-						}
+-					}
+-				}
+-				catch (final SQLException exception) {
+-					if (ignoreErrors) {
+-						this.logger.warning("Migration " + migration + " ] Ignoring error: " + exception.getMessage());
+-					}
+-					else {
+-						throw exception;
+-					}
+-				}
++			final int migrationId = entry.getKey();
++			final DatabaseMigration migration = entry.getValue();
++			final Logger migrationLogger = CivLogger.inject(
++					this.logger,
++					(record) -> record.setMessage("Migration " + migrationId + "] " + record.getMessage())
++			);
++
++			migrationLogger.info("Applying");
++
++			boolean wasMigrationSuccessful;
++			try (final Connection connection = getConnection()) {
++				wasMigrationSuccessful = migration.execute(
++						migrationLogger,
++						connection
++				);
+ 			}
+-		}
+-		catch (final SQLException exception) {
+-			if (ignoreErrors) {
+-				this.logger.warning("Migration " + migration + " ] Ignoring error: " + exception.getMessage());
++			catch (final Throwable thrown) {
++				migrationLogger.log(Level.SEVERE, "Unexpected failure:", thrown);
++				wasMigrationSuccessful = false;
+ 			}
+-			else {
+-				this.logger.warning("Migration " + migration + " ] Failed migration: " + exception.getMessage());
+-				this.logger.log(Level.SEVERE, "Full Error: ", exception);
++
++			if (!wasMigrationSuccessful) {
++				migrationLogger.info("Failed");
+ 				return false;
+ 			}
+-		}
+-		if (post != null) {
+-			final Future<Boolean> doing = postExecutor.submit(post);
+-			try {
+-				if (doing.get()) {
+-					this.logger.info("Migration " + migration + " ] Post Call Complete");
+-				}
+-				else {
+-					if (ignoreErrors) {
+-						this.logger.warning("Migration " + migration + " ] Post Call indicated failure; ignored.");
+-					}
+-					else {
+-						this.logger.severe("Migration " + migration + " ] Post Call failed!");
+-						return false;
+-					}
++
++			migrationLogger.info("Successful");
++			try (final Connection connection = getConnection();
++				 final PreparedStatement statement = connection.prepareStatement(RECORD_MIGRATION)) {
++				statement.setString(1, this.plugin.getName());
++				statement.setInt(2, migrationId);
++				if (statement.executeUpdate() < 1) {
++					migrationLogger.warning("Might not have recorded migration occurrence successfully.");
+ 				}
+ 			}
+-			catch (final Throwable exception) {
+-				if (ignoreErrors) {
+-					this.logger.warning("Migration " + migration + " ] Post Call indicated failure; ignored: " +
+-							exception.getMessage());
+-				}
+-				else {
+-					this.logger.severe("Migration " + migration + " ] Post Call failed!");
+-					this.logger.log(Level.SEVERE, "Full Error: ", exception);
+-					return false;
+-				}
++			catch (final SQLException thrown) {
++				migrationLogger.log(Level.SEVERE, "Failed to record migration occurrence successfully.", thrown);
++				return false;
+ 			}
+ 		}
+ 		return true;
+ 	}
++	// CivPatched End
+ 
+ 	/**
+ 	 * Checks if this plugin is already managed by the ManagedDatasource infrastructure or not.
+@@ -538,10 +536,4 @@ public class ManagedDatasource {
+ 		this.connections.close();
+ 	}
+ 
+-	private static record Migration(boolean ignoreErrors, Callable<Boolean> postMigration, List<String> migrations) {
+-		public Migration(boolean ignoreErrors, Callable<Boolean> postMigration, String... migrations) {
+-			this(ignoreErrors, postMigration, MoreCollectionUtils.collect(ArrayList::new, migrations));
+-		}
+-	}
+-
+ }

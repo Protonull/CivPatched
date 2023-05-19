@@ -1,0 +1,212 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Fri, 19 May 2023 03:03:09 +0100
+Subject: [PATCH] Allow ManagedDatasource to be constructed with a HikariConfig
+
+
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/dao/ConnectionPool.java b/src/main/java/vg/civcraft/mc/civmodcore/dao/ConnectionPool.java
+index 6b9098ba8c0d71130fb3baf09b661205416642b0..7c277b04eac643c7c6538a2a969a8f0afc1fad38 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/dao/ConnectionPool.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/dao/ConnectionPool.java
+@@ -1,17 +1,21 @@
+ package vg.civcraft.mc.civmodcore.dao;
+ 
+-import com.google.common.base.Strings;
+ import com.zaxxer.hikari.HikariConfig;
+ import com.zaxxer.hikari.HikariDataSource;
+ import java.sql.Connection;
+ import java.sql.SQLException;
+ import java.sql.Statement;
+-import java.util.Objects;
+ import java.util.logging.Logger;
+ import javax.annotation.Nonnull;
+ import javax.annotation.Nullable;
+ import org.bukkit.Bukkit;
+ 
++// CivPatched Start
++import java.util.logging.Level;
++import org.jetbrains.annotations.NotNull;
++import vg.civcraft.mc.civmodcore.utilities.DeprecationUtils;
++// CivPatched End
++
+ /**
+  * Handy Connection Pool / Database wrapper for use by all plugins.
+  *
+@@ -20,8 +24,6 @@ import org.bukkit.Bukkit;
+ public class ConnectionPool {
+ 
+ 	private static final Logger LOGGER = Bukkit.getLogger();
+-
+-	private final DatabaseCredentials credentials;
+ 	private HikariDataSource datasource;
+ 
+ 	/**
+@@ -30,32 +32,25 @@ public class ConnectionPool {
+ 	 *
+ 	 * @param credentials The credentials to connect with.
+ 	 */
++	@Deprecated // CivPatched
+ 	public ConnectionPool(@Nonnull final DatabaseCredentials credentials) {
+-		this.credentials = Objects.requireNonNull(credentials,
+-				"Cannot create a ConnectionPool with a null set of credentials.");
+-		HikariConfig config = new HikariConfig();
+-		config.setJdbcUrl("jdbc:" + credentials.driver() + "://" + credentials.host() + ":" +
+-				credentials.port() + "/" + credentials.database());
+-		config.setConnectionTimeout(credentials.connectionTimeout());
+-		config.setIdleTimeout(credentials.idleTimeout());
+-		config.setMaxLifetime(credentials.maxLifetime());
+-		config.setMaximumPoolSize(credentials.poolSize());
+-		config.setUsername(credentials.username());
+-		if (!Strings.isNullOrEmpty(credentials.password())) {
+-			config.setPassword(credentials.password());
+-		}
++		this(credentials.generateConfig()); // CivPatched
++	}
++
++	// CivPatched Start
++	public ConnectionPool(final @NotNull HikariConfig config) {
+ 		this.datasource = new HikariDataSource(config);
+ 		try (final Connection connection = getConnection();
+ 			 final Statement statement = connection.createStatement()) {
+ 			statement.executeQuery("SELECT 1;");
+ 			LOGGER.info("Successfully connected to the database.");
+ 		}
+-		catch (SQLException exception) {
+-			LOGGER.severe("Unable to connect to the database.");
+-			exception.printStackTrace();
++		catch (final SQLException exception) {
++			LOGGER.log(Level.SEVERE, "Unable to connect to the database.", exception);
+ 			this.datasource = null;
+ 		}
+ 	}
++	// CivPatched End
+ 
+ 	/**
+ 	 * Creates a new ConnectionPool based on explicitly defined parameters. Note that these parameters are not
+@@ -94,7 +89,7 @@ public class ConnectionPool {
+ 	 */
+ 	@Nonnull
+ 	public DatabaseCredentials getCredentials() {
+-		return this.credentials;
++		throw new DeprecationUtils.DeprecationException("ConnectionPool doesn't use DatabaseCredentials anymore!");
+ 	}
+ 
+ 	/**
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/dao/DatabaseCredentials.java b/src/main/java/vg/civcraft/mc/civmodcore/dao/DatabaseCredentials.java
+index 85707ef2bfec4dc4f5f9398b578436f31ffc03a3..2b025cc68a243e2fb518dff32752ddaaeaef3b94 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/dao/DatabaseCredentials.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/dao/DatabaseCredentials.java
+@@ -9,6 +9,12 @@ import org.bukkit.configuration.serialization.ConfigurationSerializable;
+ import org.bukkit.util.NumberConversions;
+ import vg.civcraft.mc.civmodcore.utilities.MoreMapUtils;
+ 
++// CivPatched Start
++import com.zaxxer.hikari.HikariConfig;
++import org.apache.commons.lang3.StringUtils;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ /**
+  * This is a data class representing a set of credentials used for connecting to databases.
+  *
+@@ -71,4 +77,19 @@ public record DatabaseCredentials(String username,
+ 						"maxLifetime", "max_lifetime")); // keys
+ 	}
+ 
++	// CivPatched Start
++	public @NotNull HikariConfig generateConfig() {
++		final var config = new HikariConfig();
++		config.setJdbcUrl("jdbc:" + driver() + "://" + host() + ":" + port() + "/" + database());
++		config.setConnectionTimeout(connectionTimeout());
++		config.setIdleTimeout(idleTimeout());
++		config.setMaxLifetime(maxLifetime());
++		config.setMaximumPoolSize(poolSize());
++		config.setUsername(username());
++		if (StringUtils.isNotEmpty(password())) {
++			config.setPassword(password());
++		}
++		return config;
++	}
++	// CivPatched End
+ }
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/dao/ManagedDatasource.java b/src/main/java/vg/civcraft/mc/civmodcore/dao/ManagedDatasource.java
+index 8d3a9c18c41518235fcabcfb53da14828dad8cbb..98dd608ee43dc72b8e7b40fe49eb5317da62edd2 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/dao/ManagedDatasource.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/dao/ManagedDatasource.java
+@@ -19,6 +19,7 @@ import vg.civcraft.mc.civmodcore.ACivMod;
+ import vg.civcraft.mc.civmodcore.utilities.CivLogger;
+ 
+ // CivPatched Start
++import com.zaxxer.hikari.HikariConfig;
+ import java.util.Arrays;
+ import java.util.logging.Logger;
+ import org.jetbrains.annotations.NotNull;
+@@ -129,7 +130,7 @@ public class ManagedDatasource {
+ 	private int lastMigration;
+ 
+ 	private ManagedDatasource(final CivLogger logger,
+-							  final ACivMod plugin,
++							  final Plugin plugin, // CivPatched
+ 							  final ConnectionPool connections) {
+ 		this.logger = logger;
+ 		this.plugin = plugin;
+@@ -140,6 +141,32 @@ public class ManagedDatasource {
+ 		this.lastMigration = Integer.MIN_VALUE;
+ 	}
+ 
++	// CivPatched Start
++	public static @Nullable ManagedDatasource construct(
++			final @NotNull Plugin plugin,
++			final @NotNull HikariConfig config
++	) {
++		final var logger = CivLogger.getLogger(plugin.getClass(), ManagedDatasource.class);
++		final var pool = new ConnectionPool(config);
++		try (final Connection connection = pool.getConnection()) {
++			try (final Statement statement = connection.createStatement()) {
++				statement.executeUpdate(ManagedDatasource.CREATE_MIGRATIONS_TABLE);
++			}
++			try (final Statement statement = connection.createStatement()) {
++				statement.executeUpdate(ManagedDatasource.CREATE_LOCK_TABLE);
++			}
++		}
++		catch (final SQLException exception) {
++			logger.severe("Failed to prepare migrations table or register this plugin to it.");
++			logger.log(Level.SEVERE, "Assuming you provided proper database credentials this is most likely "
++					+ "happening, because your mysql install is outdated. We recommend using MariaDB or at least the "
++					+ "latest mysql version.", exception);
++			return null;
++		}
++		return new ManagedDatasource(logger, plugin, pool);
++	}
++	// CivPatched End
++
+ 	/**
+ 	 * Create a new ManagedDatasource.
+ 	 *
+@@ -191,25 +218,7 @@ public class ManagedDatasource {
+ 			logger.warning("You must pass in a set of credentials");
+ 			return null;
+ 		}
+-		final var connections = new ConnectionPool(credentials);
+-		logger.info(String.format("Connecting to %s@%s:%s using %s",credentials.database(),
+-				credentials.host(), credentials.port(), credentials.username()));
+-		try (final Connection connection = connections.getConnection()) {
+-			try (final Statement statement = connection.createStatement()) {
+-				statement.executeUpdate(ManagedDatasource.CREATE_MIGRATIONS_TABLE);
+-			}
+-			try (final Statement statement = connection.createStatement()) {
+-				statement.executeUpdate(ManagedDatasource.CREATE_LOCK_TABLE);
+-			}
+-		}
+-		catch (final SQLException exception) {
+-			logger.severe("Failed to prepare migrations table or register this plugin to it.");
+-			logger.log(Level.SEVERE, "Assuming you provided proper database credentials this is most likely " +
+-					"happening, because your mysql install is outdated. We recommend using MariaDB or at least the " +
+-					"latest mysql version.", exception);
+-			return null;
+-		}
+-		return new ManagedDatasource(logger, plugin, connections);
++		return construct(plugin, credentials.generateConfig()); // CivPatched
+ 	}
+ 
+ 	// CivPatched Start
