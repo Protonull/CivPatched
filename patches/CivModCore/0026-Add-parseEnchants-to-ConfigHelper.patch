@@ -6,7 +6,7 @@ Subject: [PATCH] Add parseEnchants to ConfigHelper
 And update parseItemMapDirectly to use it.
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java b/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
-index f7bf058b8f144a294f5ff755667297ca7125efca..caf3838d70fd0195b1d28f4b91d38fc5e88b0eae 100644
+index f7bf058b8f144a294f5ff755667297ca7125efca..73594c6acc43127be5536048f7a265e56a1f0b71 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
 @@ -16,7 +16,6 @@ import org.bukkit.Bukkit;
@@ -46,7 +46,34 @@ index f7bf058b8f144a294f5ff755667297ca7125efca..caf3838d70fd0195b1d28f4b91d38fc5
  			if (m == Material.LEATHER_BOOTS || m == Material.LEATHER_CHESTPLATE || m == Material.LEATHER_HELMET
  					|| m == Material.LEATHER_LEGGINGS) {
  				ConfigurationSection color = current.getConfigurationSection("color");
-@@ -338,6 +317,74 @@ public final class ConfigHelper {
+@@ -278,25 +257,7 @@ public final class ConfigHelper {
+ 				}
+ 			}
+ 			if (m == Material.ENCHANTED_BOOK) {
+-				ConfigurationSection storedEnchantSection = current.getConfigurationSection("stored_enchants");
+-				if (storedEnchantSection != null) {
+-					EnchantmentStorageMeta enchantMeta = (EnchantmentStorageMeta) meta;
+-					for (String sEKey : storedEnchantSection.getKeys(false)) {
+-						ConfigurationSection currentStoredEnchantSection = storedEnchantSection
+-								.getConfigurationSection(sEKey);
+-						if (currentStoredEnchantSection != null) {
+-							Enchantment enchant = EnchantUtils.getEnchantment(currentStoredEnchantSection.getString("enchant"));
+-							int level = currentStoredEnchantSection.getInt("level", 1);
+-							if (enchant != null) {
+-								enchantMeta.addStoredEnchant(enchant, level, true);
+-							}
+-							else {
+-								LOGGER.severe("Failed to parse enchantment at " + currentStoredEnchantSection.getCurrentPath()
+-										+ ", it was not applied");
+-							}
+-						}
+-					}
+-				}
++				parseEnchants(current.getConfigurationSection("stored_enchants")).forEach((enchant, level) -> ((EnchantmentStorageMeta) meta).addStoredEnchant(enchant, level, true)); // CivPatched
+ 			}
+ 			if (m == Material.POTION || m == Material.SPLASH_POTION || m == Material.LINGERING_POTION
+ 					|| m == Material.TIPPED_ARROW) {
+@@ -338,6 +299,74 @@ public final class ConfigHelper {
  		return im;
  	}
  
