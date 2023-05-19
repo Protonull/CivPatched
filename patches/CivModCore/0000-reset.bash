@@ -19,10 +19,12 @@ git rm -rfq  ".github"
 
 # Remove old classes
 git rm -rfq "src/main/java/vg/civcraft/mc/civmodcore/maps"
+git rm -rfq "src/main/java/vg/civcraft/mc/civmodcore/util"
 git rm -rfq "src/main/java/vg/civcraft/mc/civmodcore/utilities/Title.java"
 git rm -rfq "src/main/java/vg/civcraft/mc/civmodcore/world/WorldXZ.java"
 git rm -rfq "src/main/java/vg/civcraft/mc/civmodcore/world/operations"
 git rm -rfq "src/main/java/vg/civcraft/mc/civmodcore/nbt/storage"
+git rm -rfq "src/main/java/vg/civcraft/mc/civmodcore/particles"
 
 git commit --quiet -m "Reset CivModCore"
 git checkout --quiet -B master upstream
