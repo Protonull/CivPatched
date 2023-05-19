@@ -1,0 +1,74 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Sat, 20 May 2023 00:21:58 +0100
+Subject: [PATCH] Remove bottle cost from OldEnchanting EXP reclaimation
+
+
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/OldEnchanting.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/OldEnchanting.java
+index 65ee4d049f2461f71ca79f8d99c15c3624e73f3a..de2dfa4849822c3cee4e6c88d9371ac7a83bbcf6 100644
+--- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/OldEnchanting.java
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/OldEnchanting.java
+@@ -67,7 +67,6 @@ import org.bukkit.projectiles.ProjectileSource;
+ import vg.civcraft.mc.civmodcore.entities.EntityUtils;
+ import vg.civcraft.mc.civmodcore.inventory.InventoryUtils;
+ import vg.civcraft.mc.civmodcore.inventory.RecipeManager;
+-import vg.civcraft.mc.civmodcore.inventory.items.ItemMap;
+ import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
+ import vg.civcraft.mc.civmodcore.world.WorldUtils;
+ 
+@@ -616,40 +615,25 @@ public final class OldEnchanting extends BasicHack {
+ 	}
+ 
+ 	private void createExpBottles(Player player, int totalExp) {
+-		ItemMap inv = new ItemMap(player.getInventory());
+-		int bottles = inv.getAmount(new ItemStack(Material.GLASS_BOTTLE));
+-		int xpavailable = totalExp / this.expPerBottle;
+-		int remove = Math.min(bottles, xpavailable);
+-		if (remove == 0) {
+-			return;
+-		}
+-		boolean noSpace = false;
+-		int bottleCount = 0;
+-		ItemMap removeMap = new ItemMap();
+-		removeMap.addItemAmount(new ItemStack(Material.GLASS_BOTTLE), remove);
+-		for (ItemStack is : removeMap.getItemStackRepresentation()) {
+-			int initialAmount = is.getAmount();
+-			player.getInventory().removeItem(is);
+-			is.setType(Material.EXPERIENCE_BOTTLE);
+-			HashMap<Integer, ItemStack> result = player.getInventory().addItem(is);
+-			if (!result.isEmpty()) {
+-				is.setType(Material.GLASS_BOTTLE);
+-				player.getInventory().addItem(is);
+-				noSpace = true;
+-				break;
+-			}
+-			else {
+-				bottleCount += initialAmount;
+-			}
+-		}
+-		if (bottleCount > 0) {
+-			int endXP = totalExp - bottleCount * this.expPerBottle;
++		// CivPatched Start
++		final int totalXpBottles = totalExp / this.expPerBottle;
++		final java.util.List<ItemStack> bottles = ItemUtils.segmentItem(
++				new ItemStack(Material.EXPERIENCE_BOTTLE),
++				totalXpBottles
++		);
++		final boolean wasAdded = InventoryUtils.safelyAddItemsToInventory(
++				player.getInventory(),
++				bottles.toArray(ItemStack[]::new)
++		);
++		if (wasAdded) {
++			final int endXP = totalExp - totalXpBottles * this.expPerBottle;
++			// CivPatched End
+ 			player.setLevel(0);
+ 			player.setExp(0);
+ 			player.giveExp(endXP);
+-			player.sendMessage(ChatColor.GREEN + "Created " + bottleCount + " XP bottles.");
++			player.sendMessage(ChatColor.GREEN + "Created " + totalXpBottles + " XP bottles."); // CivPatched
+ 		}
+-		if (noSpace) {
++		else { // CivPatched
+ 			player.sendMessage(ChatColor.RED + "Not enough space in inventory for all XP bottles.");
+ 		}
+ 	}

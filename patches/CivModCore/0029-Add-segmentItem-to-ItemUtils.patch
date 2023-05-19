@@ -1,0 +1,58 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Fri, 19 May 2023 23:46:48 +0100
+Subject: [PATCH] Add segmentItem to ItemUtils
+
+
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemUtils.java
+index 52423d06f81d3f61ca410b9df8c42117f5159024..cf7f1dc1b28b25a5e7f9279c767bf6e5b4aa8162 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemUtils.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemUtils.java
+@@ -20,6 +20,7 @@ import vg.civcraft.mc.civmodcore.chat.ChatUtils;
+ 
+ // CivPatched Start
+ import org.bukkit.inventory.meta.Repairable;
++import org.jetbrains.annotations.NotNull;
+ // CivPatched End
+ 
+ /**
+@@ -192,6 +193,39 @@ public final class ItemUtils {
+ 		return CraftItemStack.asNMSCopy(item);
+ 	}
+ 
++	// CivPatched Start
++	/**
++	 * Splits an item into safely-size stacks based on the given item's amount.
++	 */
++	public static @NotNull List<@NotNull ItemStack> segmentItem(
++			final @NotNull ItemStack template
++	) {
++		return segmentItem(template, template.getAmount());
++	}
++	/**
++	 * Splits an item into safely-sized stacks based on the given amount.
++	 */
++	public static @NotNull List<@NotNull ItemStack> segmentItem(
++			final @NotNull ItemStack template,
++			final int amount
++	) {
++		final int maxStackSize = template.getType().getMaxStackSize();
++		if (maxStackSize > amount) {
++			return Arrays.asList(template.asQuantity(amount)); // Ignore the highlighter, List.of() is unmodifiable
++		}
++		final int fullStacks = amount / maxStackSize;
++		final int partStack = amount % maxStackSize;
++		final List<ItemStack> result = new ArrayList<>(fullStacks + (partStack > 0 ? 1 : 0));
++		for (int i = 0; i < fullStacks; i++) {
++			result.add(template.asQuantity(maxStackSize));
++		}
++		if (partStack > 0) {
++			result.add(template.asQuantity(partStack));
++		}
++		return result;
++	}
++	// CivPatched End
++
+ 	/**
+ 	 * Decrements an item's amount, or returns null if the amount reaches zero.
+ 	 *
