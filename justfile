@@ -50,7 +50,7 @@ applyPatches:
             # The master branch is for all changes to be committed to
             # The upstream branch is for patches to compare against
             if ! (
-                sh "$resetScript" "$projectFolder"
+                bash "$resetScript" "$projectFolder"
             ); then
                 exit 1
             fi
