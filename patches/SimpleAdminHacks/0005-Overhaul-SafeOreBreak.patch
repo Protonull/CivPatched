@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Wed, 17 May 2023 13:56:58 +0100
+Date: Mon, 22 May 2023 23:25:43 +0100
 Subject: [PATCH] Overhaul SafeOreBreak
 
 
@@ -107,10 +107,10 @@ index 0000000000000000000000000000000000000000..84c2e036b5c56ecb92cf58cb65c4a82f
 +}
 diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/SafeOreBreak.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/SafeOreBreak.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..5db1ee345203df1a515fed96ad1c020cce3810ff
+index 0000000000000000000000000000000000000000..74e86a320904d1c4dc65ea41b628c92fa385e87e
 --- /dev/null
 +++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/SafeOreBreak.java
-@@ -0,0 +1,100 @@
+@@ -0,0 +1,109 @@
 +package com.programmerdan.minecraft.simpleadminhacks.hacks;
 +
 +import com.programmerdan.minecraft.simpleadminhacks.SimpleAdminHacks;
@@ -120,6 +120,7 @@ index 0000000000000000000000000000000000000000..5db1ee345203df1a515fed96ad1c020c
 +import java.util.Map;
 +import java.util.UUID;
 +import net.kyori.adventure.text.Component;
++import net.kyori.adventure.text.event.ClickEvent;
 +import net.kyori.adventure.text.format.NamedTextColor;
 +import org.apache.commons.lang3.StringUtils;
 +import org.bukkit.GameMode;
@@ -160,7 +161,11 @@ index 0000000000000000000000000000000000000000..5db1ee345203df1a515fed96ad1c020c
 +	@Override
 +	public void onEnable() {
 +		super.onEnable();
-+		final MenuSection mainMenu = plugin().getSettingManager().getMainMenu();
++		final MenuSection menu = PlayerSettingAPI.getMainMenu().createMenuSection(
++				"SafeOre",
++				"Configure which ores should only be mined with silk touch!",
++				new ItemStack(Material.DIAMOND_ORE)
++		);
 +		for (final SafeOreBreakConfig.OreConfig ore : config().getOreConfigs()) {
 +			final Material buttonMaterial = ore.blocks().get(0);
 +			final var setting = new BooleanSetting(
@@ -185,7 +190,7 @@ index 0000000000000000000000000000000000000000..5db1ee345203df1a515fed96ad1c020c
 +					return item;
 +				}
 +			};
-+			PlayerSettingAPI.registerSetting(setting, mainMenu);
++			PlayerSettingAPI.registerSetting(setting, menu);
 +			for (final Material blockMaterial : ore.blocks()) {
 +				this.blockSettings.put(blockMaterial, setting);
 +			}
@@ -208,7 +213,11 @@ index 0000000000000000000000000000000000000000..5db1ee345203df1a515fed96ad1c020c
 +			return;
 +		}
 +		event.setCancelled(true);
-+		event.getPlayer().sendMessage(Component.text("A SimpleAdminHacks /config option is preventing you from breaking that without silk touch.", NamedTextColor.RED));
++		event.getPlayer().sendMessage(Component.text()
++				.color(NamedTextColor.RED)
++				.content("You cannot break that without using silk touch. You can configure this with: /config SafeOre")
++				.clickEvent(ClickEvent.suggestCommand("/config SafeOre"))
++		);
 +	}
 +}
 diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/SafeOreBreak.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/SafeOreBreak.java

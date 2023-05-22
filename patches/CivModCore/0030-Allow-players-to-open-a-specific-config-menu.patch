@@ -1,0 +1,90 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Mon, 22 May 2023 23:19:30 +0100
+Subject: [PATCH] Allow players to open a specific config menu
+
+
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java b/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java
+index 082191b08165e894c97c23efff15d7192cb185f5..c7298999bd7534c011c4249422d6c20c038b3f89 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java
+@@ -17,6 +17,12 @@ import vg.civcraft.mc.civmodcore.players.settings.gui.MenuOption;
+ import vg.civcraft.mc.civmodcore.players.settings.gui.MenuSection;
+ import vg.civcraft.mc.civmodcore.players.settings.impl.AltConsistentSetting;
+ 
++// CivPatched Start
++import java.util.TreeMap;
++import org.jetbrains.annotations.NotNull;
++import vg.civcraft.mc.civmodcore.players.settings.gui.MenuItem;
++// CivPatched End
++
+ /**
+  * Allows creating settings, which will automatically be available in players
+  * configuration GUI
+@@ -40,6 +46,18 @@ public final class PlayerSettingAPI {
+ 		return MAIN_MENU;
+ 	}
+ 
++	// CivPatched Start
++	public static @NotNull Map<String, MenuSection> getSubMenus() {
++		final var results = new TreeMap<String, MenuSection>(String.CASE_INSENSITIVE_ORDER);
++		for (final MenuItem item : MAIN_MENU.getItems()) {
++			if (item instanceof final MenuSection submenu) {
++				results.put(submenu.getName(), submenu);
++			}
++		}
++		return results;
++	}
++	// CivPatched End
++
+ 	public static Collection<PlayerSetting<?>> getAllSettings() {
+ 		return Collections.unmodifiableCollection(SETTINGS_BY_IDENTIFIER.values());
+ 	}
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/commands/ConfigCommand.java b/src/main/java/vg/civcraft/mc/civmodcore/players/settings/commands/ConfigCommand.java
+index f92721db9167e105b12f2e1f84aef7546c821001..e2d7c30d40043970e5c8e1ddd55ec47f4dce38fb 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/commands/ConfigCommand.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/players/settings/commands/ConfigCommand.java
+@@ -16,6 +16,15 @@ import org.bukkit.entity.Player;
+ import vg.civcraft.mc.civmodcore.players.settings.PlayerSetting;
+ import vg.civcraft.mc.civmodcore.players.settings.PlayerSettingAPI;
+ 
++// CivPatched Start
++import co.aikar.commands.annotation.CommandCompletion;
++import co.aikar.commands.annotation.Optional;
++import java.util.List;
++import org.apache.commons.lang3.StringUtils;
++import org.jetbrains.annotations.NotNull;
++import vg.civcraft.mc.civmodcore.commands.TabComplete;
++// CivPatched End
++
+ @CommandAlias("config")
+ public final class ConfigCommand extends BaseCommand {
+ 
+@@ -23,9 +32,25 @@ public final class ConfigCommand extends BaseCommand {
+ 
+ 	@Default
+ 	@Description("Allows configuring player specific settings")
+-	public void openConfig(final Player sender) {
+-		PlayerSettingAPI.getMainMenu().showScreen(sender);
++	// CivPatched Start
++	@CommandCompletion("@configMenuList")
++	public void openConfig(final Player sender, final @Optional String name) {
++		if (StringUtils.isBlank(name)) {
++			PlayerSettingAPI.getMainMenu().showScreen(sender);
++			return;
++		}
++		final var match = PlayerSettingAPI.getSubMenus().get(name);
++		if (match == null) {
++			sender.sendMessage(ChatColor.RED + "Could not find that config menu!");
++			return;
++		}
++		match.showScreen(sender);
++	}
++	@TabComplete("configMenuList")
++	public @NotNull List<String> tabConfigMenus() {
++		return List.copyOf(PlayerSettingAPI.getSubMenus().keySet());
+ 	}
++	// CivPatched End
+ 
+ 	@Subcommand("save")
+ 	@Description("Save all settings to the file.")
