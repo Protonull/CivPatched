@@ -26,6 +26,24 @@ reset:
         fi
     done
 
+# Fetches each submodule's upstream, printing how many commits behind they are.
+fetch:
+    #!/bin/bash
+    git submodule status | awk '{ print $2 }' | while read submodule; do
+        projectFolder=$(realpath --canonicalize-missing "$submodule")
+        echo "Fetching $submodule"
+        if ! (
+            cd "$projectFolder"
+            git fetch --quiet
+            howFarBehind=$(git rev-list --count HEAD..@{u})
+            if [ "$howFarBehind" -gt 0 ]; then
+                echo "  - is $howFarBehind commits behind!"
+            fi
+        ); then
+            echo "Could not fetch $submodule"
+        fi
+    done
+
 # Applies each submodule's respective patches.
 applyPatches:
     #!/bin/bash
