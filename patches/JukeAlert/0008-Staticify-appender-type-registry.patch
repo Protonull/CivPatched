@@ -1,0 +1,56 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Sat, 20 May 2023 19:47:41 +0100
+Subject: [PATCH] Staticify appender type registry
+
+
+diff --git a/src/main/java/com/untamedears/jukealert/model/SnitchTypeManager.java b/src/main/java/com/untamedears/jukealert/model/SnitchTypeManager.java
+index 50e8741f1ae0f7ec07d78dfc0f7d5dae240255cf..7fc10521108ca452c889151979709b3c352ee8f4 100644
+--- a/src/main/java/com/untamedears/jukealert/model/SnitchTypeManager.java
++++ b/src/main/java/com/untamedears/jukealert/model/SnitchTypeManager.java
+@@ -24,27 +24,21 @@ import org.bukkit.inventory.ItemStack;
+ 
+ public class SnitchTypeManager {
+ 
+-	private Map<String, Class<? extends AbstractSnitchAppender>> appenderClasses;
++	// CivPatched Start
++	public static final Map<String, Class<? extends AbstractSnitchAppender>> APPENDERS = Map.ofEntries(
++			Map.entry(BroadcastEntryAppender.ID, BroadcastEntryAppender.class),
++			Map.entry(SnitchLogAppender.ID, SnitchLogAppender.class),
++			Map.entry(LeverToggleAppender.ID, LeverToggleAppender.class),
++			Map.entry(DormantCullingAppender.ID, DormantCullingAppender.class),
++			Map.entry(ShowOwnerOnDestroyAppender.ID, ShowOwnerOnDestroyAppender.class)
++	);
++	// CivPatched End
+ 	private Map<ItemStack, SnitchFactoryType> configFactoriesByItem;
+ 	private Map<Integer, SnitchFactoryType> configFactoriesById;
+ 
+ 	public SnitchTypeManager() {
+-		appenderClasses = new HashMap<>();
+ 		configFactoriesByItem = new HashMap<>();
+ 		configFactoriesById = new HashMap<>();
+-		registerAppenderTypes();
+-	}
+-
+-	private void registerAppenderTypes() {
+-		registerAppenderType(BroadcastEntryAppender.ID, BroadcastEntryAppender.class);
+-		registerAppenderType(SnitchLogAppender.ID, SnitchLogAppender.class);
+-		registerAppenderType(LeverToggleAppender.ID, LeverToggleAppender.class);
+-		registerAppenderType(DormantCullingAppender.ID, DormantCullingAppender.class);
+-		registerAppenderType(ShowOwnerOnDestroyAppender.ID, ShowOwnerOnDestroyAppender.class);
+-	}
+-
+-	private void registerAppenderType(String id, Class<? extends AbstractSnitchAppender> clazz) {
+-		appenderClasses.put(id.toLowerCase(), clazz);
+ 	}
+ 
+ 	public boolean parseFromConfig(ConfigurationSection config) {
+@@ -85,7 +79,7 @@ public class SnitchTypeManager {
+ 					logger.warning("Ignoring invalid entry " + key + " at " + appenderSection);
+ 					continue;
+ 				}
+-				Class<? extends AbstractSnitchAppender> appenderClass = appenderClasses.get(key.toLowerCase());
++				Class<? extends AbstractSnitchAppender> appenderClass = APPENDERS.get(key.toLowerCase()); // CivPatched
+ 				if (appenderClass == null) {
+ 					logger.warning("Appender " + key + " at " + appenderSection + " is of an unknown type");
+ 					// this is not something we should just ignore, disregard entire config in this

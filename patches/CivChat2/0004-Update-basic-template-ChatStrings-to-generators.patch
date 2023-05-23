@@ -1,0 +1,325 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Tue, 23 May 2023 08:21:37 +0100
+Subject: [PATCH] Update basic template ChatStrings to generators
+
+
+diff --git a/src/main/java/vg/civcraft/mc/civchat2/ChatStrings.java b/src/main/java/vg/civcraft/mc/civchat2/ChatStrings.java
+index c0b6da9a45476c4762d21b4b5edd1f3f828d0ae1..478d3f167356c2669d3701803ebe77a597ec8634 100644
+--- a/src/main/java/vg/civcraft/mc/civchat2/ChatStrings.java
++++ b/src/main/java/vg/civcraft/mc/civchat2/ChatStrings.java
+@@ -2,6 +2,13 @@ package vg.civcraft.mc.civchat2;
+ 
+ import org.bukkit.ChatColor;
+ 
++// CivPatched Start
++import java.util.function.Supplier;
++import net.kyori.adventure.text.Component;
++import net.kyori.adventure.text.format.NamedTextColor;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ public class ChatStrings {
+ 
+ 	public final static String localChatFormat = "<%1$s> %2$s";
+@@ -14,7 +21,20 @@ public class ChatStrings {
+ 
+ 	public final static String chatCantIgnoreSelf = ChatColor.YELLOW + "You can't ignore yourself.";
+ 
+-	public final static String chatNowChattingWith = ChatColor.GREEN + "You are now chatting with %s.";
++	// CivPatched Start
++	public static @NotNull Component nowChattingWith(
++			final @NotNull Supplier<@NotNull Component> name
++	) {
++		return Component.text()
++				.color(NamedTextColor.GREEN)
++				.append(
++						Component.text("You are now chatting with "),
++						name.get(),
++						Component.text(".")
++				)
++				.build();
++	}
++	// CivPatched End
+ 
+ 	public final static String chatMovedToGlobal = ChatColor.YELLOW + "You are now in local chat."; //previously global chat, changed to prevent confusing with global ! chat group
+ 
+@@ -22,17 +42,67 @@ public class ChatStrings {
+ 
+ 	public final static String chatGroupAlreadyChatting = ChatColor.YELLOW + "You are already chatting in that group.";
+ 
+-	public final static String chatGroupNowChattingIn = ChatColor.GREEN + "You are now chatting in group %s.";
++	// CivPatched Start
++	public static @NotNull Component nowChattingInGroup(
++			final @NotNull Supplier<@NotNull String> groupName
++	) {
++		return Component.text()
++				.color(NamedTextColor.GREEN)
++				.append(
++						Component.text("You are now chatting in group "),
++						Component.text(groupName.get()),
++						Component.text(".")
++				)
++				.build();
++	}
++	// CivPatched End
+ 
+ 	public final static String chatGroupNoPerms = ChatColor.RED + "You don't have permission to chat in this group.";
+ 
+-	public final static String chatNeedToUnignore = ChatColor.YELLOW + "You need to unignore %s.";
++	// CivPatched Start
++	public static @NotNull Component needToUnIgnore(
++			final @NotNull Supplier<@NotNull Component> name
++	) {
++		return Component.text()
++				.color(NamedTextColor.GREEN)
++				.append(
++						Component.text("You need to unignore "),
++						name.get(),
++						Component.text(".")
++				)
++				.build();
++	}
++	// CivPatched End
+ 
+ 	public final static String chatPlayerNotFound = ChatColor.RED + "No player exists with that name.";
+ 
+-	public final static String chatNowIgnoring = ChatColor.GREEN + "You are now ignoring %s";
+-
+-	public final static String chatStoppedIgnoring = ChatColor.GREEN + "You stopped ignoring %s.";
++	// CivPatched Start
++	public static @NotNull Component nowIgnoring(
++			final @NotNull Supplier<@NotNull Component> name
++	) {
++		return Component.text()
++				.color(NamedTextColor.GREEN)
++				.append(
++						Component.text("You are now ignoring "),
++						name.get(),
++						Component.text(".")
++				)
++				.build();
++	}
++
++	public static @NotNull Component stoppedIgnoring(
++			final @NotNull Supplier<@NotNull Component> name
++	) {
++		return Component.text()
++				.color(NamedTextColor.GREEN)
++				.append(
++						Component.text("You stopped ignoring "),
++						name.get(),
++						Component.text(".")
++				)
++				.build();
++	}
++	// CivPatched End
+ 
+ 	public final static String chatNotIgnoringAnyPlayers = ChatColor.GOLD + "You are not ignoring any players.";
+ 
+@@ -52,5 +122,18 @@ public class ChatStrings {
+ 
+ 	public final static String chatGroupMessage = ChatColor.GRAY + "[%s] %s: " + ChatColor.WHITE + "%s";
+ 	
+-	public final static String globalMuted = ChatColor.RED + "You are muted from global and local chat for %s";
++	// CivPatched Start
++	public static @NotNull Component globallyMuted(
++			final @NotNull Supplier<@NotNull String> time
++	) {
++		return Component.text()
++				.color(NamedTextColor.GREEN)
++				.append(
++						Component.text("You are muted from global and local chat for "),
++						Component.text(time.get()),
++						Component.text(".")
++				)
++				.build();
++	}
++	// CivPatched End
+ }
+diff --git a/src/main/java/vg/civcraft/mc/civchat2/CivChat2Manager.java b/src/main/java/vg/civcraft/mc/civchat2/CivChat2Manager.java
+index 8e7fbc9a10cb0cde27227dbb8ebd2374b53d51fc..af755a6f00fea7a6ea9af7d5633c3d6ec4910d42 100644
+--- a/src/main/java/vg/civcraft/mc/civchat2/CivChat2Manager.java
++++ b/src/main/java/vg/civcraft/mc/civchat2/CivChat2Manager.java
+@@ -153,7 +153,11 @@ public class CivChat2Manager {
+ 			sender.sendMessage(parse(ChatStrings.chatPlayerIgnoringYou));
+ 			return;
+ 		} else if (DBM.isIgnoringPlayer(sender.getUniqueId(), receiver.getUniqueId())) {
+-			sender.sendMessage(parse(ChatStrings.chatNeedToUnignore, receiverName));
++			// CivPatched Start
++			sender.sendMessage(ChatStrings.needToUnIgnore(
++					receiver::name
++			));
++			// CivPatched End
+ 			return;
+ 		}
+ 		chatLog.logPrivateMessage(sender, chatMessage, receiver.getName());
+@@ -188,7 +192,11 @@ public class CivChat2Manager {
+ 		Group targetChatGroup = groupChatChannels.get(sender.getUniqueId());
+ 		if (mutedUntil > System.currentTimeMillis()) {
+ 			if (targetChatGroup == null || targetChatGroup.getName().equals(instance.getPluginConfig().getGlobalChatGroupName())) {
+-				sender.sendMessage(String.format(ChatStrings.globalMuted, TextUtil.formatDuration(mutedUntil - System.currentTimeMillis())));
++				// CivPatched Start
++				sender.sendMessage(ChatStrings.globallyMuted(
++						() -> TextUtil.formatDuration(mutedUntil - System.currentTimeMillis())
++				));
++				// CivPatched End
+ 				return;
+ 			}
+ 		}
+@@ -340,7 +348,11 @@ public class CivChat2Manager {
+ 		if (group.getName().equals(config.getGlobalChatGroupName())) {
+ 			long mutedUntil = instance.getCivChat2SettingsManager().getGlobalChatMuteSetting().getValue(sender);
+ 			if (mutedUntil > System.currentTimeMillis()) {
+-				sender.sendMessage(String.format(ChatStrings.globalMuted, TextUtil.formatDuration(mutedUntil - System.currentTimeMillis())));
++				// CivPatched Start
++				sender.sendMessage(ChatStrings.globallyMuted(
++						() -> TextUtil.formatDuration(mutedUntil - System.currentTimeMillis())
++				));
++				// CivPatched End
+ 				return;
+ 			}
+ 		}
+diff --git a/src/main/java/vg/civcraft/mc/civchat2/commands/GroupChat.java b/src/main/java/vg/civcraft/mc/civchat2/commands/GroupChat.java
+index 8573b4c90ca52367c16641eeb0904546badb6ef8..7bb1e85334743a8b12a0301704a78e33bb5b6ebe 100644
+--- a/src/main/java/vg/civcraft/mc/civchat2/commands/GroupChat.java
++++ b/src/main/java/vg/civcraft/mc/civchat2/commands/GroupChat.java
+@@ -57,7 +57,11 @@ public class GroupChat extends BaseCommand {
+ 			return;
+ 		}
+ 		if (CivChat2.getInstance().getDatabaseManager().isIgnoringGroup(player.getUniqueId(), group.getName())) {
+-			player.sendMessage(String.format(ChatStrings.chatNeedToUnignore, group.getName()));
++			// CivPatched Start
++			player.sendMessage(ChatStrings.needToUnIgnore(
++					group::name
++			));
++			// CivPatched End
+ 			return;
+ 		}
+ 		if (chatMessage == null) {
+@@ -67,12 +71,20 @@ public class GroupChat extends BaseCommand {
+ 				if (curGroup == group) {
+ 					player.sendMessage(ChatStrings.chatGroupAlreadyChatting);
+ 				} else {
+-					player.sendMessage(String.format(ChatStrings.chatGroupNowChattingIn, group.getName()));
++					// CivPatched Start
++					player.sendMessage(ChatStrings.nowChattingInGroup(
++							group::getName
++					));
++					// CivPatched End
+ 					chatMan.removeGroupChat(player);
+ 					chatMan.addGroupChat(player, group);
+ 				}
+ 			} else {
+-				player.sendMessage(String.format(ChatStrings.chatGroupNowChattingIn, group.getName()));
++				// CivPatched Start
++				player.sendMessage(ChatStrings.nowChattingInGroup(
++						group::getName
++				));
++				// CivPatched End
+ 				if (chatMan.getChannel(player) != null) {
+ 					chatMan.removeChannel(player);
+ 				}
+diff --git a/src/main/java/vg/civcraft/mc/civchat2/commands/Ignore.java b/src/main/java/vg/civcraft/mc/civchat2/commands/Ignore.java
+index 5c69df1037f282f940cd752cb51a00c009ad0528..d38df5808a559816fa09dd40e05127f1da901611 100644
+--- a/src/main/java/vg/civcraft/mc/civchat2/commands/Ignore.java
++++ b/src/main/java/vg/civcraft/mc/civchat2/commands/Ignore.java
+@@ -31,12 +31,20 @@ public class Ignore extends BaseCommand {
+ 		if (!db.isIgnoringPlayer(player.getUniqueId(), ignoredPlayer.getUniqueId())) {
+ 			// Player added to the list
+ 			db.addIgnoredPlayer(player.getUniqueId(), ignoredPlayer.getUniqueId());
+-			player.sendMessage(String.format(ChatStrings.chatNowIgnoring, ignoredPlayer.getDisplayName()));
++			// CivPatched Start
++			player.sendMessage(ChatStrings.nowIgnoring(
++					ignoredPlayer::name
++			));
++			// CivPatched End
+ 			return;
+ 		} else {
+ 			// Player removed from the list
+ 			db.removeIgnoredPlayer(player.getUniqueId(), ignoredPlayer.getUniqueId());
+-			player.sendMessage(String.format(ChatStrings.chatStoppedIgnoring, ignoredPlayer.getDisplayName()));
++			// CivPatched Start
++			player.sendMessage(ChatStrings.stoppedIgnoring(
++					ignoredPlayer::name
++			));
++			// CivPatched End
+ 			return;
+ 		}
+ 	}
+diff --git a/src/main/java/vg/civcraft/mc/civchat2/commands/IgnoreGroup.java b/src/main/java/vg/civcraft/mc/civchat2/commands/IgnoreGroup.java
+index cb44d2c1ed3604d4405387e8a0068d7d69d7494f..e16ec4d2a059742f4de96d652620bdd4ffb5b136 100644
+--- a/src/main/java/vg/civcraft/mc/civchat2/commands/IgnoreGroup.java
++++ b/src/main/java/vg/civcraft/mc/civchat2/commands/IgnoreGroup.java
+@@ -28,7 +28,11 @@ public class IgnoreGroup extends BaseCommand {
+ 		if (!db.isIgnoringGroup(player.getUniqueId(), ignore)) {
+ 			db.addIgnoredGroup(player.getUniqueId(), ignore);
+ 			CivChat2Manager chatMan = CivChat2.getInstance().getCivChat2Manager();
+-			player.sendMessage(String.format(ChatStrings.chatNowIgnoring, ignore));
++			// CivPatched Start
++			player.sendMessage(ChatStrings.nowIgnoring(
++					group::name
++			));
++			// CivPatched End
+ 			if (group.equals(chatMan.getGroupChatting(player))) {
+ 				chatMan.removeGroupChat(player);
+ 				player.sendMessage(ChatStrings.chatMovedToGlobal);
+@@ -36,7 +40,11 @@ public class IgnoreGroup extends BaseCommand {
+ 			return;
+ 		} else {
+ 			db.removeIgnoredGroup(player.getUniqueId(), ignore);
+-			player.sendMessage(String.format(ChatStrings.chatStoppedIgnoring, ignore));
++			// CivPatched Start
++			player.sendMessage(ChatStrings.stoppedIgnoring(
++					group::name
++			));
++			// CivPatched End
+ 		}
+ 	}
+ }
+diff --git a/src/main/java/vg/civcraft/mc/civchat2/commands/Reply.java b/src/main/java/vg/civcraft/mc/civchat2/commands/Reply.java
+index 0c7229bfe00da01d7643981fea68b13ee8e233d0..2cd7fac61983658faa974900e71452e62368984b 100644
+--- a/src/main/java/vg/civcraft/mc/civchat2/commands/Reply.java
++++ b/src/main/java/vg/civcraft/mc/civchat2/commands/Reply.java
+@@ -44,6 +44,10 @@ public class Reply extends BaseCommand {
+ 		// Player to chat with reply user
+ 		chatMan.removeChannel(player);
+ 		chatMan.addChatChannel(player, receiver);
+-		player.sendMessage(String.format(ChatStrings.chatNowChattingWith, receiver.getName()));
++		// CivPatched Start
++		player.sendMessage(ChatStrings.nowChattingWith(
++				receiver::name
++		));
++		// CivPatched End
+ 	}
+ }
+diff --git a/src/main/java/vg/civcraft/mc/civchat2/commands/Tell.java b/src/main/java/vg/civcraft/mc/civchat2/commands/Tell.java
+index ce7e2263c78818f5e0d209f0784c7d2555cb3ab5..ab4dde6d4aa3320cc0f8b1bcc16e2b13030ae6d6 100644
+--- a/src/main/java/vg/civcraft/mc/civchat2/commands/Tell.java
++++ b/src/main/java/vg/civcraft/mc/civchat2/commands/Tell.java
+@@ -56,7 +56,11 @@ public class Tell extends BaseCommand {
+ 		} else {
+ 			CivChatDAO db = CivChat2.getInstance().getDatabaseManager();
+ 			if (db.isIgnoringPlayer(player.getUniqueId(), receiver.getUniqueId())) {
+-				player.sendMessage(String.format(ChatStrings.chatNeedToUnignore, receiver.getDisplayName()));
++				// CivPatched Start
++				player.sendMessage(ChatStrings.needToUnIgnore(
++						receiver::name
++				));
++				// CivPatched End
+ 				return;
+ 			}
+ 
+@@ -65,7 +69,11 @@ public class Tell extends BaseCommand {
+ 				return;
+ 			}
+ 			chatMan.addChatChannel(player, receiver);
+-			player.sendMessage(String.format(ChatStrings.chatNowChattingWith, receiver.getDisplayName()));
++			// CivPatched Start
++			player.sendMessage(ChatStrings.nowChattingWith(
++					receiver::name
++			));
++			// CivPatched End
+ 		}
+ 	}
+ }

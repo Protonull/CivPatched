@@ -1,0 +1,271 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Tue, 23 May 2023 08:50:34 +0100
+Subject: [PATCH] Goodbye StringBuilder
+
+Some of these really are ridiculous.
+
+diff --git a/src/main/java/vg/civcraft/mc/civchat2/CivChat2Manager.java b/src/main/java/vg/civcraft/mc/civchat2/CivChat2Manager.java
+index 785203954d3275e95d9a9e31982228c87cf5be0f..8e7fbc9a10cb0cde27227dbb8ebd2374b53d51fc 100644
+--- a/src/main/java/vg/civcraft/mc/civchat2/CivChat2Manager.java
++++ b/src/main/java/vg/civcraft/mc/civchat2/CivChat2Manager.java
+@@ -134,17 +134,15 @@ public class CivChat2Manager {
+ 		if (event.isCancelled()) {
+ 			return;
+ 		}
+-		StringBuilder sb = new StringBuilder();
+ 		String senderName = customNames.containsKey(sender.getUniqueId()) ? customNames.get(sender.getUniqueId())
+ 				: sender.getDisplayName();
+ 		String receiverName = customNames.containsKey(receiver.getUniqueId()) ? customNames.get(receiver.getUniqueId())
+ 				: receiver.getDisplayName();
+ 
+-		String senderMessage = sb.append(ChatColor.LIGHT_PURPLE).append("To ").append(receiverName)
+-				.append(ChatColor.LIGHT_PURPLE).append(": ").append(chatMessage).toString();
+-		sb = new StringBuilder();
+-		String receiverMessage = sb.append(ChatColor.LIGHT_PURPLE).append("From ").append(senderName)
+-				.append(ChatColor.LIGHT_PURPLE).append(": ").append(chatMessage).toString();
++		// CivPatched Start
++		String senderMessage = ChatColor.LIGHT_PURPLE + "To " + receiverName + ChatColor.LIGHT_PURPLE + ": " + chatMessage;
++		String receiverMessage = ChatColor.LIGHT_PURPLE + "From " + senderName + ChatColor.LIGHT_PURPLE + ": " + chatMessage;
++		// CivPatched End
+ 
+ 		if (isPlayerAfk(receiver)) {
+ 			receiver.sendMessage(receiverMessage);
+@@ -201,15 +199,12 @@ public class CivChat2Manager {
+ 		int y = location.getBlockY();
+ 		double scale = (config.getYScale()) / 1000;
+ 
+-		StringBuilder sb = new StringBuilder();
+-
+ 		// Do height check
+ 		// Player is above chat increase range
+ 		if (y > height) {
+ 			int above = y - height;
+ 			int newRange = (int) (range + (range * (scale * above)));
+ 			range = newRange;
+-			sb.delete(0, sb.length());
+ 		}
+ 
+ 		Set<String> receivers = new HashSet<>();
+diff --git a/src/main/java/vg/civcraft/mc/civchat2/commands/Exit.java b/src/main/java/vg/civcraft/mc/civchat2/commands/Exit.java
+index 90782a0f8b463e7812be8ceef8fa349c584db36b..a430e50281c0a6f10984c833842f845ae166f72f 100644
+--- a/src/main/java/vg/civcraft/mc/civchat2/commands/Exit.java
++++ b/src/main/java/vg/civcraft/mc/civchat2/commands/Exit.java
+@@ -26,9 +26,7 @@ public class Exit extends BaseCommand {
+ 			player.sendMessage(ChatStrings.chatMovedToGlobal);
+ 			return;
+ 		}
+-		StringBuilder chatMsg = new StringBuilder();
+-		chatMsg.append(message);
+ 		Set<Player> players = new HashSet<>(CivChat2.getInstance().getServer().getOnlinePlayers());
+-		chatMan.broadcastMessage(player, chatMsg.toString(), localChatFormat, players);
++		chatMan.broadcastMessage(player, message, localChatFormat, players); // CivPatched
+ 	}
+ }
+diff --git a/src/main/java/vg/civcraft/mc/civchat2/commands/GroupChat.java b/src/main/java/vg/civcraft/mc/civchat2/commands/GroupChat.java
+index f86c230314ff8f4a596196a9eb3804324e932077..8573b4c90ca52367c16641eeb0904546badb6ef8 100644
+--- a/src/main/java/vg/civcraft/mc/civchat2/commands/GroupChat.java
++++ b/src/main/java/vg/civcraft/mc/civchat2/commands/GroupChat.java
+@@ -79,21 +79,19 @@ public class GroupChat extends BaseCommand {
+ 				chatMan.addGroupChat(player, group);
+ 			}
+ 		} else {
+-			StringBuilder chatMsg = new StringBuilder();
+-			chatMsg.append(chatMessage);
+ 			if (isGroupChatting) {
+ 				// Player already groupchatting check if it's this group
+ 				Group curGroup = chatMan.getGroupChatting(player);
+ 				if (curGroup == group) {
+-					chatMan.sendGroupMsg(player, group, chatMsg.toString());
++					chatMan.sendGroupMsg(player, group, chatMessage); // CivPatched
+ 				} else {
+-					chatMan.sendGroupMsg(player, group, chatMsg.toString());
++					chatMan.sendGroupMsg(player, group, chatMessage); // CivPatched
+ 				}
+ 			} else {
+ 				if (chatMan.getChannel(player) != null) {
+ 					chatMan.removeChannel(player);
+ 				}
+-				chatMan.sendGroupMsg(player, group, chatMsg.toString());
++				chatMan.sendGroupMsg(player, group, chatMessage); // CivPatched
+ 			}
+ 		}
+ 	}
+diff --git a/src/main/java/vg/civcraft/mc/civchat2/commands/IgnoreList.java b/src/main/java/vg/civcraft/mc/civchat2/commands/IgnoreList.java
+index 24d5aaf461a524ebb9846feae7db2e6ec07985ab..1a4b24ed0cfde1500e2046c793dc9b36aa176efc 100644
+--- a/src/main/java/vg/civcraft/mc/civchat2/commands/IgnoreList.java
++++ b/src/main/java/vg/civcraft/mc/civchat2/commands/IgnoreList.java
+@@ -11,6 +11,12 @@ import vg.civcraft.mc.civchat2.CivChat2;
+ import vg.civcraft.mc.civchat2.database.CivChatDAO;
+ import vg.civcraft.mc.namelayer.NameAPI;
+ 
++// CivPatched Start
++import java.util.Objects;
++import java.util.stream.Collectors;
++import org.bukkit.ChatColor;
++// CivPatched End
++
+ public class IgnoreList extends BaseCommand {
+ 
+ 	@CommandAlias("ignorelist")
+@@ -24,20 +30,14 @@ public class IgnoreList extends BaseCommand {
+ 		if (players == null || players.isEmpty()) {
+ 			player.sendMessage(ChatStrings.chatNotIgnoringAnyPlayers);
+ 		} else {
+-			StringBuilder sb = new StringBuilder();
+-			sb.append("<a>Ignored Players: \n<n>");
+-			for (UUID playerUUID : players) {
+-				String playerName = NameAPI.getCurrentName(playerUUID);
+-				if (playerName != null) {
+-					sb.append(playerName);
+-					sb.append(", ");
+-				}
+-			}
+-			String msg = sb.toString();
+-			if (msg.endsWith(", ")) {
+-				msg = msg.substring(0, msg.length() - 2);
+-			}
+-			player.sendMessage(msg);
++			// CivPatched Start
++			player.sendMessage(ChatColor.GOLD + "Ignored Players: \n" + ChatColor.GRAY + players
++					.stream()
++					.map(NameAPI::getCurrentName)
++					.filter(Objects::nonNull)
++					.collect(Collectors.joining(", "))
++			);
++			// CivPatched End
+ 		}
+ 
+ 		// No groups ignored
+@@ -45,17 +45,7 @@ public class IgnoreList extends BaseCommand {
+ 			player.sendMessage(ChatStrings.chatNotIgnoringAnyGroups);
+ 			return;
+ 		} else {
+-			StringBuilder sb = new StringBuilder();
+-			sb.append("<a>Ignored Groups: \n<n>");
+-			for (String s : groups) {
+-				sb.append(s);
+-				sb.append(", ");
+-			}
+-			String msg = sb.toString();
+-			if (msg.endsWith(", ")) {
+-				msg = msg.substring(0, msg.length() - 2);
+-			}
+-			player.sendMessage(msg);
++			player.sendMessage(ChatColor.GOLD + "Ignored Groups: \n" + ChatColor.GRAY + String.join(", ", groups)); // CivPatched
+ 		}
+ 	}
+ }
+diff --git a/src/main/java/vg/civcraft/mc/civchat2/listeners/CivChat2Listener.java b/src/main/java/vg/civcraft/mc/civchat2/listeners/CivChat2Listener.java
+index 16dfc8ced5f030758f8e0d152b4749a76fe4ba72..5a903460d8ffecd5786feef873df3f736bbb72aa 100644
+--- a/src/main/java/vg/civcraft/mc/civchat2/listeners/CivChat2Listener.java
++++ b/src/main/java/vg/civcraft/mc/civchat2/listeners/CivChat2Listener.java
+@@ -121,18 +121,13 @@ public class CivChat2Listener implements Listener {
+ 
+ 
+ 				if (chatChannel != null) {
+-					StringBuilder sb = new StringBuilder();
+ 					Player receiver = Bukkit.getPlayer(chatChannel);
+ 					if (receiver != null) {
+ 						chatman.sendPrivateMsg(sender, receiver, chatMessage);
+ 						return;
+ 					} else {
+ 						chatman.removeChannel(sender);
+-						String offlineMessage = sb.append(ChatColor.GOLD)
+-								.append("The player you were chatting with has gone offline,")
+-								.append(" you have been moved to regular chat").toString();
+-						sb.delete(0, sb.length());
+-						sender.sendMessage(offlineMessage);
++						sender.sendMessage(ChatColor.GOLD + "The player you were chatting with has gone offline, you have been moved to regular chat"); // CivPatched
+ 						return;
+ 					}
+ 				}
+diff --git a/src/main/java/vg/civcraft/mc/civchat2/utility/CivChat2Executor.java b/src/main/java/vg/civcraft/mc/civchat2/utility/CivChat2Executor.java
+index 13c6a7c2f9601510e0dac77f059bb718e9be475e..1da4963820f703c4501b2725e99b3ea3608da22f 100644
+--- a/src/main/java/vg/civcraft/mc/civchat2/utility/CivChat2Executor.java
++++ b/src/main/java/vg/civcraft/mc/civchat2/utility/CivChat2Executor.java
+@@ -29,13 +29,7 @@ public class CivChat2Executor implements CommandExecutor {
+ 		ChatColor sayChat = ChatColor.valueOf(config.getOpChatColor());
+ 		String msgString = null;
+ 		if (cmd.getName().equalsIgnoreCase("say")) {
+-			StringBuilder msg = new StringBuilder();
+-			for (int arg = 0; arg < args.length; arg++) {
+-				msg.append(args[arg]);
+-				msg.append(" ");
+-			}
+-			msgString = msg.toString();
+-			msg.delete(0, msg.length());
++			msgString = String.join(" ", args); // CivPatched
+ 		}
+ 		if (sender instanceof Player) {
+ 			if (msgString == null) {
+@@ -44,16 +38,7 @@ public class CivChat2Executor implements CommandExecutor {
+ 			Player player = (Player) sender;
+ 			if (player.hasPermission("bukkit.command.say") || player.isOp()) {
+ 				this.plugin.getServer().broadcastMessage(sayChat + "[Server] " + msgString);
+-				StringBuilder result = new StringBuilder();
+-				result.append("Player had good permissions, bukkit.command.say or OP");
+-				result.append(", ");
+-				result.append("Broadcasted message =[");
+-				result.append(msgString);
+-				result.append("] ChatColor = [");
+-				result.append(sayChat);
+-				result.append("]");
+-				debugMsg(result.toString());
+-				result.delete(0, result.length());
++				debugMsg("Player had good permissions, bukkit.command.say or OP, Broadcasted message=[" + msgString + "] ChatColor=[" + sayChat + "]"); // CivPatched
+ 				return true;
+ 			} else {
+ 				player.sendMessage(ChatColor.RED + "You do not have permission to use that command");
+@@ -62,16 +47,7 @@ public class CivChat2Executor implements CommandExecutor {
+ 			}
+ 		} else if (sender instanceof ConsoleCommandSender) {
+ 			this.plugin.getServer().broadcastMessage(sayChat + "[Server] " + msgString);
+-			StringBuilder result = new StringBuilder();
+-			result.append("Console sent the command");
+-			result.append(", ");
+-			result.append("Broadcasted message =[");
+-			result.append(msgString);
+-			result.append("] ChatColor = [");
+-			result.append(sayChat);
+-			result.append("]");
+-			debugMsg(result.toString());
+-			result.delete(0, result.length());
++			debugMsg("Console sent the command, Broadcasted message =[" + msgString + "] ChatColor=[" + sayChat + "]"); // CivPatched
+ 			return true;
+ 		}
+ 		debugMsg("Command was not a \"say\" command");
+@@ -79,12 +55,6 @@ public class CivChat2Executor implements CommandExecutor {
+ 	}
+ 
+ 	private void debugMsg(String text) {
+-
+-		StringBuilder sb = new StringBuilder();
+-		sb.append(this.getClass().getName());
+-		sb.append(", ");
+-		sb.append(text);
+-		logger.debug(sb.toString());
+-		sb.delete(0, sb.length());
++		logger.debug(this.getClass().getName() + ", " + text); // CivPatched
+ 	}
+ }
+diff --git a/src/main/java/vg/civcraft/mc/civchat2/utility/CivChat2FileLogger.java b/src/main/java/vg/civcraft/mc/civchat2/utility/CivChat2FileLogger.java
+index 889fc1a9cf9d69b0c20dcce9e74f4b28caf5f292..28b52b51259bfb87ceaac1c1052120e7183e5e49 100644
+--- a/src/main/java/vg/civcraft/mc/civchat2/utility/CivChat2FileLogger.java
++++ b/src/main/java/vg/civcraft/mc/civchat2/utility/CivChat2FileLogger.java
+@@ -48,14 +48,6 @@ public class CivChat2FileLogger {
+ 	}
+ 
+ 	private String getPlayersNames(Set<String> players) {
+-
+-		StringBuilder builder = new StringBuilder();
+-		for (String player : players) {
+-			builder.append(player).append(", ");
+-		}
+-		if (players.size() > 0) {
+-			builder.deleteCharAt(builder.length() - 2);
+-		}
+-		return builder.toString();
++		return String.join(", ", players); // CivPatched
+ 	}
+ }

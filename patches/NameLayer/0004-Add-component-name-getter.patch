@@ -1,0 +1,35 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Tue, 23 May 2023 07:54:40 +0100
+Subject: [PATCH] Add component name getter
+
+
+diff --git a/src/main/java/vg/civcraft/mc/namelayer/group/Group.java b/src/main/java/vg/civcraft/mc/namelayer/group/Group.java
+index 403357c32f0ddc8aa5e6ac78d615bb3e96daaf03..e15133b9393741b1645fd1bd81207ec508fffb49 100644
+--- a/src/main/java/vg/civcraft/mc/namelayer/group/Group.java
++++ b/src/main/java/vg/civcraft/mc/namelayer/group/Group.java
+@@ -16,6 +16,11 @@ import vg.civcraft.mc.namelayer.NameAPI;
+ import vg.civcraft.mc.namelayer.NameLayerPlugin;
+ import vg.civcraft.mc.namelayer.database.GroupManagerDao;
+ 
++// CivPatched Start
++import net.kyori.adventure.text.Component;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ public class Group {
+ 	
+ 	private static GroupManagerDao db;
+@@ -476,6 +481,12 @@ public class Group {
+ 	
+ 	// == GETTERS ========================================================================= //
+ 	
++	// CivPatched Start
++	public @NotNull Component name() {
++		return Component.text(getName());
++	}
++	// CivPatched End
++
+ 	/**
+ 	 * @return Returns the group name.
+ 	 */
