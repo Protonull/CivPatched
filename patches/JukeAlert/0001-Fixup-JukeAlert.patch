@@ -1,8 +1,11 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Sun, 14 May 2023 15:09:37 +0100
+Date: Sat, 20 May 2023 18:52:32 +0100
 Subject: [PATCH] Fixup JukeAlert
 
+Use removeIf in GUICommand.
+
+Remove redundant saveDefaultConfig()
 
 diff --git a/build.gradle.kts b/build.gradle.kts
 index 395cbef720ada467aa901b82ca443181c3effe7c..66a6db706f0cfa49e8e35d1e09ca9737e688604c 100644
@@ -43,6 +46,45 @@ index 395cbef720ada467aa901b82ca443181c3effe7c..66a6db706f0cfa49e8e35d1e09ca9737
 +	compileOnly(project(":NameLayer"))
 +	compileOnly("net.civmc.citadel:citadel-paper:5.1.2:dev")
  }
+diff --git a/src/main/java/com/untamedears/jukealert/JukeAlert.java b/src/main/java/com/untamedears/jukealert/JukeAlert.java
+index 1cc38740144009fc2e5138b81867cc9cf873be9a..a2089e472dcc69d91c1385a93e885fa325ac5971 100644
+--- a/src/main/java/com/untamedears/jukealert/JukeAlert.java
++++ b/src/main/java/com/untamedears/jukealert/JukeAlert.java
+@@ -84,7 +84,6 @@ public class JukeAlert extends ACivMod {
+ 		snitchConfigManager = new SnitchTypeManager();
+ 		cullManager = new SnitchCullManager();
+ 		configManager = new JAConfigManager(this, snitchConfigManager);
+-		saveDefaultConfig();
+ 		dao = new JukeAlertDAO(configManager.getDatabase(getConfig()));
+ 		if (!dao.updateDatabase()) {
+ 			getLogger().severe("Errors setting up database, shutting down");
+diff --git a/src/main/java/com/untamedears/jukealert/commands/GUICommand.java b/src/main/java/com/untamedears/jukealert/commands/GUICommand.java
+index 4dd79e31c64ececfc3c2f435f88c24dad6bf3c87..090cfa53f3ff865c5a1faff4ef1dfc812e760ba0 100644
+--- a/src/main/java/com/untamedears/jukealert/commands/GUICommand.java
++++ b/src/main/java/com/untamedears/jukealert/commands/GUICommand.java
+@@ -11,7 +11,6 @@ import com.untamedears.jukealert.util.JAUtility;
+ import com.untamedears.jukealert.util.JukeAlertPermissionHandler;
+ import java.util.ArrayList;
+ import java.util.Collection;
+-import java.util.Iterator;
+ import org.bukkit.ChatColor;
+ import org.bukkit.entity.Player;
+ 
+@@ -30,13 +29,7 @@ public class GUICommand extends BaseCommand {
+ 		Collection<Snitch> snitches = JukeAlert.getInstance().getSnitchManager()
+ 				.getSnitchesCovering(player.getLocation());
+ 		// Sort out the ones the player has no perms for
+-		Iterator<Snitch> iter = snitches.iterator();
+-		while (iter.hasNext()) {
+-			Snitch snitch = iter.next();
+-			if (!snitch.hasPermission(player, JukeAlertPermissionHandler.getReadLogs())) {
+-				iter.remove();
+-			}
+-		}
++		snitches.removeIf(snitch -> !snitch.hasPermission(player, JukeAlertPermissionHandler.getReadLogs())); // CivPatched
+ 		if (snitches.isEmpty()) {
+ 			player.sendMessage(
+ 					ChatColor.RED + "You do not own any snitches nearby or lack permission to view their logs!");
 diff --git a/src/main/resources/plugin.yml b/src/main/resources/plugin.yml
 index 0e1a39cc4e0fde0413162812f3bbd55f44973135..df44043e5b048c4dd84fda5c20915ed9cc7258be 100644
 --- a/src/main/resources/plugin.yml
