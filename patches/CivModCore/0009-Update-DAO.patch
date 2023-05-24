@@ -1,9 +1,220 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Fri, 19 May 2023 02:36:47 +0100
-Subject: [PATCH] Overhaul database migrations
+Date: Sat, 13 May 2023 10:04:27 +0100
+Subject: [PATCH] Update DAO
 
+Entirely overhaul database migrations.
 
+Allow ManagedDatasource to be constructed with a HikariConfig.
+
+Add DefaultDatasource, which allows other plugins to use CivModCore's database.
+
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java b/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java
+index 146c7b181acdc67f5eb375644db485af384a5e0a..7b3268b88363ed23db328f726c43f00f4b2cee24 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java
+@@ -28,6 +28,10 @@ import vg.civcraft.mc.civmodcore.world.locations.chunkmeta.stat.LoadStatisticMan
+ import vg.civcraft.mc.civmodcore.world.locations.global.CMCWorldDAO;
+ import vg.civcraft.mc.civmodcore.world.locations.global.WorldIDManager;
+ 
++// CivPatched Start
++import vg.civcraft.mc.civmodcore.dao.DefaultDatasource;
++// CivPatched End
++
+ public final class CivModCorePlugin extends ACivMod {
+ 
+ 	private static CivModCorePlugin instance;
+@@ -43,6 +47,7 @@ public final class CivModCorePlugin extends ACivMod {
+ 	public void onEnable() {
+ 		instance = this;
+ 		registerConfigClass(DatabaseCredentials.class);
++		registerConfigClass(DefaultDatasource.class); // CivPatched
+ 		// Save default resources
+ 		saveDefaultResource("enchants.yml");
+ 		super.onEnable();
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java b/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
+index 18dbd20f338cd4be042f165ddab32d6699b87895..73594c6acc43127be5536048f7a265e56a1f0b71 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
+@@ -37,11 +37,55 @@ import vg.civcraft.mc.civmodcore.world.model.GlobalYLimitedArea;
+ import vg.civcraft.mc.civmodcore.world.model.IArea;
+ import vg.civcraft.mc.civmodcore.world.model.RectangleArea;
+ 
++// CivPatched Start
++import org.jetbrains.annotations.NotNull;
++import vg.civcraft.mc.civmodcore.ACivMod;
++import vg.civcraft.mc.civmodcore.dao.DatabaseCredentials;
++import vg.civcraft.mc.civmodcore.dao.DefaultDatasource;
++import vg.civcraft.mc.civmodcore.dao.ManagedDatasource;
++import vg.civcraft.mc.civmodcore.utilities.CivLogger;
++// CivPatched End
++
+ @UtilityClass
+ public final class ConfigHelper {
+ 
+ 	private static final Logger LOGGER = Bukkit.getLogger();
+ 
++	// CivPatched Start
++	/**
++	 * Attempts to retrieve a ManagedDatasource (aka a database connection) from the config at a given key.
++	 *
++	 * @param config The configuration section to get the ManagedDatasource from.
++	 * @param key The key of the ManagedDatasource.
++	 * @param plugin The owning plugin of the ManagedDatasource.
++	 * @return Returns a new ManagedDatasource if found, null otherwise.
++	 */
++	public @Nullable ManagedDatasource getManagedDatasource(
++			final @NotNull ConfigurationSection config,
++			final @NotNull String key,
++			final @NotNull ACivMod plugin
++	) {
++		final Object value = config.get(key, null);
++		if (value instanceof final DatabaseCredentials credentials) {
++			return ManagedDatasource.construct(plugin, credentials);
++		}
++		if (value instanceof final DefaultDatasource connection) {
++			return connection.getManagedDatasource();
++		}
++		if (value instanceof final ConfigurationSection section) {
++			final var logger = CivLogger.getLogger(plugin.getClass(), ConfigHelper.class);
++			logger.warning("Deprecated database definition at [" + config.getCurrentPath() + "." + key + "]");
++			final DatabaseCredentials credentials = DatabaseCredentials.deserialize(section.getValues(false));
++			if (credentials == null) {
++				logger.warning("Deprecated database definition at [" + config.getCurrentPath() + "." + key + "] could not be deserialized into credentials!");
++				return null;
++			}
++			return ManagedDatasource.construct(plugin, credentials);
++		}
++		return null;
++	}
++	// CivPatched End
++
+ 	/**
+ 	 * Retrieves the configuration section at the given key on the given configuration section.
+ 	 *
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/dao/ConnectionPool.java b/src/main/java/vg/civcraft/mc/civmodcore/dao/ConnectionPool.java
+index 6b9098ba8c0d71130fb3baf09b661205416642b0..66acb754bb358822e796642e9c3d050fdd0b532a 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/dao/ConnectionPool.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/dao/ConnectionPool.java
+@@ -1,17 +1,21 @@
+ package vg.civcraft.mc.civmodcore.dao;
+ 
+-import com.google.common.base.Strings;
+ import com.zaxxer.hikari.HikariConfig;
+ import com.zaxxer.hikari.HikariDataSource;
+ import java.sql.Connection;
+ import java.sql.SQLException;
+ import java.sql.Statement;
+-import java.util.Objects;
+ import java.util.logging.Logger;
+ import javax.annotation.Nonnull;
+ import javax.annotation.Nullable;
+ import org.bukkit.Bukkit;
+ 
++// CivPatched Start
++import java.util.logging.Level;
++import org.jetbrains.annotations.NotNull;
++import vg.civcraft.mc.civmodcore.utilities.DeprecationUtils;
++// CivPatched End
++
+ /**
+  * Handy Connection Pool / Database wrapper for use by all plugins.
+  *
+@@ -20,8 +24,6 @@ import org.bukkit.Bukkit;
+ public class ConnectionPool {
+ 
+ 	private static final Logger LOGGER = Bukkit.getLogger();
+-
+-	private final DatabaseCredentials credentials;
+ 	private HikariDataSource datasource;
+ 
+ 	/**
+@@ -31,31 +33,23 @@ public class ConnectionPool {
+ 	 * @param credentials The credentials to connect with.
+ 	 */
+ 	public ConnectionPool(@Nonnull final DatabaseCredentials credentials) {
+-		this.credentials = Objects.requireNonNull(credentials,
+-				"Cannot create a ConnectionPool with a null set of credentials.");
+-		HikariConfig config = new HikariConfig();
+-		config.setJdbcUrl("jdbc:" + credentials.driver() + "://" + credentials.host() + ":" +
+-				credentials.port() + "/" + credentials.database());
+-		config.setConnectionTimeout(credentials.connectionTimeout());
+-		config.setIdleTimeout(credentials.idleTimeout());
+-		config.setMaxLifetime(credentials.maxLifetime());
+-		config.setMaximumPoolSize(credentials.poolSize());
+-		config.setUsername(credentials.username());
+-		if (!Strings.isNullOrEmpty(credentials.password())) {
+-			config.setPassword(credentials.password());
+-		}
++		this(credentials.generateConfig()); // CivPatched
++	}
++
++	// CivPatched Start
++	public ConnectionPool(final @NotNull HikariConfig config) {
+ 		this.datasource = new HikariDataSource(config);
+ 		try (final Connection connection = getConnection();
+ 			 final Statement statement = connection.createStatement()) {
+ 			statement.executeQuery("SELECT 1;");
+ 			LOGGER.info("Successfully connected to the database.");
+ 		}
+-		catch (SQLException exception) {
+-			LOGGER.severe("Unable to connect to the database.");
+-			exception.printStackTrace();
++		catch (final SQLException exception) {
++			LOGGER.log(Level.SEVERE, "Unable to connect to the database.", exception);
+ 			this.datasource = null;
+ 		}
+ 	}
++	// CivPatched End
+ 
+ 	/**
+ 	 * Creates a new ConnectionPool based on explicitly defined parameters. Note that these parameters are not
+@@ -94,7 +88,7 @@ public class ConnectionPool {
+ 	 */
+ 	@Nonnull
+ 	public DatabaseCredentials getCredentials() {
+-		return this.credentials;
++		throw new DeprecationUtils.DeprecationException("ConnectionPool doesn't use DatabaseCredentials anymore!");
+ 	}
+ 
+ 	/**
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/dao/DatabaseCredentials.java b/src/main/java/vg/civcraft/mc/civmodcore/dao/DatabaseCredentials.java
+index 85707ef2bfec4dc4f5f9398b578436f31ffc03a3..2b025cc68a243e2fb518dff32752ddaaeaef3b94 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/dao/DatabaseCredentials.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/dao/DatabaseCredentials.java
+@@ -9,6 +9,12 @@ import org.bukkit.configuration.serialization.ConfigurationSerializable;
+ import org.bukkit.util.NumberConversions;
+ import vg.civcraft.mc.civmodcore.utilities.MoreMapUtils;
+ 
++// CivPatched Start
++import com.zaxxer.hikari.HikariConfig;
++import org.apache.commons.lang3.StringUtils;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ /**
+  * This is a data class representing a set of credentials used for connecting to databases.
+  *
+@@ -71,4 +77,19 @@ public record DatabaseCredentials(String username,
+ 						"maxLifetime", "max_lifetime")); // keys
+ 	}
+ 
++	// CivPatched Start
++	public @NotNull HikariConfig generateConfig() {
++		final var config = new HikariConfig();
++		config.setJdbcUrl("jdbc:" + driver() + "://" + host() + ":" + port() + "/" + database());
++		config.setConnectionTimeout(connectionTimeout());
++		config.setIdleTimeout(idleTimeout());
++		config.setMaxLifetime(maxLifetime());
++		config.setMaximumPoolSize(poolSize());
++		config.setUsername(username());
++		if (StringUtils.isNotEmpty(password())) {
++			config.setPassword(password());
++		}
++		return config;
++	}
++	// CivPatched End
+ }
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/dao/DatabaseMigration.java b/src/main/java/vg/civcraft/mc/civmodcore/dao/DatabaseMigration.java
 index 852aabcc189759aa7078a530f57c8d496f62f250..7ed48b4dd45b4dffe0d34d88c463684b40cabd9d 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/dao/DatabaseMigration.java
@@ -160,8 +371,64 @@ index 852aabcc189759aa7078a530f57c8d496f62f250..7ed48b4dd45b4dffe0d34d88c463684b
 +        };
 +    }
  }
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/dao/DefaultDatasource.java b/src/main/java/vg/civcraft/mc/civmodcore/dao/DefaultDatasource.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..8ac5c108163854fe704f1c2430fd22f458f8298b
+--- /dev/null
++++ b/src/main/java/vg/civcraft/mc/civmodcore/dao/DefaultDatasource.java
+@@ -0,0 +1,49 @@
++package vg.civcraft.mc.civmodcore.dao;
++
++import java.util.Map;
++import lombok.AccessLevel;
++import lombok.NoArgsConstructor;
++import org.bukkit.configuration.serialization.ConfigurationSerializable;
++import org.jetbrains.annotations.NotNull;
++import org.jetbrains.annotations.Nullable;
++import vg.civcraft.mc.civmodcore.CivModCorePlugin;
++
++/**
++ * <p>This class is to be used in <i>other</i> plugin configs so that they can piggyback off CivModCode's database
++ * connection instead of defining, parsing, and instantiating their own.</p>
++ *
++ * <p>Example usage: <pre>{@code
++ * database:
++ *   ==: vg.civcraft.mc.civmodcore.dao.DefaultDatasource
++ * }</pre>
++ *
++ * <p>No other values are needed, nor are considered, so any other information, such as the username/hostname/etc can be
++ * commented out to reduce confusion.</p>
++ *
++ * <p><b>BE WARNED! IF YOU'RE PLANNING ON USING THIS, YOU WILL NEED TO SET YOUR POOL SIZE TO A MUCH HIGHER VALUE IN
++ * YOUR CIVMODCORE'S CONFIG!</b></p>
++ *
++ * @author CivPatched
++ */
++@NoArgsConstructor(access = AccessLevel.PRIVATE)
++public final class DefaultDatasource implements ConfigurationSerializable {
++
++    private static final DefaultDatasource INSTANCE = new DefaultDatasource();
++
++    /**
++     * @return Returns CivModCore's database connection, which <i>may</i> be null.
++     */
++    public @Nullable ManagedDatasource getManagedDatasource() {
++        return CivModCorePlugin.getInstance().getDatabase();
++    }
++
++    @Override
++    public @NotNull Map<String, Object> serialize() {
++        return Map.of();
++    }
++
++    public static @NotNull DefaultDatasource deserialize(final @NotNull Map<String, Object> data) {
++        return INSTANCE;
++    }
++
++}
+\ No newline at end of file
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/dao/ManagedDatasource.java b/src/main/java/vg/civcraft/mc/civmodcore/dao/ManagedDatasource.java
-index 61429ec3b1155b6e7955325f216dd62c388435d2..8d3a9c18c41518235fcabcfb53da14828dad8cbb 100644
+index 61429ec3b1155b6e7955325f216dd62c388435d2..98dd608ee43dc72b8e7b40fe49eb5317da62edd2 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/dao/ManagedDatasource.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/dao/ManagedDatasource.java
 @@ -4,10 +4,7 @@ import java.sql.Connection;
@@ -175,7 +442,7 @@ index 61429ec3b1155b6e7955325f216dd62c388435d2..8d3a9c18c41518235fcabcfb53da1482
  import java.util.NavigableMap;
  import java.util.TreeMap;
  import java.util.concurrent.Callable;
-@@ -17,11 +14,17 @@ import java.util.concurrent.Future;
+@@ -17,11 +14,18 @@ import java.util.concurrent.Future;
  import java.util.concurrent.TimeoutException;
  import java.util.logging.Level;
  import javax.annotation.Nonnull;
@@ -186,6 +453,7 @@ index 61429ec3b1155b6e7955325f216dd62c388435d2..8d3a9c18c41518235fcabcfb53da1482
 -import vg.civcraft.mc.civmodcore.utilities.MoreCollectionUtils;
 +
 +// CivPatched Start
++import com.zaxxer.hikari.HikariConfig;
 +import java.util.Arrays;
 +import java.util.logging.Logger;
 +import org.jetbrains.annotations.NotNull;
@@ -195,7 +463,7 @@ index 61429ec3b1155b6e7955325f216dd62c388435d2..8d3a9c18c41518235fcabcfb53da1482
  
  /**
   * Plugins should replace their custom Database handlers with an instance of ManagedDatasource.
-@@ -121,7 +124,7 @@ public class ManagedDatasource {
+@@ -121,12 +125,12 @@ public class ManagedDatasource {
  	private final Plugin plugin;
  	private final ConnectionPool connections;
  	private final ExecutorService postExecutor;
@@ -204,10 +472,62 @@ index 61429ec3b1155b6e7955325f216dd62c388435d2..8d3a9c18c41518235fcabcfb53da1482
  	private int firstMigration;
  	private int lastMigration;
  
-@@ -209,6 +212,21 @@ public class ManagedDatasource {
- 		return new ManagedDatasource(logger, plugin, connections);
+ 	private ManagedDatasource(final CivLogger logger,
+-							  final ACivMod plugin,
++							  final Plugin plugin, // CivPatched
+ 							  final ConnectionPool connections) {
+ 		this.logger = logger;
+ 		this.plugin = plugin;
+@@ -137,6 +141,32 @@ public class ManagedDatasource {
+ 		this.lastMigration = Integer.MIN_VALUE;
  	}
  
++	// CivPatched Start
++	public static @Nullable ManagedDatasource construct(
++			final @NotNull Plugin plugin,
++			final @NotNull HikariConfig config
++	) {
++		final var logger = CivLogger.getLogger(plugin.getClass(), ManagedDatasource.class);
++		final var pool = new ConnectionPool(config);
++		try (final Connection connection = pool.getConnection()) {
++			try (final Statement statement = connection.createStatement()) {
++				statement.executeUpdate(ManagedDatasource.CREATE_MIGRATIONS_TABLE);
++			}
++			try (final Statement statement = connection.createStatement()) {
++				statement.executeUpdate(ManagedDatasource.CREATE_LOCK_TABLE);
++			}
++		}
++		catch (final SQLException exception) {
++			logger.severe("Failed to prepare migrations table or register this plugin to it.");
++			logger.log(Level.SEVERE, "Assuming you provided proper database credentials this is most likely "
++					+ "happening, because your mysql install is outdated. We recommend using MariaDB or at least the "
++					+ "latest mysql version.", exception);
++			return null;
++		}
++		return new ManagedDatasource(logger, plugin, pool);
++	}
++	// CivPatched End
++
+ 	/**
+ 	 * Create a new ManagedDatasource.
+ 	 *
+@@ -188,26 +218,23 @@ public class ManagedDatasource {
+ 			logger.warning("You must pass in a set of credentials");
+ 			return null;
+ 		}
+-		final var connections = new ConnectionPool(credentials);
+-		logger.info(String.format("Connecting to %s@%s:%s using %s",credentials.database(),
+-				credentials.host(), credentials.port(), credentials.username()));
+-		try (final Connection connection = connections.getConnection()) {
+-			try (final Statement statement = connection.createStatement()) {
+-				statement.executeUpdate(ManagedDatasource.CREATE_MIGRATIONS_TABLE);
+-			}
+-			try (final Statement statement = connection.createStatement()) {
+-				statement.executeUpdate(ManagedDatasource.CREATE_LOCK_TABLE);
+-			}
++		return construct(plugin, credentials.generateConfig()); // CivPatched
++	}
++
 +	// CivPatched Start
 +	public void registerMigration(
 +			final int id,
@@ -216,17 +536,23 @@ index 61429ec3b1155b6e7955325f216dd62c388435d2..8d3a9c18c41518235fcabcfb53da1482
 +		this.migrations.put(id, migration);
 +		if (id > this.lastMigration) {
 +			this.lastMigration = id;
-+		}
+ 		}
+-		catch (final SQLException exception) {
+-			logger.severe("Failed to prepare migrations table or register this plugin to it.");
+-			logger.log(Level.SEVERE, "Assuming you provided proper database credentials this is most likely " +
+-					"happening, because your mysql install is outdated. We recommend using MariaDB or at least the " +
+-					"latest mysql version.", exception);
+-			return null;
 +		if (id < this.firstMigration) {
 +			this.firstMigration = id;
-+		}
-+	}
+ 		}
+-		return new ManagedDatasource(logger, plugin, connections);
+ 	}
 +	// CivPatched End
-+
+ 
  	/**
  	 * Use this to register a migration. After all migrations have been registered, call {@link #updateDatabase()}.
- 	 *
-@@ -218,6 +236,7 @@ public class ManagedDatasource {
+@@ -218,6 +245,7 @@ public class ManagedDatasource {
  	 * @param ignoreErrors Indicates if errors in this migration should be ignored.
  	 * @param queries The queries to run, in sequence.
  	 */
@@ -234,7 +560,7 @@ index 61429ec3b1155b6e7955325f216dd62c388435d2..8d3a9c18c41518235fcabcfb53da1482
  	public void registerMigration(final int id,
  								  final boolean ignoreErrors,
  								  final String... queries) {
-@@ -234,17 +253,50 @@ public class ManagedDatasource {
+@@ -234,17 +262,50 @@ public class ManagedDatasource {
  	 * @param callback An optional callback that'll run after the migration has completed.
  	 * @param queries The queries to run, in sequence.
  	 */
@@ -292,7 +618,7 @@ index 61429ec3b1155b6e7955325f216dd62c388435d2..8d3a9c18c41518235fcabcfb53da1482
  	}
  
  	/**
-@@ -293,7 +345,7 @@ public class ManagedDatasource {
+@@ -293,7 +354,7 @@ public class ManagedDatasource {
  			releaseLock();
  			return false;
  		}
@@ -301,7 +627,7 @@ index 61429ec3b1155b6e7955325f216dd62c388435d2..8d3a9c18c41518235fcabcfb53da1482
  		try {
  			if (newApply.size() > 0) {
  				this.logger.info(String.format("%s database is behind, %s migrations found",
-@@ -321,110 +373,56 @@ public class ManagedDatasource {
+@@ -321,110 +382,56 @@ public class ManagedDatasource {
  		}
  	}
  
@@ -450,7 +776,7 @@ index 61429ec3b1155b6e7955325f216dd62c388435d2..8d3a9c18c41518235fcabcfb53da1482
  
  	/**
  	 * Checks if this plugin is already managed by the ManagedDatasource infrastructure or not.
-@@ -538,10 +536,4 @@ public class ManagedDatasource {
+@@ -538,10 +545,4 @@ public class ManagedDatasource {
  		this.connections.close();
  	}
  

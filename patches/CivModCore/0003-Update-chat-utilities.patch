@@ -1,0 +1,309 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Sat, 13 May 2023 10:18:51 +0100
+Subject: [PATCH] Update chat utilities
+
+That deprecation is a lie! It's an accidental leftover from move to Kyori.
+
+Also, add parseComponent.
+
+Update createItemHoverEvent and deprecate asTranslatable.
+
+Upgrade Componentify.
+
+The way components were made and appended to was really inefficient.
+
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java
+index c4f678ad5fdb2a2cb917186b93f098f7d9d037c0..9a4298c4f5bfd6a724ffd939d9979e43f8bd6602 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java
+@@ -202,8 +202,6 @@ public final class ChatUtils {
+ 	 *
+ 	 * @param component The component to test if null or empty.
+ 	 * @return Returns true if the component is null or has no visible content.
+-	 * 
+-	 * @deprecated Has been deprecated due to Paper's move to Kyori's Adventure.
+ 	 */
+ 	public static boolean isNullOrEmpty(@Nullable final Component component) {
+ 		if (component == null || component == Component.empty()) {
+@@ -212,6 +210,25 @@ public final class ChatUtils {
+ 		return StringUtils.isBlank(PlainTextComponentSerializer.plainText().serialize(component));
+ 	}
+ 
++	// CivPatched Start
++	/**
++	 * Attempts to parse a component from a raw string using MiniMessage unless
++	 * the string contains legacy section formatting.
++	 */
++	public static @Contract("!null -> !null") @Nullable Component parseComponent(final String raw) {
++		if (raw == null) {
++			return null;
++		}
++		if (raw.isBlank()) {
++			return Component.empty();
++		}
++		if (raw.contains("§")) {
++			return LegacyComponentSerializer.legacySection().deserialize(raw);
++		}
++		return MiniMessage.miniMessage().deserialize(raw);
++	}
++	// CivPatched End
++
+ 	/**
+ 	 * <p>Determines whether a given base component is null or empty.</p>
+ 	 *
+@@ -397,12 +414,7 @@ public final class ChatUtils {
+ 					.content("<null item>")
+ 					.build());
+ 		}
+-		return HoverEvent.showItem(
+-				item.getType().getKey(),
+-				item.getAmount()
+-				// TODO: There's a variant of this method that includes an NBT compound. My guess is to include display
+-				//       name and lore, perhaps also enchantments, etc..
+-		);
++		return item.asHoverEvent(); // CivPatched
+ 	}
+ 
+ }
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/chat/Componentify.java b/src/main/java/vg/civcraft/mc/civmodcore/chat/Componentify.java
+index 8a5b98559fe289b61373b2af3140d45146d0f0f4..d0b2a6f3c422f47ed37154c680102c77a3fdaca3 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/chat/Componentify.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/chat/Componentify.java
+@@ -1,69 +1,88 @@
+ package vg.civcraft.mc.civmodcore.chat;
+ 
+-import javax.annotation.Nonnull;
+ import lombok.experimental.UtilityClass;
+ import net.kyori.adventure.text.Component;
+ import net.kyori.adventure.text.event.HoverEvent;
+ import net.kyori.adventure.text.format.NamedTextColor;
+ import org.bukkit.Location;
++import org.jetbrains.annotations.NotNull;
+ 
++/**
++ * @author CivPatched
++ */
+ @UtilityClass
+-public final class Componentify {
++public class Componentify {
+ 
+-	private static Component INTERNAL_addLocationWorld(final Location location) {
++	private @NotNull Component INTERNAL_addLocationWorld(final @NotNull Location location) {
+ 		if (location.isWorldLoaded()) {
+-			return Component.text(location.getWorld().getName())
+-					.hoverEvent(HoverEvent.showText(Component.text("World name")));
++			return Component.text()
++					.content(location.getWorld().getName())
++					.hoverEvent(HoverEvent.showText(Component.text("World name")))
++					.build();
+ 		}
+ 		else {
+-			return Component.text("<null>")
++			return Component.text()
++					.content("<null>")
+ 					.color(NamedTextColor.RED)
+-					.hoverEvent(HoverEvent.showText(Component.text("World not specified / loaded")));
++					.hoverEvent(HoverEvent.showText(Component.text("World not specified / loaded")))
++					.build();
+ 		}
+ 	}
+ 
+-	public static Component fullLocation(@Nonnull final Location location) {
+-		final var component = Component.text();
+-		component.append(INTERNAL_addLocationWorld(location));
+-		component.append(Component.space());
+-		component.append(Component.text(location.getX())
+-				.color(NamedTextColor.RED)
+-				.hoverEvent(HoverEvent.showText(Component.text("X"))));
+-		component.append(Component.space());
+-		component.append(Component.text(location.getY())
+-				.color(NamedTextColor.GREEN)
+-				.hoverEvent(HoverEvent.showText(Component.text("Y"))));
+-		component.append(Component.space());
+-		component.append(Component.text(location.getZ())
+-				.color(NamedTextColor.BLUE)
+-				.hoverEvent(HoverEvent.showText(Component.text("Z"))));
+-		component.append(Component.space());
+-		component.append(Component.text(location.getYaw())
+-				.color(NamedTextColor.GOLD)
+-				.hoverEvent(HoverEvent.showText(Component.text("Yaw"))));
+-		component.append(Component.space());
+-		component.append(Component.text(location.getPitch())
+-				.color(NamedTextColor.AQUA)
+-				.hoverEvent(HoverEvent.showText(Component.text("Pitch"))));
+-		return component.build();
++	public @NotNull Component fullLocation(final @NotNull Location location) {
++		return Component.text()
++				.append(
++						INTERNAL_addLocationWorld(location),
++						Component.space(),
++						Component.text()
++								.content(Double.toString(location.getX()))
++								.color(NamedTextColor.RED)
++								.hoverEvent(HoverEvent.showText(Component.text("X"))),
++						Component.space(),
++						Component.text()
++								.content(Double.toString(location.getY()))
++								.color(NamedTextColor.GREEN)
++								.hoverEvent(HoverEvent.showText(Component.text("Y"))),
++						Component.space(),
++						Component.text()
++								.content(Double.toString(location.getZ()))
++								.color(NamedTextColor.BLUE)
++								.hoverEvent(HoverEvent.showText(Component.text("Z"))),
++						Component.space(),
++						Component.text()
++								.content(Float.toString(location.getYaw()))
++								.color(NamedTextColor.GOLD)
++								.hoverEvent(HoverEvent.showText(Component.text("Yaw"))),
++						Component.space(),
++						Component.text()
++								.content(Float.toString(location.getPitch()))
++								.color(NamedTextColor.AQUA)
++								.hoverEvent(HoverEvent.showText(Component.text("Pitch")))
++				)
++				.build();
+ 	}
+ 
+-	public static Component blockLocation(@Nonnull final Location location) {
+-		final var component = Component.text();
+-		component.append(INTERNAL_addLocationWorld(location));
+-		component.append(Component.space());
+-		component.append(Component.text(location.getBlockX())
+-				.color(NamedTextColor.RED)
+-				.hoverEvent(HoverEvent.showText(Component.text("Block X"))));
+-		component.append(Component.space());
+-		component.append(Component.text(location.getBlockY())
+-				.color(NamedTextColor.GREEN)
+-				.hoverEvent(HoverEvent.showText(Component.text("Block X"))));
+-		component.append(Component.space());
+-		component.append(Component.text(location.getBlockZ())
+-				.color(NamedTextColor.BLUE)
+-				.hoverEvent(HoverEvent.showText(Component.text("Block X"))));
+-		return component.build();
++	public @NotNull Component blockLocation(final @NotNull Location location) {
++		return Component.text()
++				.append(
++						INTERNAL_addLocationWorld(location),
++						Component.space(),
++						Component.text()
++								.content(Double.toString(location.getBlockX()))
++								.color(NamedTextColor.RED)
++								.hoverEvent(HoverEvent.showText(Component.text("Block X"))),
++						Component.space(),
++						Component.text()
++								.content(Double.toString(location.getBlockY()))
++								.color(NamedTextColor.GREEN)
++								.hoverEvent(HoverEvent.showText(Component.text("Block Y"))),
++						Component.space(),
++						Component.text()
++								.content(Double.toString(location.getBlockZ()))
++								.color(NamedTextColor.BLUE)
++								.hoverEvent(HoverEvent.showText(Component.text("Block Z")))
++				)
++				.build();
+ 	}
+ 
+ }
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/entities/EntityUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/entities/EntityUtils.java
+index 129b5d9686b1fc8fda6985b0f2d6efa06161725e..91d9d275c705c36ef56c3634ff15c0ffa218d24d 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/entities/EntityUtils.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/entities/EntityUtils.java
+@@ -42,8 +42,9 @@ public final class EntityUtils {
+ 	 * @param entityType The entity type to translate.
+ 	 * @return Returns a translatable component based on the given entity type.
+ 	 */
++	@Deprecated // CivPatched
+ 	public static TranslatableComponent asTranslatable(@Nonnull final EntityType entityType) {
+-		return Component.translatable(entityType.translationKey());
++		return Component.translatable(entityType); // CivPatched
+ 	}
+ 
+ }
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/EnchantUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/EnchantUtils.java
+index 3264efa21b3703098748e7a967f8d1d5a9049e2c..59749d7b9c7271d5442e43ef2f06ed9ca2d8e6c1 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/EnchantUtils.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/EnchantUtils.java
+@@ -108,9 +108,10 @@ public final class EnchantUtils {
+ 	 * @param enchant The enchantment to get a translatable component for.
+ 	 * @return Returns a translatable component for the given enchantment.
+ 	 */
++	@Deprecated // CivPatched
+ 	@Nonnull
+ 	public static TranslatableComponent asTranslatable(@Nonnull final Enchantment enchant) {
+-		return Component.translatable(enchant.translationKey());
++		return Component.translatable(enchant); // CivPatched
+ 	}
+ 
+ 	/**
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemUtils.java
+index 091414d37aec82924aef713676d5bd6f9bee122f..f84ec069bd4bd46c38f473c1eb06d47bce8576c5 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemUtils.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemUtils.java
+@@ -28,9 +28,10 @@ public final class ItemUtils {
+ 	 * @param item The item to get a translatable component for.
+ 	 * @return Returns a translatable component of the given item.
+ 	 */
++	@Deprecated // CivPatched
+ 	@Nonnull
+ 	public static TranslatableComponent asTranslatable(@Nonnull final ItemStack item) {
+-		return Component.translatable(item.translationKey());
++		return Component.translatable(item); // CivPatched
+ 	}
+ 
+ 	/**
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MaterialUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MaterialUtils.java
+index 60959ec9dbc94b0a3e993bf77ecdb79a75ba1c4e..7613b5129e55b275e1122e4e709d8b11aa19d568 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MaterialUtils.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MaterialUtils.java
+@@ -52,9 +52,10 @@ public final class MaterialUtils {
+ 	 * @param material The material to translate.
+ 	 * @return Returns a translatable component based on the given material.
+ 	 */
++	@Deprecated // CivPatched
+ 	@Nonnull
+ 	public static TranslatableComponent asTranslatable(@Nonnull final Material material) {
+-		return Component.translatable(material.translationKey());
++		return Component.translatable(material); // CivPatched
+ 	}
+ 
+ 	/**
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/PotionUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/PotionUtils.java
+index 571c3ee4cb70375000ade0afe1dbb31363977e18..730993c16df6187ca63dee7801d1d95d2b622505 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/PotionUtils.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/PotionUtils.java
+@@ -7,7 +7,6 @@ import javax.annotation.Nullable;
+ import lombok.experimental.UtilityClass;
+ import net.kyori.adventure.text.Component;
+ import net.kyori.adventure.text.TranslatableComponent;
+-import net.minecraft.world.effect.MobEffect;
+ import org.apache.commons.lang3.tuple.Pair;
+ import org.bukkit.Material;
+ import org.bukkit.inventory.ItemStack;
+@@ -56,23 +55,10 @@ public final class PotionUtils {
+ 	 * @param effect The potion effect to get a translatable component for.
+ 	 * @return Returns a translatable component for the given potion effect.
+ 	 */
+-	@SuppressWarnings("deprecation")
++	@Deprecated // CivPatched
+ 	@Nonnull
+ 	public static TranslatableComponent asTranslatable(@Nonnull final PotionEffectType effect) {
+-		final MobEffect mojang = MobEffect.byId(effect.getId());
+-		assert mojang != null;
+-		final String key = mojang.getDescriptionId(); // Gets the translation key
+-		// If the obfuscation has changed, look for a method on MobEffectList like:
+-		//
+-		//    protected String b() {
+-		//        if (this.d == null) {
+-		//            this.d = SystemUtils.a("effect", IRegistry.V.getKey(this));
+-		//        }
+-		//        return this.d;
+-		//    }
+-		//
+-		// then use whatever method calls that method
+-		return Component.translatable(key);
++		return Component.translatable(effect); // CivPatched
+ 	}
+ 
+ 	/**

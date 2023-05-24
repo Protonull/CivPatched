@@ -5,7 +5,7 @@ Subject: [PATCH] Add Deferrable
 
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java b/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java
-index 6619e06062db8560dde3cb228e4d73991025bc5f..33930e818279bccee2870b3eebf0f7f06b23becc 100644
+index 0cf5ed14fff426640a8b0f0e94c078bc5c5f645f..090172096da1d8841107efb1f99210e77c8fdfa4 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java
 @@ -21,7 +21,13 @@ import org.bukkit.plugin.Plugin;

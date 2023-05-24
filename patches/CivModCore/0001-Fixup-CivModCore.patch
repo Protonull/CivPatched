@@ -1,11 +1,16 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Sat, 13 May 2023 06:32:39 +0100
+Date: Wed, 24 May 2023 19:53:23 +0100
 Subject: [PATCH] Fixup CivModCore
 
+Update canvas to 8b25285839.
+
+Remove redundant ACivMod disable cleanups.
+
+Fix ACivMod::disable.
 
 diff --git a/build.gradle.kts b/build.gradle.kts
-index 59aa4b7b2ea86655902bd5b5e140e77003b8e65a..e26fefa23071ee21936262f2d4d2724c727acafa 100644
+index 59aa4b7b2ea86655902bd5b5e140e77003b8e65a..5d4fdb0ca86c756b99a1ecc3dc96709337caf0da 100644
 --- a/build.gradle.kts
 +++ b/build.gradle.kts
 @@ -1,23 +1,16 @@
@@ -40,15 +45,66 @@ index 59aa4b7b2ea86655902bd5b5e140e77003b8e65a..e26fefa23071ee21936262f2d4d2724c
 +	api("com.zaxxer:HikariCP:5.0.1")
 +	api("co.aikar:acf-bukkit:0.5.0-SNAPSHOT")
 +	api("co.aikar:taskchain-bukkit:3.7.2")
-+	api("com.github.IPVP-MC:canvas:91ec97f076")
++	api("com.github.IPVP-MC:canvas:8b25285839")
 +	api("org.apache.commons:commons-collections4:4.4")
 +	api("com.google.code.findbugs:jsr305:3.0.2")
  }
+diff --git a/src/main/java/org/ipvp/canvas/type/AbstractCivMenu.java b/src/main/java/org/ipvp/canvas/type/AbstractCivMenu.java
+index df544310700fe00df8889b3179edf9dd3fb86c93..064ffa45f5607f4716fc9ea26843baeb026c68dd 100644
+--- a/src/main/java/org/ipvp/canvas/type/AbstractCivMenu.java
++++ b/src/main/java/org/ipvp/canvas/type/AbstractCivMenu.java
+@@ -29,7 +29,7 @@ public abstract class AbstractCivMenu extends AbstractMenu {
+ 	private static final Method UPDATE_INV_CONTENTS_METHOD;
+ 
+ 	static {
+-		VIEWERS_FIELD = FieldUtils.getDeclaredField(AbstractMenu.class, "viewers", true);
++		VIEWERS_FIELD = FieldUtils.getDeclaredField(AbstractMenu.class, "holders", true); // CivPatched: The field was renamed to "holders"
+ 		SLOTS_FIELD = FieldUtils.getDeclaredField(AbstractMenu.class, "slots", true);
+ 		UPDATE_INV_CONTENTS_METHOD = MethodUtils.getMatchingMethod(AbstractMenu.class,
+ 				"updateInventoryContents", Player.class, Inventory.class);
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java b/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java
+index d793b180b06c9073ce595b229b53ad69c6b2adef..0cf5ed14fff426640a8b0f0e94c078bc5c5f645f 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java
+@@ -15,7 +15,6 @@ import org.bukkit.Bukkit;
+ import org.bukkit.configuration.serialization.ConfigurationSerializable;
+ import org.bukkit.configuration.serialization.ConfigurationSerialization;
+ import org.bukkit.event.EventHandler;
+-import org.bukkit.event.HandlerList;
+ import org.bukkit.event.Listener;
+ import org.bukkit.event.server.PluginDisableEvent;
+ import org.bukkit.plugin.Plugin;
+@@ -43,10 +42,6 @@ public abstract class ACivMod extends JavaPlugin {
+ 	
+ 	@Override
+ 	public void onDisable() {
+-		HandlerList.unregisterAll(this);
+-		Bukkit.getMessenger().unregisterIncomingPluginChannel(this);
+-		Bukkit.getMessenger().unregisterOutgoingPluginChannel(this);
+-		Bukkit.getScheduler().cancelTasks(this);
+ 		this.configClasses.forEach(ConfigurationSerialization::unregisterClass);
+ 	}
+ 
+@@ -134,7 +129,7 @@ public abstract class ACivMod extends JavaPlugin {
+ 	 * Disables this plugin.
+ 	 */
+ 	public void disable() {
+-		getPluginLoader().disablePlugin(this);
++		getServer().getPluginManager().disablePlugin(this); // CivPatched: Do full disable
+ 	}
+ 
+ 	/**
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java b/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java
-index b42c2547061518f92bafe8438fab105213510095..687d38aa2a5198691727c405b946f33225ed8f6d 100644
+index b42c2547061518f92bafe8438fab105213510095..146c7b181acdc67f5eb375644db485af384a5e0a 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java
-@@ -16,7 +16,6 @@ import vg.civcraft.mc.civmodcore.inventory.items.EnchantUtils;
+@@ -10,13 +10,11 @@ import vg.civcraft.mc.civmodcore.commands.CommandManager;
+ import vg.civcraft.mc.civmodcore.commands.StatCommand;
+ import vg.civcraft.mc.civmodcore.dao.DatabaseCredentials;
+ import vg.civcraft.mc.civmodcore.dao.ManagedDatasource;
+-import vg.civcraft.mc.civmodcore.events.CustomEventMapper;
+ import vg.civcraft.mc.civmodcore.inventory.gui.ClickableInventoryListener;
+ import vg.civcraft.mc.civmodcore.inventory.items.EnchantUtils;
  import vg.civcraft.mc.civmodcore.inventory.items.MoreTags;
  import vg.civcraft.mc.civmodcore.inventory.items.SpawnEggUtils;
  import vg.civcraft.mc.civmodcore.inventory.items.TreeTypeUtils;
@@ -56,7 +112,7 @@ index b42c2547061518f92bafe8438fab105213510095..687d38aa2a5198691727c405b946f332
  import vg.civcraft.mc.civmodcore.players.scoreboard.bottom.BottomLineAPI;
  import vg.civcraft.mc.civmodcore.players.scoreboard.side.ScoreBoardAPI;
  import vg.civcraft.mc.civmodcore.players.scoreboard.side.ScoreBoardListener;
-@@ -29,7 +28,6 @@ import vg.civcraft.mc.civmodcore.world.locations.chunkmeta.api.ChunkMetaAPI;
+@@ -29,7 +27,6 @@ import vg.civcraft.mc.civmodcore.world.locations.chunkmeta.api.ChunkMetaAPI;
  import vg.civcraft.mc.civmodcore.world.locations.chunkmeta.stat.LoadStatisticManager;
  import vg.civcraft.mc.civmodcore.world.locations.global.CMCWorldDAO;
  import vg.civcraft.mc.civmodcore.world.locations.global.WorldIDManager;
@@ -64,9 +120,11 @@ index b42c2547061518f92bafe8438fab105213510095..687d38aa2a5198691727c405b946f332
  
  public final class CivModCorePlugin extends ACivMod {
  
-@@ -79,12 +77,10 @@ public final class CivModCorePlugin extends ACivMod {
+@@ -77,14 +74,11 @@ public final class CivModCorePlugin extends ACivMod {
+ 		registerListener(new ClickableInventoryListener());
+ 		registerListener(DialogManager.INSTANCE);
  		registerListener(new ScoreBoardListener());
- 		registerListener(new CustomEventMapper());
+-		registerListener(new CustomEventMapper());
  		registerListener(new WorldTracker());
 -		registerListener(ChunkOperationManager.INSTANCE);
  		// Register commands
@@ -77,7 +135,7 @@ index b42c2547061518f92bafe8438fab105213510095..687d38aa2a5198691727c405b946f332
  		this.commands.registerCommand(new StatCommand());
  		// Load APIs
  		EnchantUtils.loadEnchantAbbreviations(this);
-@@ -92,7 +88,6 @@ public final class CivModCorePlugin extends ACivMod {
+@@ -92,7 +86,6 @@ public final class CivModCorePlugin extends ACivMod {
  		SpawnEggUtils.init();
  		TreeTypeUtils.init();
  		BottomLineAPI.init();

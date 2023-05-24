@@ -1,8 +1,9 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
 Date: Mon, 22 May 2023 23:19:30 +0100
-Subject: [PATCH] Allow players to open a specific config menu
+Subject: [PATCH] Update player settings
 
+Allows players to open a specific config window.
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java b/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java
 index dbf5d5e1be70d67748f0562395767d9c163b094a..6c05e633190664d19f3b70b51a511475fb35bb82 100644

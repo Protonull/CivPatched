@@ -1,0 +1,282 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Fri, 19 May 2023 02:30:40 +0100
+Subject: [PATCH] Update utility package
+
+Add DeprecationUtils to help better track usages of deprecated functions.
+
+Add JavaHelpers, some utilities that really rather be part of Java itself.
+
+Add MoreEnumUtils.
+
+Add MoreIterableUtils and MoreIteratorUtils.
+
+Add inject to CivLogger, which allows you to create a Logger and modify the logged messages in some way.
+
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/CivLogger.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/CivLogger.java
+index 335f7b2d5f528999872a2ac55fc19ffc780de202..b1ff9da40ea3b317ab9468ad52c1650121646599 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/utilities/CivLogger.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/CivLogger.java
+@@ -14,6 +14,23 @@ import org.bukkit.plugin.java.PluginClassLoader;
+ 
+ public final class CivLogger extends Logger {
+ 
++	// CivPatched Start
++	public static @Nonnull Logger inject(
++			final @Nonnull Logger logger,
++			final @Nonnull java.util.function.Consumer<LogRecord> handler
++	) {
++		final var wrapper = new Logger(null, null) {
++			@Override
++			public void log(final LogRecord record) {
++				handler.accept(record);
++				super.log(record);
++			}
++		};
++		wrapper.setParent(logger);
++		return wrapper;
++	}
++	// CivPatched End
++
+ 	private final String prefix;
+ 
+ 	private CivLogger(@Nonnull final Logger logger, @Nonnull final String prefix) {
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/DeprecationUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/DeprecationUtils.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..7a4b6f1bdf0691b0abab5900bd74000e2d7510f1
+--- /dev/null
++++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/DeprecationUtils.java
+@@ -0,0 +1,39 @@
++package vg.civcraft.mc.civmodcore.utilities;
++
++import java.util.logging.Level;
++import java.util.logging.Logger;
++import lombok.experimental.StandardException;
++import lombok.experimental.UtilityClass;
++import org.bukkit.Bukkit;
++import org.jetbrains.annotations.NotNull;
++
++/**
++ * @author CivPatched
++ */
++@UtilityClass
++public class DeprecationUtils {
++
++    private final Logger LOGGER = Bukkit.getLogger();
++
++    /**
++     * Prints a warning to Bukkit's console with a stacktrace warning of
++     * deprecation usages.
++     */
++    public void printDeprecationWarning() {
++        printDeprecationWarning("You are using a deprecated feature. Please consider updating to its recommended replacement.");
++    }
++
++    /**
++     * Prints your warning message to Bukkit's console with a stacktrace
++     * warning of deprecation usages.
++     */
++    public void printDeprecationWarning(final @NotNull String message) {
++        LOGGER.log(Level.WARNING, message, new DeprecationException());
++    }
++
++    @StandardException
++    public static class DeprecationException extends RuntimeException {
++
++    }
++
++}
+\ No newline at end of file
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/JavaHelpers.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/JavaHelpers.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..0efd7387edd4e60705e719f37ac0fc86671e0dcd
+--- /dev/null
++++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/JavaHelpers.java
+@@ -0,0 +1,23 @@
++package vg.civcraft.mc.civmodcore.utilities;
++
++import java.util.function.Supplier;
++import lombok.experimental.UtilityClass;
++import org.jetbrains.annotations.NotNull;
++
++/**
++ * @author CivPatched
++ */
++@UtilityClass
++public class JavaHelpers {
++
++    /**
++     * Convenience function to yield a value from multiple lines, inline.
++     * Keep an eye on: https://openjdk.org/jeps/447
++     */
++    public static <T> T yield(
++            final @NotNull Supplier<T> supplier
++    ) {
++        return supplier.get();
++    }
++
++}
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreEnumUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreEnumUtils.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..692b5df27f083c7da6ead64fca1b2b9c578b64af
+--- /dev/null
++++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreEnumUtils.java
+@@ -0,0 +1,82 @@
++package vg.civcraft.mc.civmodcore.utilities;
++
++import java.util.Arrays;
++import java.util.Collection;
++import java.util.List;
++import java.util.stream.Collectors;
++import java.util.stream.Stream;
++import lombok.experimental.UtilityClass;
++import org.apache.commons.lang3.EnumUtils;
++import org.apache.commons.lang3.StringUtils;
++import org.jetbrains.annotations.NotNull;
++
++/**
++ * Utility class that fills in the gaps of {@link EnumUtils}.
++ *
++ * @author CivPatched
++ */
++@UtilityClass
++public class MoreEnumUtils {
++
++    /**
++     * @param <E> The enum type itself.
++     * @param value The enum value to stringify.
++     * @return Returns a string-version of the given enum, or "null".
++     */
++    public <E extends Enum<E>> @NotNull String getName(final E value) {
++        return value == null ? "null" : value.name();
++    }
++
++    /**
++     * @param <E> The enum type itself.
++     * @param enumClass The enum class to get the names of.
++     * @return Returns a set of all enum-names of the given enum-class.
++     */
++    public <E extends Enum<E>> @NotNull List<String> getNames(final @NotNull Class<E> enumClass) {
++        return Stream.of(enumClass.getEnumConstants())
++                .map(MoreEnumUtils::getName)
++                .collect(Collectors.toList());
++    }
++
++    /**
++     * @param <E> The enum type itself.
++     * @param enums The enums to convert into names.
++     * @return Returns a set of all enum-names of the given enums.
++     */
++    public <E extends Enum<E>> @NotNull List<String> getNames(final E @NotNull [] enums) {
++        return Arrays.stream(enums)
++                .map(MoreEnumUtils::getName)
++                .collect(Collectors.toList());
++    }
++
++    /**
++     * @param <E> The enum type itself.
++     * @param enums The enums to convert into names.
++     * @return Returns a set of all enum-names of the given enums.
++     */
++    public <E extends Enum<E>> @NotNull List<String> getNames(final @NotNull Collection<E> enums) {
++        return enums
++                .stream()
++                .map(MoreEnumUtils::getName)
++                .collect(Collectors.toList());
++    }
++
++    /**
++     * @param <E> The enum type itself.
++     * @param enums The enums to join together into a string.
++     * @return Returns a string representing the given enums. Can be empty.
++     */
++    public <E extends Enum<E>> @NotNull String join(final E @NotNull [] enums) {
++        return StringUtils.join(getNames(enums), ",");
++    }
++
++    /**
++     * @param <E> The enum type itself.
++     * @param enums The enums to join together into a string.
++     * @return Returns a string representing the given enums. Can be empty.
++     */
++    public <E extends Enum<E>> @NotNull String join(final @NotNull Collection<E> enums) {
++        return StringUtils.join(getNames(enums), ",");
++    }
++
++}
+\ No newline at end of file
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreIterableUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreIterableUtils.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..5b78ccd5dc9e9bea27a06571e6938e74bb723762
+--- /dev/null
++++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreIterableUtils.java
+@@ -0,0 +1,28 @@
++package vg.civcraft.mc.civmodcore.utilities;
++
++import java.util.function.Predicate;
++import lombok.experimental.UtilityClass;
++import org.apache.commons.collections4.IterableUtils;
++import org.jetbrains.annotations.NotNull;
++
++/**
++ * Utility class that fills in the gaps of {@link IterableUtils}.
++ *
++ * @author CivPatched
++ */
++@UtilityClass
++public class MoreIterableUtils {
++
++    /**
++     * @param <T> The iterable's element type.
++     * @param iterable The iterable to remove elements from.
++     * @param predicate The method to test entries with. It should return true to remove that entry.
++     */
++    public <T> void removeIf(
++            final @NotNull Iterable<T> iterable,
++            final @NotNull Predicate<T> predicate
++    ) {
++        MoreIteratorUtils.removeIf(iterable.iterator(), predicate);
++    }
++
++}
+\ No newline at end of file
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreIteratorUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreIteratorUtils.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..3f4f7532303aa1c2e45041e0dde6b537d3a89387
+--- /dev/null
++++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreIteratorUtils.java
+@@ -0,0 +1,33 @@
++package vg.civcraft.mc.civmodcore.utilities;
++
++import java.util.Iterator;
++import java.util.function.Predicate;
++import lombok.experimental.UtilityClass;
++import org.apache.commons.collections4.IteratorUtils;
++import org.jetbrains.annotations.NotNull;
++
++/**
++ * Utility class that fills in the gaps of {@link IteratorUtils}.
++ *
++ * @author CivPatched
++ */
++@UtilityClass
++public class MoreIteratorUtils {
++
++    /**
++     * @param <T> The iterator's element type.
++     * @param iterator The iterator to remove elements from.
++     * @param predicate The method to test entries with. It should return true to remove that entry.
++     */
++    public <T> void removeIf(
++            final @NotNull Iterator<T> iterator,
++            final @NotNull Predicate<T> predicate
++    ) {
++        while (iterator.hasNext()) {
++            if (predicate.test(iterator.next())) {
++                iterator.remove();
++            }
++        }
++    }
++
++}
+\ No newline at end of file

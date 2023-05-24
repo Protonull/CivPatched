@@ -1,12 +1,14 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
 Date: Thu, 18 May 2023 15:20:20 +0100
-Subject: [PATCH] Add parseEnchants to ConfigHelper
+Subject: [PATCH] Update ConfigHelper
 
-And update parseItemMapDirectly to use it.
+Allow ItemMap to parse serialised items.
+
+Also, add parseEnchants and update parseItemMapDirectly to use it.
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java b/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
-index f7bf058b8f144a294f5ff755667297ca7125efca..73594c6acc43127be5536048f7a265e56a1f0b71 100644
+index 9f26a8331e60bb40d32445f63eaca95c22d80e84..18dbd20f338cd4be042f165ddab32d6699b87895 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
 @@ -16,7 +16,6 @@ import org.bukkit.Bukkit;
@@ -17,7 +19,29 @@ index f7bf058b8f144a294f5ff755667297ca7125efca..73594c6acc43127be5536048f7a265e5
  import org.bukkit.World;
  import org.bukkit.configuration.ConfigurationSection;
  import org.bukkit.enchantments.Enchantment;
-@@ -234,27 +233,7 @@ public final class ConfigHelper {
+@@ -133,9 +132,18 @@ public final class ConfigHelper {
+ 			return result;
+ 		}
+ 		for (final String key : config.getKeys(false)) {
+-			ConfigurationSection current = config.getConfigurationSection(key);
+-			ItemMap partMap = parseItemMapDirectly(current);
+-			result.merge(partMap);
++			// CivPatched Start
++			final Object value = config.get(key, null);
++			if (value instanceof final ConfigurationSection current) {
++				result.merge(parseItemMapDirectly(current));
++			}
++			else if (value instanceof final ItemStack item) {
++				result.addItemStack(item);
++			}
++			else {
++				LOGGER.warning("ItemMap segment at \"" + key + "\" cannot be parsed!");
++			}
++			// CivPatched End
+ 		}
+ 		return result;
+ 	}
+@@ -181,27 +189,7 @@ public final class ConfigHelper {
  					meta.addItemFlags(flag);
  				}
  			}
@@ -46,7 +70,7 @@ index f7bf058b8f144a294f5ff755667297ca7125efca..73594c6acc43127be5536048f7a265e5
  			if (m == Material.LEATHER_BOOTS || m == Material.LEATHER_CHESTPLATE || m == Material.LEATHER_HELMET
  					|| m == Material.LEATHER_LEGGINGS) {
  				ConfigurationSection color = current.getConfigurationSection("color");
-@@ -278,25 +257,7 @@ public final class ConfigHelper {
+@@ -225,25 +213,7 @@ public final class ConfigHelper {
  				}
  			}
  			if (m == Material.ENCHANTED_BOOK) {
@@ -73,7 +97,7 @@ index f7bf058b8f144a294f5ff755667297ca7125efca..73594c6acc43127be5536048f7a265e5
  			}
  			if (m == Material.POTION || m == Material.SPLASH_POTION || m == Material.LINGERING_POTION
  					|| m == Material.TIPPED_ARROW) {
-@@ -338,6 +299,74 @@ public final class ConfigHelper {
+@@ -285,6 +255,74 @@ public final class ConfigHelper {
  		return im;
  	}
  
