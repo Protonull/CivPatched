@@ -5,12 +5,12 @@ Subject: [PATCH] Allow players to open a specific config menu
 
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java b/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java
-index 082191b08165e894c97c23efff15d7192cb185f5..c7298999bd7534c011c4249422d6c20c038b3f89 100644
+index dbf5d5e1be70d67748f0562395767d9c163b094a..6c05e633190664d19f3b70b51a511475fb35bb82 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java
-@@ -17,6 +17,12 @@ import vg.civcraft.mc.civmodcore.players.settings.gui.MenuOption;
+@@ -16,6 +16,12 @@ import vg.civcraft.mc.civmodcore.CivModCorePlugin;
+ import vg.civcraft.mc.civmodcore.players.settings.gui.MenuOption;
  import vg.civcraft.mc.civmodcore.players.settings.gui.MenuSection;
- import vg.civcraft.mc.civmodcore.players.settings.impl.AltConsistentSetting;
  
 +// CivPatched Start
 +import java.util.TreeMap;
@@ -21,7 +21,7 @@ index 082191b08165e894c97c23efff15d7192cb185f5..c7298999bd7534c011c4249422d6c20c
  /**
   * Allows creating settings, which will automatically be available in players
   * configuration GUI
-@@ -40,6 +46,18 @@ public final class PlayerSettingAPI {
+@@ -39,6 +45,18 @@ public final class PlayerSettingAPI {
  		return MAIN_MENU;
  	}
  

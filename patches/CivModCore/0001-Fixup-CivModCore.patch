@@ -85,3 +85,29 @@ index b42c2547061518f92bafe8438fab105213510095..687d38aa2a5198691727c405b946f332
  		this.skinCache = new SkinCache(this, this.config.getSkinCacheThreads());
  
  		if (this.config.getChunkLoadingStatistics())
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java b/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java
+index 082191b08165e894c97c23efff15d7192cb185f5..dbf5d5e1be70d67748f0562395767d9c163b094a 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java
+@@ -15,7 +15,6 @@ import org.bukkit.configuration.file.YamlConfiguration;
+ import vg.civcraft.mc.civmodcore.CivModCorePlugin;
+ import vg.civcraft.mc.civmodcore.players.settings.gui.MenuOption;
+ import vg.civcraft.mc.civmodcore.players.settings.gui.MenuSection;
+-import vg.civcraft.mc.civmodcore.players.settings.impl.AltConsistentSetting;
+ 
+ /**
+  * Allows creating settings, which will automatically be available in players
+@@ -85,13 +84,6 @@ public final class PlayerSettingAPI {
+ 	 */
+ 	public static void registerSetting(PlayerSetting<?> setting, MenuSection menu) {
+ 		Preconditions.checkArgument(setting != null, "Player setting cannot be null.");
+-		if (setting instanceof AltConsistentSetting) {
+-			if (setting.canBeChangedByPlayer()) {
+-				menu.addItem(new MenuOption(menu, setting));
+-			}
+-			menu = null;
+-			setting = ((AltConsistentSetting<?,?>) setting).getWrappedSetting();
+-		}
+ 		loadValues(setting);
+ 		List<PlayerSetting<?>> pluginSettings = SETTINGS_BY_PLUGIN.computeIfAbsent(
+ 				setting.getOwningPlugin().getName(),
