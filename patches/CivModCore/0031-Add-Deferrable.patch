@@ -1,0 +1,165 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Wed, 24 May 2023 04:21:57 +0100
+Subject: [PATCH] Add Deferrable
+
+
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java b/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java
+index 6619e06062db8560dde3cb228e4d73991025bc5f..33930e818279bccee2870b3eebf0f7f06b23becc 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java
+@@ -21,7 +21,13 @@ import org.bukkit.plugin.Plugin;
+ import org.bukkit.plugin.java.JavaPlugin;
+ import org.jetbrains.annotations.Contract;
+ 
+-public abstract class ACivMod extends JavaPlugin {
++// CivPatched Start
++import org.jetbrains.annotations.NotNull;
++import vg.civcraft.mc.civmodcore.utilities.defer.Deferrable;
++import vg.civcraft.mc.civmodcore.utilities.defer.DeferredFunctions;
++// CivPatched End
++
++public abstract class ACivMod extends JavaPlugin implements Deferrable { // CivPatched: Implement Deferrable
+ 
+ 	private final Set<Class<? extends ConfigurationSerializable>> configClasses = new HashSet<>(0);
+ 
+@@ -43,7 +49,16 @@ public abstract class ACivMod extends JavaPlugin {
+ 	@Override
+ 	public void onDisable() {
+ 		this.configClasses.forEach(ConfigurationSerialization::unregisterClass);
++		getDeferredFunctions().UNSAFE_run(); // CivPatched
++	}
++
++	// CivPatched Start
++	private final DeferredFunctions deferredFunctions = new DeferredFunctions(this);
++	@Override
++	public @NotNull DeferredFunctions getDeferredFunctions() {
++		return this.deferredFunctions;
+ 	}
++	// CivPatched End
+ 
+ 	/**
+ 	 * Registers a listener class with this plugin.
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/defer/Deferrable.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/defer/Deferrable.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..95f34391f26493f68e8373984378bafe8877b737
+--- /dev/null
++++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/defer/Deferrable.java
+@@ -0,0 +1,22 @@
++package vg.civcraft.mc.civmodcore.utilities.defer;
++
++import org.jetbrains.annotations.NotNull;
++
++/**
++ * @author CivPatched
++ */
++public interface Deferrable {
++
++    /**
++     * Defers a method to be run once at a later time.
++     */
++    default void defer(final @NotNull Runnable function) {
++        getDeferredFunctions().defer(function);
++    }
++
++    /**
++     * Returns the storage of deferred functions for this deferrable.
++     */
++    @NotNull DeferredFunctions getDeferredFunctions();
++
++}
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/defer/DeferredFunctions.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/defer/DeferredFunctions.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..601e4e918ed1c5a4a4381fddcdef35c59757a658
+--- /dev/null
++++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/defer/DeferredFunctions.java
+@@ -0,0 +1,89 @@
++package vg.civcraft.mc.civmodcore.utilities.defer;
++
++import java.util.ArrayList;
++import java.util.List;
++import java.util.Objects;
++import java.util.logging.Level;
++import java.util.logging.Logger;
++import org.bukkit.plugin.java.JavaPlugin;
++import org.jetbrains.annotations.NotNull;
++
++/**
++ * @author CivPatched
++ */
++public final class DeferredFunctions implements Deferrable {
++
++    private final Object $lock;
++    private final JavaPlugin owner;
++    private final Logger logger;
++    private final List<Deferred> deferred;
++
++    public DeferredFunctions(
++            final @NotNull JavaPlugin owner
++    ) {
++        this(owner, owner.getLogger());
++    }
++
++    public DeferredFunctions(
++            final @NotNull JavaPlugin owner,
++            final @NotNull Logger logger
++    ) {
++        this.$lock = new Object[0];
++        this.owner = Objects.requireNonNull(owner);
++        this.logger = Objects.requireNonNull(logger);
++        this.deferred = new ArrayList<>(0);
++    }
++
++    public @NotNull JavaPlugin getOwner() {
++        return this.owner;
++    }
++
++    /**
++     * Defers a method to be run once at a later time.
++     */
++    @Override
++    public void defer(
++            final @NotNull Runnable function
++    ) {
++        synchronized (this.$lock) {
++            this.deferred.add(new Deferred(
++                    function,
++                    new Throwable()
++            ));
++        }
++    }
++
++    @Override
++    public @NotNull DeferredFunctions getDeferredFunctions() {
++        return this;
++    }
++
++    /**
++     * Runs all the deferred functions.
++     */
++    public void UNSAFE_run() {
++        this.logger.info("Running deferred functions");
++        final List<Deferred> deferred;
++        synchronized (this.$lock) {
++            deferred = List.copyOf(this.deferred);
++            this.deferred.clear();
++        }
++        for (final Deferred current : deferred) {
++            try {
++                current.function.run();
++            } catch (final Throwable thrown) {
++                this.logger.log(Level.WARNING, "============================================================");
++                this.logger.log(Level.WARNING, "Something went wrong while running a deferred function.");
++                this.logger.log(Level.WARNING, "Here's the registration stacktrace:", current.stacktrace);
++                this.logger.log(Level.WARNING, "Here's the error:", thrown);
++                this.logger.log(Level.WARNING, "============================================================");
++            }
++        }
++    }
++
++    private record Deferred(
++            @NotNull Runnable function,
++            @NotNull Throwable stacktrace
++    ) { }
++
++}
