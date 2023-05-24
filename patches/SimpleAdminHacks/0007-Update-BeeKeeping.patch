@@ -1,12 +1,14 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Wed, 24 May 2023 01:37:58 +0100
-Subject: [PATCH] Simplify BeeKeeping output
+Date: Wed, 24 May 2023 02:56:25 +0100
+Subject: [PATCH] Update BeeKeeping
 
-It's kind of buggy.
+Simplify BeeKeeping output. It's currently kind of buggy.
+
+Fix BeeKeeping NMS javadoc reference.
 
 diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/BeeKeeping.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/BeeKeeping.java
-index 33af0074d279c4ec3b2bd19d77daac2ee571b7aa..34a140bcacdf4f97563d9b496569a60bd6a9cf9c 100644
+index 33af0074d279c4ec3b2bd19d77daac2ee571b7aa..ac21eedbe579add2d645f1f6bc718c77d389f9db 100644
 --- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/BeeKeeping.java
 +++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/BeeKeeping.java
 @@ -7,7 +7,6 @@ import com.programmerdan.minecraft.simpleadminhacks.framework.BasicHackConfig;
@@ -17,15 +19,27 @@ index 33af0074d279c4ec3b2bd19d77daac2ee571b7aa..34a140bcacdf4f97563d9b496569a60b
  import java.util.List;
  import java.util.Objects;
  import java.util.Random;
-@@ -44,7 +43,6 @@ import org.bukkit.event.player.PlayerInteractEvent;
+@@ -44,9 +43,9 @@ import org.bukkit.event.player.PlayerInteractEvent;
  import org.bukkit.inventory.ItemStack;
  import vg.civcraft.mc.civmodcore.chat.ChatUtils;
  import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
 -import vg.civcraft.mc.civmodcore.utilities.MoreCollectionUtils;
  
  // CivPatched Start
++import net.minecraft.world.entity.NeutralMob;
  import org.bukkit.ChatColor;
-@@ -151,37 +149,8 @@ public final class BeeKeeping extends BasicHack {
+ // CivPatched End
+ 
+@@ -104,7 +103,7 @@ public final class BeeKeeping extends BasicHack {
+ 		}
+ 		final Bee bee = (Bee) ((CraftEntity) attacker).getHandle();
+ 		// Undo bee pacification and allow the bee to sting again
+-		/** See the code in {@link IEntityAngerable#pacify()} */
++		/** See the code in {@link NeutralMob#stopBeingAngry()} */
+ 		final var lastDamageCause = bee.getLastHurtByMob();
+ 		final var angerTarget = bee.getPersistentAngerTarget();
+ 		final var goalTarget = bee.getTarget();
+@@ -151,37 +150,8 @@ public final class BeeKeeping extends BasicHack {
  			return;
  		}
  		final List<BeeData> bees = getBeesFromHive(beehive);

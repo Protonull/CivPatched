@@ -1,9 +1,69 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Sat, 13 May 2023 05:16:16 +0100
-Subject: [PATCH] Allow all hacks to register themselves automatically
+Date: Sat, 13 May 2023 05:27:00 +0100
+Subject: [PATCH] Update hack framework
 
+Allow all hacks to register themselves as event listeners.
 
+All hacks now implement Deferrable.
+
+Update and encapsulate BroadcastLevel.
+
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/SimpleAdminHacks.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/SimpleAdminHacks.java
+index 6f0f622bc17739a282868860d5408fa5285fde6c..79f17b5c7d93b792cee23e7a661c4b3cdee71ff9 100644
+--- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/SimpleAdminHacks.java
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/SimpleAdminHacks.java
+@@ -3,11 +3,8 @@ package com.programmerdan.minecraft.simpleadminhacks;
+ import com.programmerdan.minecraft.simpleadminhacks.framework.HackManager;
+ import com.programmerdan.minecraft.simpleadminhacks.framework.commands.CommandRegistrar;
+ import java.util.logging.Level;
+-import org.bukkit.Bukkit;
+-import org.bukkit.OfflinePlayer;
+ import org.bukkit.command.CommandExecutor;
+ import org.bukkit.command.PluginCommand;
+-import org.bukkit.entity.Player;
+ import vg.civcraft.mc.civmodcore.ACivMod;
+ 
+ /**
+@@ -140,38 +137,4 @@ public class SimpleAdminHacks extends ACivMod {
+ 		return this.getServer().getPluginManager().isPluginEnabled(pluginName);
+ 	}
+ 
+-	@Deprecated
+-	public int serverBroadcast(String message) {
+-		return this.getServer().broadcast(message, config().getBroadcastPermission());
+-	}
+-
+-	@Deprecated
+-	public int serverOperatorBroadcast(String message) {
+-		int cnt = 0;
+-		for(OfflinePlayer op : Bukkit.getOperators()) {
+-			if (op.isOnline() && op.getPlayer() != null) {
+-				op.getPlayer().sendMessage(message);
+-				cnt ++;
+-			}
+-		}
+-		return cnt;
+-	}
+-
+-	@Deprecated
+-	public int serverOnlineBroadcast(String message) {
+-		int cnt = 0;
+-		for (Player p : Bukkit.getOnlinePlayers()) {
+-			if (p != null && p.isOnline()) {
+-				p.sendMessage(message);
+-				cnt ++;
+-			}
+-		}
+-		return cnt;
+-	}
+-
+-	@Deprecated
+-	public void serverSendConsoleMessage(String message) {
+-		Bukkit.getConsoleSender().sendMessage(message);
+-	}
+-
+ }
 diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/framework/BasicHack.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/framework/BasicHack.java
 index aa764902a25c93aa3260a900542bc7a790656f78..68f4f1a47bc72d139ddb97914083e4d8b9694c12 100644
 --- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/framework/BasicHack.java
@@ -36,22 +96,66 @@ index aa764902a25c93aa3260a900542bc7a790656f78..68f4f1a47bc72d139ddb97914083e4d8
  	public static BasicHackConfig generate(final SimpleAdminHacks plugin, final ConfigurationSection config) {
  		return new BasicHackConfig(plugin, config);
 diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/framework/SimpleHack.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/framework/SimpleHack.java
-index 068fa2267adcc048da200d16514e9349f09e09be..b489813fcd0d6bb162e799c2b3873509d3fd3912 100644
+index 068fa2267adcc048da200d16514e9349f09e09be..cee98248eb58f7f3c34d6e4a904b46657829fd26 100644
 --- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/framework/SimpleHack.java
 +++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/framework/SimpleHack.java
-@@ -15,6 +15,11 @@ import org.bukkit.configuration.ConfigurationSection;
+@@ -15,22 +15,32 @@ import org.bukkit.configuration.ConfigurationSection;
  import org.bukkit.util.NumberConversions;
  import vg.civcraft.mc.civmodcore.utilities.CivLogger;
  
 +// CivPatched Start
 +import org.bukkit.event.HandlerList;
 +import org.bukkit.event.Listener;
++import org.jetbrains.annotations.NotNull;
++import vg.civcraft.mc.civmodcore.utilities.defer.Deferrable;
++import vg.civcraft.mc.civmodcore.utilities.defer.DeferredFunctions;
 +// CivPatched End
 +
  /**
   * Baseline structure for a managed hack.
   *
-@@ -85,13 +90,23 @@ public abstract class SimpleHack<T extends SimpleHackConfig> {
+  * @author ProgrammerDan
+  */
+-public abstract class SimpleHack<T extends SimpleHackConfig> {
++public abstract class SimpleHack<T extends SimpleHackConfig> implements Deferrable { // CivPatched: Implement Deferrable
+ 
+ 	protected final CivLogger logger;
+ 	protected final SimpleAdminHacks plugin;
+ 	protected final T config;
+ 	private boolean enabled;
++	private final DeferredFunctions deferredFunctions; // CivPatched
+ 
+ 	public SimpleHack(final SimpleAdminHacks plugin, final T config) {
+ 		this.logger = CivLogger.getLogger(getClass());
+ 		this.plugin = Objects.requireNonNull(plugin, "Plugin cannot be null!");
+ 		this.config = Objects.requireNonNull(config, "Config cannot be null!");
++		this.deferredFunctions = new DeferredFunctions(plugin, this.logger); // CivPatched
+ 	}
+ 
+ 	public final SimpleAdminHacks plugin() {
+@@ -41,6 +51,13 @@ public abstract class SimpleHack<T extends SimpleHackConfig> {
+ 		return this.config;
+ 	}
+ 
++	// CivPatched Start
++	@Override
++	public @NotNull DeferredFunctions getDeferredFunctions() {
++		return this.deferredFunctions;
++	}
++	// CivPatched End
++
+ 	public final String getName() {
+ 		return getClass().getSimpleName();
+ 	}
+@@ -72,6 +89,7 @@ public abstract class SimpleHack<T extends SimpleHackConfig> {
+ 		unregisterCommands();
+ 		dataCleanup();
+ 		onDisable();
++		this.deferredFunctions.UNSAFE_run(); // CivPatched
+ 		this.config.setEnabled(false); // Needed for legacy hacks that rely on their config for current states
+ 		this.enabled = false;
+ 		this.plugin.info(ChatColor.AQUA + getName() + " disabled!");
+@@ -85,13 +103,23 @@ public abstract class SimpleHack<T extends SimpleHackConfig> {
  	/**
  	 * Called when this hack is enabled.
  	 */
@@ -77,6 +181,95 @@ index 068fa2267adcc048da200d16514e9349f09e09be..b489813fcd0d6bb162e799c2b3873509
  	}
  
  	/**
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/framework/utilities/BroadcastLevel.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/framework/utilities/BroadcastLevel.java
+index 68490f4bdca523cbf1a53ad01c2ab1c6e36666bf..c68cf47ff19386c1d7b42e06d69e07a36392613a 100644
+--- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/framework/utilities/BroadcastLevel.java
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/framework/utilities/BroadcastLevel.java
+@@ -1,13 +1,83 @@
+ package com.programmerdan.minecraft.simpleadminhacks.framework.utilities;
+ 
++// CivPatched Start
++import com.programmerdan.minecraft.simpleadminhacks.SimpleAdminHacks;
++import java.util.Objects;
++import net.kyori.adventure.text.Component;
++import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
++import org.bukkit.Bukkit;
++import org.bukkit.OfflinePlayer;
++import org.bukkit.entity.Player;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ /**
+  * Various Broadcast targets
+  * 
+  * @author ProgrammerDan
+- */
+ public enum BroadcastLevel {
+ 	OP,
+ 	PERM,
+ 	CONSOLE,
+ 	ALL
+ }
++*/ // CivPatched Start
++public enum BroadcastLevel {
++
++	OP {
++		@Override
++		public int sendMessage(final @NotNull Component message) {
++			return (int) Bukkit.getOperators()
++					.stream()
++					.map(OfflinePlayer::getPlayer)
++					.filter(Objects::nonNull)
++					.peek((final Player player) -> player.sendMessage(message))
++					.count();
++		}
++	},
++
++	PERM {
++		@Override
++		public int sendMessage(final @NotNull Component message) {
++			return Bukkit.broadcast(message, SimpleAdminHacks.instance().config().getBroadcastPermission());
++		}
++	},
++
++	CONSOLE {
++		@Override
++		public int sendMessage(final @NotNull Component message) {
++			Bukkit.getConsoleSender().sendMessage(message);
++			return 1;
++		}
++	},
++
++	ALL {
++		@Override
++		public int sendMessage(final @NotNull Component message) {
++			return Bukkit.broadcast(message);
++		}
++	};
++
++	/**
++	 * Sends a message to the intended targets.
++	 *
++	 * @param message The message to send.
++	 * @return Returns how many recipients received the message.
++	 */
++	public abstract int sendMessage(final @NotNull Component message);
++
++	/**
++	 * Sends a message to the intended targets.
++	 *
++	 * @param message The message to send.
++	 * @return Returns how many recipients received the message.
++	 *
++	 * @deprecated Use {@link #sendMessage(Component)} instead.
++	 */
++	@Deprecated
++	public final int sendMessage(final @NotNull String message) {
++		return sendMessage(LegacyComponentSerializer.legacySection().deserialize(message));
++	}
++
++}
++// CivPatched End
 diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/BadBoyWatch.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/BadBoyWatch.java
 index acd2386773a14590f855431ebc4a0ece582abf0b..4f20dda7412f3a36d44fa067f649ec118cfd3cc3 100644
 --- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/BadBoyWatch.java
@@ -107,10 +300,32 @@ index acd2386773a14590f855431ebc4a0ece582abf0b..4f20dda7412f3a36d44fa067f649ec11
  	public void unregisterCommands() {
  	}
 diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/CTAnnounce.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/CTAnnounce.java
-index 6060f252a0ddc3b918d6adad744052c88db644d1..2966f8314e417ecfb1fbdae5afc9e7e3607cb821 100644
+index 6060f252a0ddc3b918d6adad744052c88db644d1..70ba43cb7db7aa7bc9b236a821c7cc204741b909 100644
 --- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/CTAnnounce.java
 +++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/CTAnnounce.java
-@@ -82,14 +82,6 @@ public class CTAnnounce extends SimpleHack<CTAnnounceConfig> implements Listener
+@@ -57,20 +57,7 @@ public class CTAnnounce extends SimpleHack<CTAnnounceConfig> implements Listener
+ 		// Overlap is possible. Some people might get double-notified
+ 		for (BroadcastLevel level : config.getBroadcast()) {
+ 			plugin().debug("  Broadcast to {0}", level);
+-			switch(level) {
+-			case OP:
+-				plugin().serverOperatorBroadcast(cleanMessage);
+-				break;
+-			case PERM:
+-				plugin().serverBroadcast(cleanMessage); 
+-				break;
+-			case CONSOLE:
+-				plugin().serverSendConsoleMessage(cleanMessage);
+-				break;
+-			case ALL:
+-				plugin().serverOnlineBroadcast(cleanMessage);
+-				break;
+-			}
++			level.sendMessage(cleanMessage); // CivPatched
+ 		}
+ 	}
+ 
+@@ -82,14 +69,6 @@ public class CTAnnounce extends SimpleHack<CTAnnounceConfig> implements Listener
  				);
  	}
  
@@ -125,7 +340,7 @@ index 6060f252a0ddc3b918d6adad744052c88db644d1..2966f8314e417ecfb1fbdae5afc9e7e3
  	@Override
  	public void registerCommands() {
  	}
-@@ -99,10 +91,6 @@ public class CTAnnounce extends SimpleHack<CTAnnounceConfig> implements Listener
+@@ -99,10 +78,6 @@ public class CTAnnounce extends SimpleHack<CTAnnounceConfig> implements Listener
  		lastCTAnnounce = new ConcurrentHashMap<>();
  	}
  
@@ -224,10 +439,10 @@ index 114847b519f037516d779b2dd633f2846a725965..4238121dfc96c65af79a9539b576d1ad
  	public void unregisterCommands() {
  	}
 diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/GameFeatures.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/GameFeatures.java
-index 7999232c837ba27de2d6cb517d3a3386479f46be..61df4d5024830c2536fe85932f9189091c95c408 100644
+index f98874d1ce76c0cc9256f6bfbbabe0a7941d57e9..07731cd5218be1d2c5b002d644a993c096090057 100644
 --- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/GameFeatures.java
 +++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/GameFeatures.java
-@@ -72,19 +72,6 @@ public class GameFeatures extends SimpleHack<GameFeaturesConfig> implements List
+@@ -75,19 +75,6 @@ public class GameFeatures extends SimpleHack<GameFeaturesConfig> implements List
  		super(plugin, config);
  	}
  
@@ -416,10 +631,32 @@ index 50c6ca89578b94967ee41cf8242f6b2f359082c2..db16174796490e33e3648275f9b6cd74
  	public void unregisterCommands() {
  	}
 diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/NewfriendAssist.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/NewfriendAssist.java
-index ddf43e19ac819900d9a7a1053451b1fd712d77e5..a417ca2662102d37e2177f94ba65a0235eb14649 100644
+index ddf43e19ac819900d9a7a1053451b1fd712d77e5..ad046aae947f480988f3f7c0fbfe6de4046f2739 100644
 --- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/NewfriendAssist.java
 +++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/NewfriendAssist.java
-@@ -167,14 +167,6 @@ public class NewfriendAssist extends SimpleHack<NewfriendAssistConfig> implement
+@@ -101,20 +101,7 @@ public class NewfriendAssist extends SimpleHack<NewfriendAssistConfig> implement
+ 			// Overlap is possible. Some people might get double-notified
+ 			for (BroadcastLevel level : config.getAnnounceBroadcast()) {
+ 				plugin().debug("  Broadcast to {0}", level);
+-				switch(level) {
+-				case OP:
+-					plugin().serverOperatorBroadcast(cleanMessage);
+-					break;
+-				case PERM:
+-					plugin().serverBroadcast(cleanMessage); 
+-					break;
+-				case CONSOLE:
+-					plugin().serverSendConsoleMessage(cleanMessage);
+-					break;
+-				case ALL:
+-					plugin().serverOnlineBroadcast(cleanMessage);
+-					break;
+-				}
++				level.sendMessage(cleanMessage); // CivPatched
+ 			}
+ 		}
+ 
+@@ -167,14 +154,6 @@ public class NewfriendAssist extends SimpleHack<NewfriendAssistConfig> implement
  				);
  	}
  
@@ -434,7 +671,7 @@ index ddf43e19ac819900d9a7a1053451b1fd712d77e5..a417ca2662102d37e2177f94ba65a023
  	@Override
  	public void registerCommands() {
  		if (config.isEnabled()) {
-@@ -189,10 +181,6 @@ public class NewfriendAssist extends SimpleHack<NewfriendAssistConfig> implement
+@@ -189,10 +168,6 @@ public class NewfriendAssist extends SimpleHack<NewfriendAssistConfig> implement
  		this.newfriendSessionTime = new HashMap<>();
  	}
  
@@ -446,10 +683,21 @@ index ddf43e19ac819900d9a7a1053451b1fd712d77e5..a417ca2662102d37e2177f94ba65a023
  	public void unregisterCommands() {
  	}
 diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/ReinforcedChestBreak.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/ReinforcedChestBreak.java
-index dee661e621c7553086cfec2191831041626f914d..9491f6b8257842b3285dde8f8198c38a6be5d03f 100644
+index dee661e621c7553086cfec2191831041626f914d..394a9e7b775ff832d809293f41596fd3a155e6e3 100644
 --- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/ReinforcedChestBreak.java
 +++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/ReinforcedChestBreak.java
-@@ -37,14 +37,6 @@ public class ReinforcedChestBreak extends SimpleHack<ReinforcedChestBreakConfig>
+@@ -18,6 +18,10 @@ import org.bukkit.event.block.BlockBreakEvent;
+ import vg.civcraft.mc.citadel.Citadel;
+ import vg.civcraft.mc.citadel.ReinforcementManager;
+ 
++// CivPatched Start
++import com.programmerdan.minecraft.simpleadminhacks.framework.utilities.BroadcastLevel;
++// CivPatched End
++
+ /**
+  * Sends every 3 minutes a message to the admins if a chest is broken
+  */
+@@ -37,14 +41,6 @@ public class ReinforcedChestBreak extends SimpleHack<ReinforcedChestBreakConfig>
  		return new ReinforcedChestBreakConfig(plugin, config);
  	}
  
@@ -464,7 +712,7 @@ index dee661e621c7553086cfec2191831041626f914d..9491f6b8257842b3285dde8f8198c38a
      @Override
      public void registerCommands() {}
  
-@@ -61,9 +53,6 @@ public class ReinforcedChestBreak extends SimpleHack<ReinforcedChestBreakConfig>
+@@ -61,9 +57,6 @@ public class ReinforcedChestBreak extends SimpleHack<ReinforcedChestBreakConfig>
          Bukkit.getScheduler().runTaskTimer(plugin(), messenger, 0, config.getDelay() * 20);
      }
  
@@ -474,6 +722,15 @@ index dee661e621c7553086cfec2191831041626f914d..9491f6b8257842b3285dde8f8198c38a
      @Override
      public void unregisterCommands() {}
  
+@@ -149,7 +142,7 @@ public class ReinforcedChestBreak extends SimpleHack<ReinforcedChestBreakConfig>
+         @Override
+         public void run() {
+             for (String message: messages) {
+-                plugin().serverOperatorBroadcast(message);
++				BroadcastLevel.OP.sendMessage(message); // CivPatched
+             }
+             messages.clear();
+         }
 diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/SanityHack.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/SanityHack.java
 index 47ed60ee4a493d2961a9431f4ae3b3162368d1da..11ac5609d0c1762ed1466dc84d5450fcd7d37e3d 100644
 --- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/SanityHack.java
@@ -522,10 +779,10 @@ index 021531a09ae1a5e36102092b2de8ef9746fb8307..8a34279790af08b6aa8b32ccabc176f1
  	public void onBlockBreak(BlockBreakEvent event) {
  		Block brokenBlock = event.getBlock();
 diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/TimingsHack.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/TimingsHack.java
-index a4363534498ea5efcf6e48ae9e024fc8452ba50c..4657002e6e4d8e48d3dab39ccfd6dd3beb20ce39 100644
+index ed2cc60f78b7221bb9c8f4c96b642831d9e97016..9751bcfe5e67b13354d758b86781d0b47562aa3a 100644
 --- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/TimingsHack.java
 +++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/TimingsHack.java
-@@ -325,14 +325,6 @@ public class TimingsHack extends SimpleHack<TimingsHackConfig> implements Listen
+@@ -328,14 +328,6 @@ public class TimingsHack extends SimpleHack<TimingsHackConfig> implements Listen
  		return true;
  	}
  
@@ -540,7 +797,7 @@ index a4363534498ea5efcf6e48ae9e024fc8452ba50c..4657002e6e4d8e48d3dab39ccfd6dd3b
  	@SuppressWarnings("deprecation")
  	@EventHandler(ignoreCancelled = true)
  	public void onMapInit(MapInitializeEvent event) {
-@@ -573,10 +565,6 @@ public class TimingsHack extends SimpleHack<TimingsHackConfig> implements Listen
+@@ -576,10 +568,6 @@ public class TimingsHack extends SimpleHack<TimingsHackConfig> implements Listen
  		}
  	}
  
