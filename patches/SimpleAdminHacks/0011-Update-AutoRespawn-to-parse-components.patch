@@ -1,0 +1,19 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Wed, 24 May 2023 03:02:09 +0100
+Subject: [PATCH] Update AutoRespawn to parse components
+
+
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/AutoRespawn.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/AutoRespawn.java
+index 98cfaacdc68b71ee99c40b806dc32402b1476cdc..028f407de1138fe636ce854e7d0cd3d009590577 100644
+--- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/AutoRespawn.java
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/AutoRespawn.java
+@@ -118,7 +118,7 @@ public final class AutoRespawn extends BasicHack {
+ 		if (Strings.isNullOrEmpty(message)) {
+ 			return;
+ 		}
+-		player.sendMessage(ChatUtils.parseColor(message));
++		player.sendMessage(ChatUtils.parseComponent(message)); // CivPatched
+ 	}
+ 
+ 	// ------------------------------------------------------------

@@ -1,0 +1,24 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Wed, 24 May 2023 03:02:30 +0100
+Subject: [PATCH] Fix BedLocator oopsie
+
+
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/BedLocator.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/BedLocator.java
+index 1e8b1ef37c1f39f38674afc01097c4168300252f..62c4730d1387ef10b6c3cd84ce5703e6cb77e17b 100644
+--- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/BedLocator.java
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/BedLocator.java
+@@ -44,11 +44,10 @@ public final class BedLocator extends BasicHack {
+ 	public static class BedLocatorCommand extends BaseCommand {
+ 		@CommandAlias("wheresmybed|locatebed")
+ 		@Description("Tells you where your bed is")
+-		public void giveWand(final Player sender) {
++		public void showBedLocation(final Player sender) { // CivPatched
+ 			final var bedLocation = sender.getBedSpawnLocation();
+ 			if (bedLocation == null) {
+-				sender.sendMessage(Component.text("You do not a set bed.")
+-						.color(NamedTextColor.GREEN));
++				sender.sendMessage(Component.text("You do not have a bed set.", NamedTextColor.GREEN)); // CivPatched
+ 				return;
+ 			}
+ 			sender.sendMessage(Component.text()

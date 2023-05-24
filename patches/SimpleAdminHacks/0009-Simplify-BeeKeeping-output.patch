@@ -1,0 +1,66 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Wed, 24 May 2023 01:37:58 +0100
+Subject: [PATCH] Simplify BeeKeeping output
+
+It's kind of buggy.
+
+diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/BeeKeeping.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/BeeKeeping.java
+index 33af0074d279c4ec3b2bd19d77daac2ee571b7aa..34a140bcacdf4f97563d9b496569a60bd6a9cf9c 100644
+--- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/BeeKeeping.java
++++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/BeeKeeping.java
+@@ -7,7 +7,6 @@ import com.programmerdan.minecraft.simpleadminhacks.framework.BasicHackConfig;
+ import com.programmerdan.minecraft.simpleadminhacks.framework.autoload.AutoLoad;
+ import java.security.SecureRandom;
+ import java.util.ArrayList;
+-import java.util.Iterator;
+ import java.util.List;
+ import java.util.Objects;
+ import java.util.Random;
+@@ -44,7 +43,6 @@ import org.bukkit.event.player.PlayerInteractEvent;
+ import org.bukkit.inventory.ItemStack;
+ import vg.civcraft.mc.civmodcore.chat.ChatUtils;
+ import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
+-import vg.civcraft.mc.civmodcore.utilities.MoreCollectionUtils;
+ 
+ // CivPatched Start
+ import org.bukkit.ChatColor;
+@@ -151,37 +149,8 @@ public final class BeeKeeping extends BasicHack {
+ 			return;
+ 		}
+ 		final List<BeeData> bees = getBeesFromHive(beehive);
+-		final int numberOfUnnamed = MoreCollectionUtils.numberOfMatches(bees, BeeData::isNameless);
+-		bees.removeIf(BeeData::isNameless);
+ 		// Start building response
+-		final var response = Component.text().color(NamedTextColor.GOLD);
+-		final Iterator<BeeData> nameIterator = bees.iterator();
+-		boolean doneFirstElement = false;
+-		while (nameIterator.hasNext()) {
+-			final BeeData bee = nameIterator.next();
+-			if (nameIterator.hasNext() || numberOfUnnamed > 0) {
+-				if (doneFirstElement) {
+-					response.append(Component.text(", "));
+-				}
+-			}
+-			else if (numberOfUnnamed == 0) {
+-				response.append(Component.text(", and "));
+-			}
+-			assert bee.name != null;
+-			response.append(bee.name);
+-			doneFirstElement = true;
+-		}
+-		if (numberOfUnnamed > 0) {
+-			if (bees.isEmpty()) {
+-				response.append(Component.text("There are " + numberOfUnnamed + " bees"));
+-			}
+-			else {
+-				response.append(Component.text(", and " + numberOfUnnamed + " others are"));
+-			}
+-		}
+-		else {
+-			response.append(Component.text(" are"));
+-		}
++		final var response = Component.text().color(NamedTextColor.GOLD).content("There are " + bees.size() + " bees "); // CivPatched
+ 		if (beehive.isSedated()) {
+ 			response.append(Component.text(" sedated"));
+ 		}
