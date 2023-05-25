@@ -2,7 +2,18 @@
 @default:
     just --list
 
-# Reset each submodule to its init-state.
+# Builds all submodules, or a specific module if specified.
+build module="":
+    #!/bin/bash
+    if [ -z "{{ module }}" ]; then
+        echo "Building all submodules"
+        ./gradlew clean reobfJar
+    else
+        echo "Building submodule: {{ module }}"
+        ./gradlew clean :{{ module }}:reobfJar
+    fi
+
+# Reset all submodules to their init-state.
 reset:
     #!/bin/bash
     git submodule status | awk '{ print $2 }' | while read submodule; do
