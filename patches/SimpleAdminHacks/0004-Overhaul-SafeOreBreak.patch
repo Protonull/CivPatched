@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Mon, 22 May 2023 23:25:43 +0100
+Date: Thu, 25 May 2023 00:59:17 +0100
 Subject: [PATCH] Overhaul SafeOreBreak
 
 
@@ -107,10 +107,10 @@ index 0000000000000000000000000000000000000000..84c2e036b5c56ecb92cf58cb65c4a82f
 +}
 diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/SafeOreBreak.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/SafeOreBreak.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..74e86a320904d1c4dc65ea41b628c92fa385e87e
+index 0000000000000000000000000000000000000000..76d865d9b987f0be959ad6594b400179a05443f4
 --- /dev/null
 +++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/SafeOreBreak.java
-@@ -0,0 +1,109 @@
+@@ -0,0 +1,112 @@
 +package com.programmerdan.minecraft.simpleadminhacks.hacks;
 +
 +import com.programmerdan.minecraft.simpleadminhacks.SimpleAdminHacks;
@@ -166,6 +166,7 @@ index 0000000000000000000000000000000000000000..74e86a320904d1c4dc65ea41b628c92f
 +				"Configure which ores should only be mined with silk touch!",
 +				new ItemStack(Material.DIAMOND_ORE)
 +		);
++		defer(() -> PlayerSettingAPI.getMainMenu().getItems().remove(menu));
 +		for (final SafeOreBreakConfig.OreConfig ore : config().getOreConfigs()) {
 +			final Material buttonMaterial = ore.blocks().get(0);
 +			final var setting = new BooleanSetting(
@@ -191,9 +192,11 @@ index 0000000000000000000000000000000000000000..74e86a320904d1c4dc65ea41b628c92f
 +				}
 +			};
 +			PlayerSettingAPI.registerSetting(setting, menu);
++			defer(() -> PlayerSettingAPI.deregisterSetting(setting));
 +			for (final Material blockMaterial : ore.blocks()) {
 +				this.blockSettings.put(blockMaterial, setting);
 +			}
++			defer(this.blockSettings::clear);
 +		}
 +	}
 +

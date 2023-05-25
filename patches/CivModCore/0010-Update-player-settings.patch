@@ -5,16 +5,41 @@ Subject: [PATCH] Update player settings
 
 Allows players to open a specific config window.
 
+Restore setting deregistering.
+
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java b/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java
+index 090172096da1d8841107efb1f99210e77c8fdfa4..dba242f180ea16e5a2597c636ebbacdb43f62c8d 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java
+@@ -23,6 +23,7 @@ import org.jetbrains.annotations.Contract;
+ 
+ // CivPatched Start
+ import org.jetbrains.annotations.NotNull;
++import vg.civcraft.mc.civmodcore.players.settings.PlayerSettingAPI;
+ import vg.civcraft.mc.civmodcore.utilities.defer.Deferrable;
+ import vg.civcraft.mc.civmodcore.utilities.defer.DeferredFunctions;
+ // CivPatched End
+@@ -48,6 +49,7 @@ public abstract class ACivMod extends JavaPlugin implements Deferrable { // CivP
+ 	
+ 	@Override
+ 	public void onDisable() {
++		PlayerSettingAPI.deregisterAllPluginSettings(this); // CivPatched
+ 		this.configClasses.forEach(ConfigurationSerialization::unregisterClass);
+ 		getDeferredFunctions().UNSAFE_run(); // CivPatched
+ 	}
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java b/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java
-index dbf5d5e1be70d67748f0562395767d9c163b094a..6c05e633190664d19f3b70b51a511475fb35bb82 100644
+index dbf5d5e1be70d67748f0562395767d9c163b094a..1e279126bd08b97feed2e910af4ca95acbc82abb 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java
-@@ -16,6 +16,12 @@ import vg.civcraft.mc.civmodcore.CivModCorePlugin;
+@@ -16,6 +16,15 @@ import vg.civcraft.mc.civmodcore.CivModCorePlugin;
  import vg.civcraft.mc.civmodcore.players.settings.gui.MenuOption;
  import vg.civcraft.mc.civmodcore.players.settings.gui.MenuSection;
  
 +// CivPatched Start
++import java.util.IdentityHashMap;
++import java.util.Set;
 +import java.util.TreeMap;
++import org.bukkit.plugin.java.JavaPlugin;
 +import org.jetbrains.annotations.NotNull;
 +import vg.civcraft.mc.civmodcore.players.settings.gui.MenuItem;
 +// CivPatched End
@@ -22,7 +47,7 @@ index dbf5d5e1be70d67748f0562395767d9c163b094a..6c05e633190664d19f3b70b51a511475
  /**
   * Allows creating settings, which will automatically be available in players
   * configuration GUI
-@@ -39,6 +45,18 @@ public final class PlayerSettingAPI {
+@@ -39,6 +48,18 @@ public final class PlayerSettingAPI {
  		return MAIN_MENU;
  	}
  
@@ -41,6 +66,35 @@ index dbf5d5e1be70d67748f0562395767d9c163b094a..6c05e633190664d19f3b70b51a511475
  	public static Collection<PlayerSetting<?>> getAllSettings() {
  		return Collections.unmodifiableCollection(SETTINGS_BY_IDENTIFIER.values());
  	}
+@@ -97,14 +118,20 @@ public final class PlayerSettingAPI {
+ 		}
+ 	}
+ 
+-	// TODO: While this deregisteres the settings, those settings then need to be removed from menus
+-	//    Maybe menus need a rework?
+-//	public static void deregisterPluginSettings(Plugin plugin) {
+-//		Preconditions.checkArgument(plugin != null);
+-//		Iteration.iterateThenClear(SETTINGS_BY_PLUGIN.get(plugin.getName()), (setting) ->
+-//				SETTINGS_BY_IDENTIFIER.remove(setting.getIdentifier()));
+-//		SETTINGS_BY_PLUGIN.remove(plugin.getName());
+-//	}
++	// CivPatched Start
++	public static void deregisterAllPluginSettings(final @NotNull JavaPlugin plugin) {
++		SETTINGS_BY_PLUGIN.computeIfPresent(plugin.getName(), (_pluginName, settings) -> {
++			for (final PlayerSetting<?> setting : settings) {
++				deregisterSetting(setting);
++			}
++			settings.clear();
++			return null;
++		});
++	}
++	public static void deregisterSetting(final @NotNull PlayerSetting<?> setting) {
++		SETTINGS_BY_IDENTIFIER.remove(setting.getIdentifier());
++	}
++	// CivPatched End
+ 
+ 	/**
+ 	 * Saves all values to their save files
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/commands/ConfigCommand.java b/src/main/java/vg/civcraft/mc/civmodcore/players/settings/commands/ConfigCommand.java
 index f92721db9167e105b12f2e1f84aef7546c821001..e2d7c30d40043970e5c8e1ddd55ec47f4dce38fb 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/commands/ConfigCommand.java

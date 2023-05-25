@@ -27,6 +27,7 @@ git rm -rfq "src/main/java/vg/civcraft/mc/civmodcore/nbt/storage"
 git rm -rfq "src/main/java/vg/civcraft/mc/civmodcore/particles"
 git rm -rfq "src/main/java/vg/civcraft/mc/civmodcore/players/settings/impl/AltConsistentSetting.java"
 git rm -rfq "src/main/java/vg/civcraft/mc/civmodcore/players/settings/AltRequestEvent.java"
+git rm -rfq "src/main/java/vg/civcraft/mc/civmodcore/players/settings/gui/ClickableMenuItem.java"
 git rm -rfq "src/main/java/vg/civcraft/mc/civmodcore/events/CustomEventMapper.java"
 git rm -rfq "src/main/java/vg/civcraft/mc/civmodcore/events/PlayerMoveBlockEvent.java"
 
