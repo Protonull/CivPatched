@@ -3,6 +3,8 @@ cd "$1" || exit 1
 
 # Checkout the submodule upstream commit
 git checkout --quiet -B upstream "22a7cf2e18af23c56cd137530989a725b15e88bf"
+git branch --quiet --set-upstream-to=origin/master upstream
+git checkout --quiet -B ignored upstream
 
 # Relocate Java src to root of submodule
 git mv "paper/src" "src"
@@ -21,4 +23,4 @@ git rm -rfq  ".github"
 git rm -rfq "src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/EventDebugHack.java"
 
 git commit --quiet -m "Reset SimpleAdminHacks"
-git checkout --quiet -B master upstream
+git checkout --quiet -B patches ignored

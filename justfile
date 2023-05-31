@@ -46,9 +46,10 @@ fetch:
         if ! (
             cd "$projectFolder"
             git fetch --quiet
-            howFarBehind=$(git rev-list --count HEAD..@{u})
-            if [ "$howFarBehind" -gt 0 ]; then
-                echo "  - is $howFarBehind commits behind!"
+            git checkout --quiet upstream
+            howFarBehind=$(git rev-list --count upstream..@{u})
+            if [ "$((howFarBehind))" -gt 0 ]; then
+                echo " - is $howFarBehind commits behind!"
             fi
         ); then
             echo "Could not fetch $submodule"
@@ -66,6 +67,7 @@ applyPatches:
             cd "$projectFolder"
             git config core.eol lf
             git config core.autocrlf false
+            git tag | xargs git tag -d >/dev/null
             if [ -n "$(git status --short --porcelain)" ]; then
                 git reset --quiet --hard HEAD
             fi
@@ -75,9 +77,9 @@ applyPatches:
         fi
         resetScript="$patchesFolder/0000-reset.bash"
         if [ -f "$resetScript" ]; then
-            # The reset script must create two branches: upstream and master
-            # The master branch is for all changes to be committed to
-            # The upstream branch is for patches to compare against
+            # The reset script MUST create two branches: "ignored" and "patches"
+            # The "ignored" branch is for any changes made within the reset script which shouldn't be turned into patches.
+            # The "patches" branch on the other hand is for any changes that should be turned into patches.
             if ! (
                 bash "$resetScript" "$projectFolder"
             ); then
@@ -109,7 +111,7 @@ generatePatches:
         echo "Generating patches for $submodule"
         if ! (
             cd "$projectFolder"
-            git format-patch --no-signature --zero-commit --full-index --no-stat --no-numbered --output-directory "$patchesFolder" upstream
+            git format-patch --no-signature --zero-commit --full-index --no-stat --no-numbered --output-directory "$patchesFolder" ignored
         ); then
             echo "Could not create patches for $submodule"
             exit 1
