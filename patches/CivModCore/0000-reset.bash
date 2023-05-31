@@ -4,32 +4,30 @@ cd "$1" || exit 1
 # Checkout the submodule upstream commit
 git checkout --quiet -B upstream "321ab959cfa72546551eb2600db6fa56e6bc742f"
 
-# Relocate Java src to root of submodule
 git mv "paper/src" "src"
 git rm -rfq "paper"
+git commit --quiet -m "Flatten project structure"
 
-# Remove submodule's Gradle wrapper and files
-git rm -rfq "gradle" "gradlew" "gradlew.bat" "gradle.properties" "settings.gradle.kts"
+git rm -rfq "gradle" "gradlew" "gradlew.bat"
+git commit --quiet -m "Remove Gradle wrapper"
 
-# Remove .editorconfig
-git rm -rfq ".editorconfig"
-
-# Remove Github workflows
-git rm -rfq  ".github"
+git rm -rfq ".github" ".editorconfig" "gradle.properties" "settings.gradle.kts"
+git commit --quiet -m "Remove extraneous boilerplate"
 
 # Remove old classes
-git rm -rfq "src/main/java/vg/civcraft/mc/civmodcore/maps"
-git rm -rfq "src/main/java/vg/civcraft/mc/civmodcore/util"
-git rm -rfq "src/main/java/vg/civcraft/mc/civmodcore/utilities/Title.java"
-git rm -rfq "src/main/java/vg/civcraft/mc/civmodcore/world/WorldXZ.java"
-git rm -rfq "src/main/java/vg/civcraft/mc/civmodcore/world/operations"
-git rm -rfq "src/main/java/vg/civcraft/mc/civmodcore/nbt/storage"
-git rm -rfq "src/main/java/vg/civcraft/mc/civmodcore/particles"
-git rm -rfq "src/main/java/vg/civcraft/mc/civmodcore/players/settings/impl/AltConsistentSetting.java"
-git rm -rfq "src/main/java/vg/civcraft/mc/civmodcore/players/settings/AltRequestEvent.java"
-git rm -rfq "src/main/java/vg/civcraft/mc/civmodcore/players/settings/gui/ClickableMenuItem.java"
-git rm -rfq "src/main/java/vg/civcraft/mc/civmodcore/events/CustomEventMapper.java"
-git rm -rfq "src/main/java/vg/civcraft/mc/civmodcore/events/PlayerMoveBlockEvent.java"
+git rm -rfq \
+    "src/main/java/vg/civcraft/mc/civmodcore/maps" \
+    "src/main/java/vg/civcraft/mc/civmodcore/util" \
+    "src/main/java/vg/civcraft/mc/civmodcore/utilities/Title.java" \
+    "src/main/java/vg/civcraft/mc/civmodcore/world/WorldXZ.java" \
+    "src/main/java/vg/civcraft/mc/civmodcore/world/operations" \
+    "src/main/java/vg/civcraft/mc/civmodcore/nbt/storage" \
+    "src/main/java/vg/civcraft/mc/civmodcore/particles" \
+    "src/main/java/vg/civcraft/mc/civmodcore/players/settings/impl/AltConsistentSetting.java" \
+    "src/main/java/vg/civcraft/mc/civmodcore/players/settings/AltRequestEvent.java" \
+    "src/main/java/vg/civcraft/mc/civmodcore/players/settings/gui/ClickableMenuItem.java" \
+    "src/main/java/vg/civcraft/mc/civmodcore/events/CustomEventMapper.java" \
+    "src/main/java/vg/civcraft/mc/civmodcore/events/PlayerMoveBlockEvent.java"
+git commit --quiet -m "Remove extraneous code"
 
-git commit --quiet -m "Reset CivModCore"
 git checkout --quiet -B master upstream

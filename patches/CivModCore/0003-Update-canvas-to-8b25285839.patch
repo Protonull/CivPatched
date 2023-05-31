@@ -1,0 +1,31 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Wed, 31 May 2023 00:31:26 +0100
+Subject: [PATCH] Update canvas to 8b25285839
+
+
+diff --git a/build.gradle.kts b/build.gradle.kts
+index 1f7991da7e8c7fa084a8e10c46d8718c7a018529..97b80488cc93b73b3a12f3c3477f70bd59377a80 100644
+--- a/build.gradle.kts
++++ b/build.gradle.kts
+@@ -10,6 +10,6 @@ dependencies {
+ 	api("com.zaxxer:HikariCP:5.0.1")
+ 	api("co.aikar:acf-bukkit:0.5.0-SNAPSHOT")
+ 	api("co.aikar:taskchain-bukkit:3.7.2")
+-	api("com.github.IPVP-MC:canvas:91ec97f076")
++	api("com.github.IPVP-MC:canvas:8b25285839")
+ 	api("org.apache.commons:commons-collections4:4.4")
+ }
+diff --git a/src/main/java/org/ipvp/canvas/type/AbstractCivMenu.java b/src/main/java/org/ipvp/canvas/type/AbstractCivMenu.java
+index df544310700fe00df8889b3179edf9dd3fb86c93..064ffa45f5607f4716fc9ea26843baeb026c68dd 100644
+--- a/src/main/java/org/ipvp/canvas/type/AbstractCivMenu.java
++++ b/src/main/java/org/ipvp/canvas/type/AbstractCivMenu.java
+@@ -29,7 +29,7 @@ public abstract class AbstractCivMenu extends AbstractMenu {
+ 	private static final Method UPDATE_INV_CONTENTS_METHOD;
+ 
+ 	static {
+-		VIEWERS_FIELD = FieldUtils.getDeclaredField(AbstractMenu.class, "viewers", true);
++		VIEWERS_FIELD = FieldUtils.getDeclaredField(AbstractMenu.class, "holders", true); // CivPatched: The field was renamed to "holders"
+ 		SLOTS_FIELD = FieldUtils.getDeclaredField(AbstractMenu.class, "slots", true);
+ 		UPDATE_INV_CONTENTS_METHOD = MethodUtils.getMatchingMethod(AbstractMenu.class,
+ 				"updateInventoryContents", Player.class, Inventory.class);

@@ -1,0 +1,38 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Wed, 31 May 2023 00:27:13 +0100
+Subject: [PATCH] Fix ACivMod disable
+
+
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java b/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java
+index d793b180b06c9073ce595b229b53ad69c6b2adef..0cf5ed14fff426640a8b0f0e94c078bc5c5f645f 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java
+@@ -15,7 +15,6 @@ import org.bukkit.Bukkit;
+ import org.bukkit.configuration.serialization.ConfigurationSerializable;
+ import org.bukkit.configuration.serialization.ConfigurationSerialization;
+ import org.bukkit.event.EventHandler;
+-import org.bukkit.event.HandlerList;
+ import org.bukkit.event.Listener;
+ import org.bukkit.event.server.PluginDisableEvent;
+ import org.bukkit.plugin.Plugin;
+@@ -43,10 +42,6 @@ public abstract class ACivMod extends JavaPlugin {
+ 	
+ 	@Override
+ 	public void onDisable() {
+-		HandlerList.unregisterAll(this);
+-		Bukkit.getMessenger().unregisterIncomingPluginChannel(this);
+-		Bukkit.getMessenger().unregisterOutgoingPluginChannel(this);
+-		Bukkit.getScheduler().cancelTasks(this);
+ 		this.configClasses.forEach(ConfigurationSerialization::unregisterClass);
+ 	}
+ 
+@@ -134,7 +129,7 @@ public abstract class ACivMod extends JavaPlugin {
+ 	 * Disables this plugin.
+ 	 */
+ 	public void disable() {
+-		getPluginLoader().disablePlugin(this);
++		getServer().getPluginManager().disablePlugin(this); // CivPatched: Do full disable
+ 	}
+ 
+ 	/**
