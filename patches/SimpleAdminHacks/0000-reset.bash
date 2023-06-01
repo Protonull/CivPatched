@@ -2,7 +2,7 @@
 cd "$1" || exit 1
 
 # Checkout the submodule upstream commit
-git checkout --quiet -B upstream "22a7cf2e18af23c56cd137530989a725b15e88bf"
+git checkout --quiet -B upstream "6439102f9cd5ed59a039a704e239638ac3f18b39"
 git branch --quiet --set-upstream-to=origin/master upstream
 git checkout --quiet -B ignored upstream
 

@@ -74,7 +74,7 @@ index 0000000000000000000000000000000000000000..fef23cb037c30d47c1646827addc2046
 +
 +}
 diff --git a/src/main/resources/config.yml b/src/main/resources/config.yml
-index 3c63378623b30d4a8ed415336953709f4ec1dc26..6f76a4b96fee57a4a1e2c8cb973e0cfc85a24b35 100644
+index 72325c6418311f9275d2e5f52e1ee72442b3ad0e..40bdea372ff89262ed46ac3c4a106051c9713103 100644
 --- a/src/main/resources/config.yml
 +++ b/src/main/resources/config.yml
 @@ -81,6 +81,8 @@ hacks:
@@ -87,10 +87,10 @@ index 3c63378623b30d4a8ed415336953709f4ec1dc26..6f76a4b96fee57a4a1e2c8cb973e0cfc
      enabled: true
      # Value between 0 and 1 that determines the percentage chance that a bee will replace
 diff --git a/src/main/resources/plugin.yml b/src/main/resources/plugin.yml
-index 90cf405a9d9c88e89d3ffdcd6203998e7a30e214..cdb49b1f440bdcf34f80f56364b979871db41a98 100644
+index 2dc153533bf241ecd9f195f5c4ff3fd4b3ef5919..dad66fe0d2786d4387cfe831f4855d286df92434 100644
 --- a/src/main/resources/plugin.yml
 +++ b/src/main/resources/plugin.yml
-@@ -110,6 +110,7 @@ permissions:
+@@ -113,6 +113,7 @@ permissions:
        simpleadmin.debugwand: true
        simpleadmin.bedlocator: true
        simpleadmin.elytrabypass: true
@@ -98,7 +98,7 @@ index 90cf405a9d9c88e89d3ffdcd6203998e7a30e214..cdb49b1f440bdcf34f80f56364b97987
      simpleadmin.hacks:
        description: Allows control of the hacks and settings which simpleadminhacks supports
        default: op
-@@ -158,3 +159,6 @@ permissions:
+@@ -161,3 +162,6 @@ permissions:
      simpleadmin.elytrabypass:
        description: Gives the ability to bypass elytra restrictions
        default: op

@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Thu, 25 May 2023 00:59:17 +0100
+Date: Thu, 1 Jun 2023 06:53:49 +0100
 Subject: [PATCH] Overhaul SafeOreBreak
 
 
@@ -107,10 +107,10 @@ index 0000000000000000000000000000000000000000..84c2e036b5c56ecb92cf58cb65c4a82f
 +}
 diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/SafeOreBreak.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/SafeOreBreak.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..76d865d9b987f0be959ad6594b400179a05443f4
+index 0000000000000000000000000000000000000000..82906b4a2e6e45b5959b37d3dea7644397db0b82
 --- /dev/null
 +++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/SafeOreBreak.java
-@@ -0,0 +1,112 @@
+@@ -0,0 +1,111 @@
 +package com.programmerdan.minecraft.simpleadminhacks.hacks;
 +
 +import com.programmerdan.minecraft.simpleadminhacks.SimpleAdminHacks;
@@ -130,9 +130,9 @@ index 0000000000000000000000000000000000000000..76d865d9b987f0be959ad6594b400179
 +import org.bukkit.event.EventHandler;
 +import org.bukkit.event.Listener;
 +import org.bukkit.event.block.BlockBreakEvent;
-+import org.bukkit.inventory.ItemFlag;
 +import org.bukkit.inventory.ItemStack;
 +import org.jetbrains.annotations.NotNull;
++import vg.civcraft.mc.civmodcore.inventory.items.MetaUtils;
 +import vg.civcraft.mc.civmodcore.players.settings.PlayerSettingAPI;
 +import vg.civcraft.mc.civmodcore.players.settings.gui.MenuSection;
 +import vg.civcraft.mc.civmodcore.players.settings.impl.BooleanSetting;
@@ -181,8 +181,7 @@ index 0000000000000000000000000000000000000000..76d865d9b987f0be959ad6594b400179
 +					final ItemStack item;
 +					if (getValue(player)) {
 +						item = new ItemStack(buttonMaterial);
-+						item.addUnsafeEnchantment(Enchantment.DURABILITY, 1);
-+						item.addItemFlags(ItemFlag.HIDE_ENCHANTS);
++						item.editMeta(MetaUtils::addGlow);
 +					}
 +					else {
 +						item = new ItemStack(buttonMaterial);
@@ -225,7 +224,7 @@ index 0000000000000000000000000000000000000000..76d865d9b987f0be959ad6594b400179
 +}
 diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/SafeOreBreak.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/SafeOreBreak.java
 deleted file mode 100644
-index 20e6eb97e5f4d89ccede56ea5e6fc9e877fd7098..0000000000000000000000000000000000000000
+index 53c52429539b3eda5caa1a722010000bd6a6d1bd..0000000000000000000000000000000000000000
 --- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/hacks/basic/SafeOreBreak.java
 +++ /dev/null
 @@ -1,132 +0,0 @@
@@ -287,7 +286,7 @@ index 20e6eb97e5f4d89ccede56ea5e6fc9e877fd7098..00000000000000000000000000000000
 -
 -			breakOres.add(materialParts);
 -			String materialName = PlainTextComponentSerializer.plainText().serialize(Component.translatable(materialParts.get(0)));
--			BooleanOreSetting setting = new BooleanOreSetting(plugin, true,
+-			BooleanOreSetting setting = new BooleanOreSetting(plugin, false,
 -					"Safe " + materialName + " break",
 -					"safeOreBreak_" + materialParts.get(0).getKey().getKey(),
 -					"Prevents you from breaking " + materialName
@@ -362,7 +361,7 @@ index 20e6eb97e5f4d89ccede56ea5e6fc9e877fd7098..00000000000000000000000000000000
 -	}
 -}
 diff --git a/src/main/resources/config.yml b/src/main/resources/config.yml
-index 2a2497c70cf1ec8c22eb902860fbca351e733956..3c63378623b30d4a8ed415336953709f4ec1dc26 100644
+index 91d782fa3411b8ec9d70304195f8451bdd07eded..72325c6418311f9275d2e5f52e1ee72442b3ad0e 100644
 --- a/src/main/resources/config.yml
 +++ b/src/main/resources/config.yml
 @@ -198,13 +198,6 @@ hacks:
