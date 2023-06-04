@@ -33,24 +33,23 @@ index 146c7b181acdc67f5eb375644db485af384a5e0a..7b3268b88363ed23db328f726c43f00f
  		saveDefaultResource("enchants.yml");
  		super.onEnable();
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java b/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
-index 18dbd20f338cd4be042f165ddab32d6699b87895..73594c6acc43127be5536048f7a265e56a1f0b71 100644
+index a6fd2d739756fe119c0889d8a39e8cd74c45bc0b..5d143636f05e21edd206b9362892686b6fd8894e 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
-@@ -37,11 +37,55 @@ import vg.civcraft.mc.civmodcore.world.model.GlobalYLimitedArea;
- import vg.civcraft.mc.civmodcore.world.model.IArea;
- import vg.civcraft.mc.civmodcore.world.model.RectangleArea;
- 
-+// CivPatched Start
-+import org.jetbrains.annotations.NotNull;
+@@ -41,7 +41,12 @@ import vg.civcraft.mc.civmodcore.world.model.RectangleArea;
+ import java.util.HashMap;
+ import org.apache.commons.lang3.EnumUtils;
+ import org.jetbrains.annotations.NotNull;
 +import vg.civcraft.mc.civmodcore.ACivMod;
 +import vg.civcraft.mc.civmodcore.dao.DatabaseCredentials;
 +import vg.civcraft.mc.civmodcore.dao.DefaultDatasource;
 +import vg.civcraft.mc.civmodcore.dao.ManagedDatasource;
+ import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
 +import vg.civcraft.mc.civmodcore.utilities.CivLogger;
-+// CivPatched End
-+
+ // CivPatched End
+ 
  @UtilityClass
- public final class ConfigHelper {
+@@ -49,6 +54,41 @@ public final class ConfigHelper {
  
  	private static final Logger LOGGER = Bukkit.getLogger();
  

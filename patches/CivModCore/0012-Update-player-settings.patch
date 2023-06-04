@@ -1,11 +1,13 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Mon, 22 May 2023 23:19:30 +0100
+Date: Sat, 3 Jun 2023 06:26:20 +0100
 Subject: [PATCH] Update player settings
 
 Allows players to open a specific config window.
 
 Restore setting deregistering.
+
+Remove SETTINGS_BY_PLUGIN.
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java b/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java
 index 090172096da1d8841107efb1f99210e77c8fdfa4..dba242f180ea16e5a2597c636ebbacdb43f62c8d 100644
@@ -28,26 +30,50 @@ index 090172096da1d8841107efb1f99210e77c8fdfa4..dba242f180ea16e5a2597c636ebbacdb
  		getDeferredFunctions().UNSAFE_run(); // CivPatched
  	}
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java b/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java
-index dbf5d5e1be70d67748f0562395767d9c163b094a..1e279126bd08b97feed2e910af4ca95acbc82abb 100644
+index dbf5d5e1be70d67748f0562395767d9c163b094a..c475a3ad29feb65c3e623df83a17786a79a06f91 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java
-@@ -16,6 +16,15 @@ import vg.civcraft.mc.civmodcore.CivModCorePlugin;
+@@ -3,7 +3,6 @@ package vg.civcraft.mc.civmodcore.players.settings;
+ import com.google.common.base.Preconditions;
+ import java.io.File;
+ import java.io.IOException;
+-import java.util.ArrayList;
+ import java.util.Collection;
+ import java.util.Collections;
+ import java.util.HashMap;
+@@ -12,10 +11,19 @@ import java.util.Map;
+ import lombok.experimental.UtilityClass;
+ import org.bukkit.configuration.ConfigurationSection;
+ import org.bukkit.configuration.file.YamlConfiguration;
+-import vg.civcraft.mc.civmodcore.CivModCorePlugin;
  import vg.civcraft.mc.civmodcore.players.settings.gui.MenuOption;
  import vg.civcraft.mc.civmodcore.players.settings.gui.MenuSection;
  
 +// CivPatched Start
-+import java.util.IdentityHashMap;
-+import java.util.Set;
++import java.util.logging.Level;
 +import java.util.TreeMap;
 +import org.bukkit.plugin.java.JavaPlugin;
 +import org.jetbrains.annotations.NotNull;
++import vg.civcraft.mc.civmodcore.config.ConfigHelper;
 +import vg.civcraft.mc.civmodcore.players.settings.gui.MenuItem;
++import vg.civcraft.mc.civmodcore.utilities.MoreIterationUtils;
 +// CivPatched End
 +
  /**
   * Allows creating settings, which will automatically be available in players
   * configuration GUI
-@@ -39,6 +48,18 @@ public final class PlayerSettingAPI {
+@@ -28,9 +36,7 @@ public final class PlayerSettingAPI {
+ 
+ 	private static final Map<String, PlayerSetting<?>> SETTINGS_BY_IDENTIFIER = new HashMap<>();
+ 
+-	private static final Map<String, List<PlayerSetting<?>>> SETTINGS_BY_PLUGIN = new HashMap<>();
+-
+-	private static final MenuSection MAIN_MENU = new MenuSection("Config", "", null);
++	public static final MenuSection MAIN_MENU = new MenuSection("Config", "", null); // CivPatched: Make public
+ 
+ 	/**
+ 	 * @return GUI main menu
+@@ -39,6 +45,18 @@ public final class PlayerSettingAPI {
  		return MAIN_MENU;
  	}
  
@@ -66,7 +92,28 @@ index dbf5d5e1be70d67748f0562395767d9c163b094a..1e279126bd08b97feed2e910af4ca95a
  	public static Collection<PlayerSetting<?>> getAllSettings() {
  		return Collections.unmodifiableCollection(SETTINGS_BY_IDENTIFIER.values());
  	}
-@@ -97,14 +118,20 @@ public final class PlayerSettingAPI {
+@@ -85,63 +103,63 @@ public final class PlayerSettingAPI {
+ 	public static void registerSetting(PlayerSetting<?> setting, MenuSection menu) {
+ 		Preconditions.checkArgument(setting != null, "Player setting cannot be null.");
+ 		loadValues(setting);
+-		List<PlayerSetting<?>> pluginSettings = SETTINGS_BY_PLUGIN.computeIfAbsent(
+-				setting.getOwningPlugin().getName(),
+-				k -> new ArrayList<>());
+-		Preconditions.checkArgument(!pluginSettings.contains(setting),
+-				"Cannot register the same player setting twice.");
+-		SETTINGS_BY_IDENTIFIER.put(setting.getIdentifier(), setting);
+-		pluginSettings.add(setting);
++		// CivPatched Start
++		final PlayerSetting<?> previousSetting = SETTINGS_BY_IDENTIFIER.put(setting.getIdentifier(), setting);
++		if (previousSetting != null) {
++			previousSetting.getOwningPlugin().getLogger().log(Level.WARNING,
++					"Your setting [" + previousSetting.getIdentifier() + "] was replaced with "
++							+ "[" + setting.getOwningPlugin().getName() + ":" + setting.getIdentifier() + "]!"
++			);
++		}
++		// CivPatched End
+ 		if (menu != null && setting.canBeChangedByPlayer()) {
+ 			menu.addItem(new MenuOption(menu, setting));
  		}
  	}
  
@@ -80,13 +127,7 @@ index dbf5d5e1be70d67748f0562395767d9c163b094a..1e279126bd08b97feed2e910af4ca95a
 -//	}
 +	// CivPatched Start
 +	public static void deregisterAllPluginSettings(final @NotNull JavaPlugin plugin) {
-+		SETTINGS_BY_PLUGIN.computeIfPresent(plugin.getName(), (_pluginName, settings) -> {
-+			for (final PlayerSetting<?> setting : settings) {
-+				deregisterSetting(setting);
-+			}
-+			settings.clear();
-+			return null;
-+		});
++		SETTINGS_BY_IDENTIFIER.values().removeIf((setting) -> setting.getOwningPlugin() == plugin);
 +	}
 +	public static void deregisterSetting(final @NotNull PlayerSetting<?> setting) {
 +		SETTINGS_BY_IDENTIFIER.remove(setting.getIdentifier());
@@ -95,6 +136,66 @@ index dbf5d5e1be70d67748f0562395767d9c163b094a..1e279126bd08b97feed2e910af4ca95a
  
  	/**
  	 * Saves all values to their save files
+ 	 */
+ 	public static void saveAll() {
+-		for (Map.Entry<String, List<PlayerSetting<?>>> pluginEntry : SETTINGS_BY_PLUGIN.entrySet()) {
+-			if (pluginEntry.getValue().isEmpty()) {
+-				continue;
++		// CivPatched Start
++		final Map<JavaPlugin, List<PlayerSetting<?>>> settingsByPlugin = MoreIterationUtils.groupIntoMapByKey(
++				SETTINGS_BY_IDENTIFIER.values(),
++				PlayerSetting::getOwningPlugin
++		);
++		settingsByPlugin.forEach((plugin, settings) -> {
++			final File pluginDataFolder = plugin.getDataFolder();
++			if (!pluginDataFolder.isDirectory()) {
++				//noinspection ResultOfMethodCallIgnored
++				pluginDataFolder.mkdirs();
+ 			}
+-			File folder = pluginEntry.getValue().get(0).getOwningPlugin().getDataFolder();
+-			if (!folder.isDirectory()) {
+-				folder.mkdirs();
+-			}
+-			File file = new File(folder, FILE_NAME);
+-			YamlConfiguration config;
+-			if (file.isFile()) {
+-				config = YamlConfiguration.loadConfiguration(file);
++			final File settingStorageFile = new File(pluginDataFolder, FILE_NAME);
++			final YamlConfiguration config;
++			if (settingStorageFile.isFile()) {
++				config = YamlConfiguration.loadConfiguration(settingStorageFile);
+ 			}
+ 			else {
+ 				config = new YamlConfiguration();
+ 			}
+-			for (PlayerSetting<?> setting : pluginEntry.getValue()) {
+-				ConfigurationSection section;
+-				if (config.isConfigurationSection(setting.getIdentifier())) {
+-					section = config.getConfigurationSection(setting.getIdentifier());
+-				} else {
+-					section = config.createSection(setting.getIdentifier());
+-				}
+-				for (Map.Entry<String, String> entry : setting.dumpAllSerialized().entrySet()) {
+-					section.set(entry.getKey(), entry.getValue());
+-				}
++			for (final PlayerSetting<?> setting : settings) {
++				final ConfigurationSection section = ConfigHelper.getSection(config, setting.getIdentifier());
++				setting.dumpAllSerialized().forEach(section::set);
+ 			}
+ 			try {
+-				config.save(file);
+-			} catch (IOException e) {
+-				CivModCorePlugin.getInstance().severe("Failed to save settings", e);
++				config.save(settingStorageFile);
+ 			}
+-		}
++			catch (final IOException thrown) {
++				plugin.getLogger().log(Level.SEVERE, "Failed to save settings", thrown);
++			}
++		});
++		// CivPatched End
+ 	}
+ }
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/commands/ConfigCommand.java b/src/main/java/vg/civcraft/mc/civmodcore/players/settings/commands/ConfigCommand.java
 index f92721db9167e105b12f2e1f84aef7546c821001..e2d7c30d40043970e5c8e1ddd55ec47f4dce38fb 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/commands/ConfigCommand.java

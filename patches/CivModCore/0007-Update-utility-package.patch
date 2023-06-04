@@ -1,7 +1,9 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Fri, 19 May 2023 02:30:40 +0100
+Date: Sat, 3 Jun 2023 06:54:38 +0100
 Subject: [PATCH] Update utility package
+
+Add ISerializer.
 
 Add DeprecationUtils to help better track usages of deprecated functions.
 
@@ -9,7 +11,9 @@ Add JavaHelpers, some utilities that really rather be part of Java itself.
 
 Add MoreEnumUtils.
 
-Add MoreIterableUtils and MoreIteratorUtils.
+Add MoreIterationUtils.
+
+Add computeAll to MoreMapUtils.
 
 Add inject to CivLogger, which allows you to create a Logger and modify the logged messages in some way.
 
@@ -205,62 +209,30 @@ index 0000000000000000000000000000000000000000..692b5df27f083c7da6ead64fca1b2b9c
 +
 +}
 \ No newline at end of file
-diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreIterableUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreIterableUtils.java
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreIterationUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreIterationUtils.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..5b78ccd5dc9e9bea27a06571e6938e74bb723762
+index 0000000000000000000000000000000000000000..ab3c8a544ef4c03513809b4d69933f531774bb4f
 --- /dev/null
-+++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreIterableUtils.java
-@@ -0,0 +1,28 @@
++++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreIterationUtils.java
+@@ -0,0 +1,68 @@
 +package vg.civcraft.mc.civmodcore.utilities;
 +
-+import java.util.function.Predicate;
-+import lombok.experimental.UtilityClass;
-+import org.apache.commons.collections4.IterableUtils;
-+import org.jetbrains.annotations.NotNull;
-+
-+/**
-+ * Utility class that fills in the gaps of {@link IterableUtils}.
-+ *
-+ * @author CivPatched
-+ */
-+@UtilityClass
-+public class MoreIterableUtils {
-+
-+    /**
-+     * @param <T> The iterable's element type.
-+     * @param iterable The iterable to remove elements from.
-+     * @param predicate The method to test entries with. It should return true to remove that entry.
-+     */
-+    public <T> void removeIf(
-+            final @NotNull Iterable<T> iterable,
-+            final @NotNull Predicate<T> predicate
-+    ) {
-+        MoreIteratorUtils.removeIf(iterable.iterator(), predicate);
-+    }
-+
-+}
-\ No newline at end of file
-diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreIteratorUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreIteratorUtils.java
-new file mode 100644
-index 0000000000000000000000000000000000000000..3f4f7532303aa1c2e45041e0dde6b537d3a89387
---- /dev/null
-+++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreIteratorUtils.java
-@@ -0,0 +1,33 @@
-+package vg.civcraft.mc.civmodcore.utilities;
-+
++import java.util.ArrayList;
++import java.util.Collection;
++import java.util.HashMap;
 +import java.util.Iterator;
++import java.util.List;
++import java.util.Map;
++import java.util.function.Function;
 +import java.util.function.Predicate;
 +import lombok.experimental.UtilityClass;
-+import org.apache.commons.collections4.IteratorUtils;
 +import org.jetbrains.annotations.NotNull;
 +
 +/**
-+ * Utility class that fills in the gaps of {@link IteratorUtils}.
-+ *
 + * @author CivPatched
 + */
 +@UtilityClass
-+public class MoreIteratorUtils {
++public class MoreIterationUtils {
 +
 +    /**
 +     * @param <T> The iterator's element type.
@@ -278,5 +250,229 @@ index 0000000000000000000000000000000000000000..3f4f7532303aa1c2e45041e0dde6b537
 +        }
 +    }
 +
++    /**
++     * @param <T> The iterable's element type.
++     * @param iterable The iterable to remove elements from.
++     * @param predicate The method to test entries with. It should return true to remove that entry.
++     */
++    public <T> void removeIf(
++            final @NotNull Iterable<T> iterable,
++            final @NotNull Predicate<T> predicate
++    ) {
++        removeIf(iterable.iterator(), predicate);
++    }
++
++    /**
++     * This is useful when wanting to separate elements into groups based on
++     * shared data. For example, this could be used to group a collection of
++     * locations by their world. Each unique world would be a kay, and the
++     * value would be a list of all the locations with that world.
++     */
++    public <E, K> Map<K, List<E>> groupIntoMapByKey(
++            final @NotNull Collection<E> collection,
++            final @NotNull Function<E, K> discriminator
++    ) {
++        final var map = new HashMap<K, List<E>>();
++        for (final var element : collection) {
++            map.computeIfAbsent(
++                    discriminator.apply(element),
++                    (key) -> new ArrayList<>()
++            ).add(element);
++        }
++        return map;
++    }
++
 +}
-\ No newline at end of file
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreMapUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreMapUtils.java
+index 7d3cf8949491b914933ce445e4e545d8fe22871e..b4162aea8d8920d417a1b020153bc9bd200e6a1b 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreMapUtils.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreMapUtils.java
+@@ -9,6 +9,11 @@ import lombok.experimental.UtilityClass;
+ import org.apache.commons.collections4.MapUtils;
+ import org.apache.commons.lang3.ArrayUtils;
+ 
++// CivPatched Start
++import java.util.function.BiFunction;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ /**
+  * Utility class that fills in the gaps of {@link MapUtils}.
+  *
+@@ -139,6 +144,29 @@ public final class MoreMapUtils {
+ 		}
+ 	}
+ 
++	// CivPatched Start
++	/**
++	 * Computes every key-value paid in the map.
++	 */
++	public <K, V> void computeAll(
++			final @NotNull Map<K, V> map,
++			final @NotNull BiFunction<K, V, V> computer
++	) {
++		for (final var iterator = map.entrySet().iterator(); iterator.hasNext();) {
++			final var entry = iterator.next();
++			final var computedValue = computer.apply(
++					entry.getKey(),
++					entry.getValue()
++			);
++			if (computedValue == null) {
++				iterator.remove();
++				continue;
++			}
++			entry.setValue(computedValue);
++		}
++	}
++	// CivPatched End
++
+ 	/**
+ 	 * @param <T> The type of the map's values.
+ 	 * @return Returns a new TreeMap with a String keys that are <b>NOT</b> case sensitive.
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/serialization/ISerializer.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/serialization/ISerializer.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..afe2d7bf61e54f001024d9575efd283fb36d6d45
+--- /dev/null
++++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/serialization/ISerializer.java
+@@ -0,0 +1,141 @@
++package vg.civcraft.mc.civmodcore.utilities.serialization;
++
++import java.util.Objects;
++import lombok.Synchronized;
++import net.minecraft.nbt.CompoundTag;
++import org.bukkit.persistence.PersistentDataAdapterContext;
++import org.bukkit.persistence.PersistentDataType;
++import org.jetbrains.annotations.NotNull;
++import vg.civcraft.mc.civmodcore.nbt.NBTDeserializer;
++import vg.civcraft.mc.civmodcore.nbt.NBTSerializable;
++import vg.civcraft.mc.civmodcore.nbt.NBTSerialization;
++import vg.civcraft.mc.civmodcore.nbt.wrappers.NBTCompound;
++
++/**
++ * This is a class inspired by {@link NBTSerializable} and {@link PersistentDataType} and is designed to act as a bridge
++ * between them while not being specific to either.
++ *
++ * @author CivPatched
++ */
++public interface ISerializer<T, R> {
++
++    @NotNull R serialize(@NotNull T instance);
++
++    @NotNull T deserialize(@NotNull R raw);
++
++    /**
++     * Template interface for byte serialization.
++     *
++     * @param <C> The type that can be serialised to and from byte data.
++     */
++    interface Bytes<C> extends ISerializer<C, byte[]> {
++
++    }
++
++    /**
++     * Template interface for NBT serialization.
++     *
++     * @param <C> The type that can be serialised to and from NBT.
++     */
++    interface NBT<C> extends ISerializer<C, CompoundTag> {
++
++    }
++
++    /**
++     * Template that wraps legacy NBT serialization methods.
++     *
++     * @param <C> The type that can be serialised to and from NBT.
++     */
++    class LegacyNBT<C extends NBTSerializable> implements ISerializer<C, NBTCompound> {
++        private final NBTDeserializer<C> deserializer;
++
++        /**
++         * @param deserializer The serializable's version of {@link NBTSerializable#fromNBT(NBTCompound) fromNBT(NBTCompound)}
++         */
++        public LegacyNBT(final @NotNull NBTDeserializer<C> deserializer) {
++            this.deserializer = Objects.requireNonNull(deserializer);
++        }
++
++        /**
++         * @param serializableClass The serializable's class to extract the deserializer from.
++         */
++        public LegacyNBT(final @NotNull Class<C> serializableClass) {
++            this(NBTSerialization.getDeserializer(serializableClass));
++        }
++
++        @Override
++        public @NotNull NBTCompound serialize(final @NotNull C instance) {
++            final var nbt = new NBTCompound();
++            instance.toNBT(nbt);
++            return nbt;
++        }
++
++        @Override
++        public @NotNull C deserialize(final @NotNull NBTCompound raw) {
++            return this.deserializer.fromNBT(raw);
++        }
++    }
++
++    /**
++     * Template that wraps PersistentDataContainer serialization.
++     *
++     * @param <C> The <b>C</b>omplex type.
++     * @param <P> The <b>P</b>rimitive type.
++     */
++    abstract class PDC<C, P> implements ISerializer<C, P>, PersistentDataType<P, C> {
++        private final Object $lock;
++        private final Class<C> complexClass;
++        private final Class<P> primitiveClass;
++        private PersistentDataAdapterContext adapter;
++
++        public PDC(
++                final @NotNull Class<C> complexClass,
++                final @NotNull Class<P> primitiveClass
++        ) {
++            this.$lock = new Object[0];
++            this.complexClass = Objects.requireNonNull(complexClass);
++            this.primitiveClass = Objects.requireNonNull(primitiveClass);
++        }
++
++        protected final @NotNull PersistentDataAdapterContext getAdapter() {
++            return this.adapter;
++        }
++
++        public final @NotNull Class<C> getComplexType() {
++            return this.complexClass;
++        }
++
++        public final @NotNull Class<P> getPrimitiveType() {
++            return this.primitiveClass;
++        }
++
++        @Deprecated
++        @Synchronized
++        public final @NotNull P toPrimitive(
++                final @NotNull C complex,
++                final @NotNull PersistentDataAdapterContext context
++        ) {
++            synchronized (this.$lock) {
++                this.adapter = context;
++                final P result = serialize(complex);
++                this.adapter = null;
++                return result;
++            }
++        }
++
++        @Deprecated
++        @Synchronized
++        public final @NotNull C fromPrimitive(
++                final @NotNull P primitive,
++                final @NotNull PersistentDataAdapterContext context
++        ) {
++            synchronized (this.$lock) {
++                this.adapter = context;
++                final C result = deserialize(primitive);
++                this.adapter = null;
++                return result;
++            }
++        }
++    }
++
++}

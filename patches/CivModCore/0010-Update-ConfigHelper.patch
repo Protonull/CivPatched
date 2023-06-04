@@ -1,14 +1,18 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Thu, 18 May 2023 15:20:20 +0100
+Date: Sun, 4 Jun 2023 05:41:56 +0100
 Subject: [PATCH] Update ConfigHelper
 
 Allow ItemMap to parse serialised items.
 
-Also, add parseEnchants and update parseItemMapDirectly to use it.
+Add parseEnchants utils.
+
+Vastly upgrade parseItemMapDirectly.
+
+Fix getSection to not use undefined default.
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java b/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
-index 9f26a8331e60bb40d32445f63eaca95c22d80e84..18dbd20f338cd4be042f165ddab32d6699b87895 100644
+index 9f26a8331e60bb40d32445f63eaca95c22d80e84..a6fd2d739756fe119c0889d8a39e8cd74c45bc0b 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
 @@ -16,7 +16,6 @@ import org.bukkit.Bukkit;
@@ -19,7 +23,38 @@ index 9f26a8331e60bb40d32445f63eaca95c22d80e84..18dbd20f338cd4be042f165ddab32d66
  import org.bukkit.World;
  import org.bukkit.configuration.ConfigurationSection;
  import org.bukkit.enchantments.Enchantment;
-@@ -133,9 +132,18 @@ public final class ConfigHelper {
+@@ -38,6 +37,13 @@ import vg.civcraft.mc.civmodcore.world.model.GlobalYLimitedArea;
+ import vg.civcraft.mc.civmodcore.world.model.IArea;
+ import vg.civcraft.mc.civmodcore.world.model.RectangleArea;
+ 
++// CivPatched Start
++import java.util.HashMap;
++import org.apache.commons.lang3.EnumUtils;
++import org.jetbrains.annotations.NotNull;
++import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
++// CivPatched End
++
+ @UtilityClass
+ public final class ConfigHelper {
+ 
+@@ -53,11 +59,12 @@ public final class ConfigHelper {
+ 	@Nonnull
+ 	public static ConfigurationSection getSection(@NonNull final ConfigurationSection config,
+ 												  @NonNull final String key) {
+-		ConfigurationSection found = config.getConfigurationSection(key);
+-		if (found == null) {
+-			found = config.createSection(key);
++		// CivPatched Start
++		if (config.get(key, null) instanceof final ConfigurationSection found) {
++			return found;
+ 		}
+-		return found;
++		return config.createSection(key);
++		// CivPatched End
+ 	}
+ 
+ 	/**
+@@ -133,157 +140,196 @@ public final class ConfigHelper {
  			return result;
  		}
  		for (final String key : config.getKeys(false)) {
@@ -41,10 +76,98 @@ index 9f26a8331e60bb40d32445f63eaca95c22d80e84..18dbd20f338cd4be042f165ddab32d66
  		}
  		return result;
  	}
-@@ -181,27 +189,7 @@ public final class ConfigHelper {
- 					meta.addItemFlags(flag);
- 				}
+ 
+-	@Nonnull
+-	public static ItemMap parseItemMapDirectly(@Nullable final ConfigurationSection current) {
+-		ItemMap im = new ItemMap();
++	// CivPatched Start
++	public static @NotNull ItemMap parseItemMapDirectly(final ConfigurationSection current) {
++		final ItemMap itemMap = new ItemMap();
+ 		if (current == null) {
+-			return im;
++			return itemMap;
+ 		}
+-		Material m = null;
+-		try {
+-			m = Material.valueOf(current.getString("material"));
+-		} catch (IllegalArgumentException iae) {
+-			m = null;
+-		} finally {
+-			if (m == null) {
+-				LOGGER.severe("Failed to find material " + current.getString("material") + " in section " + current.getCurrentPath());
+-				return im;
+-			}
++		// Material
++		final Material material = MaterialUtils.getMaterial(current.getString("material"));
++		if (!ItemUtils.isValidItemMaterial(material)) {
++			LOGGER.severe("Failed to find valid item material in [" + current.getCurrentPath() + "]: " + current.getString("material"));
++			return itemMap;
++		}
++		// Amount
++		final int amount = current.getInt("amount", 1);
++		if (amount < 1) {
++			LOGGER.severe("Failed to find valid item amount in [" + current.getCurrentPath() + "]: " + amount);
++			return itemMap;
+ 		}
+-		ItemStack toAdd = new ItemStack(m);
+-		if (current.isInt("durability")) {
+-			LOGGER.warning("Item durability as specified at " + current.getCurrentPath() + " is no longer supported");
++		ItemStack toAdd = new ItemStack(material);
++		if (current.contains("durability", true)) {
++			LOGGER.warning("Item durability in [" + current.getCurrentPath() + "] is no longer supported!");
+ 		}
+-		ItemMeta meta = toAdd.getItemMeta();
++		final ItemMeta meta = toAdd.getItemMeta();
+ 		if (meta == null) {
+-			LOGGER.severe("No item meta found for" + current.getCurrentPath());
+-		} else {
+-			String name = current.getString("name");
+-			if (name != null) {
+-				meta.setDisplayName(name);
+-			}
+-			List<String> lore = current.getStringList("lore");
+-			if (lore != null) {
+-				meta.setLore(lore);
++			toAdd.setAmount(amount);
++			itemMap.addItemStack(toAdd);
++			return itemMap;
++		}
++		// Display Name
++		meta.setDisplayName(current.getString("name", null));
++		// Lore
++		meta.setLore(current.getStringList("lore"));
++		// Unbreakable
++		meta.setUnbreakable(current.getBoolean("unbreakable", false));
++		// Hide Flags
++		if (current.getBoolean("hideFlags", false)) {
++			for (final ItemFlag flag : ItemFlag.values()) {
++				meta.addItemFlags(flag);
  			}
+-			if (current.isBoolean("unbreakable")) {
+-				meta.setUnbreakable(current.getBoolean("unbreakable"));
++		}
++		// Enchants
++		parseEnchants(current.getConfigurationSection("enchants")).forEach((enchant, level) -> meta.addEnchant(enchant, level, true));
++		// Leather Colour
++		if (meta instanceof final LeatherArmorMeta leatherMeta) {
++			final Object colour = current.get("color", null);
++			if (colour instanceof final ConfigurationSection colorSection) {
++				leatherMeta.setColor(Color.fromRGB(
++						colorSection.getInt("red"),
++						colorSection.getInt("blue"),
++						colorSection.getInt("green")
++				));
+ 			}
+-			if (current.isBoolean("hideFlags") && current.getBoolean("hideFlags")) {
+-				for (ItemFlag flag : ItemFlag.values()) {
+-					meta.addItemFlags(flag);
++			else if (colour instanceof final String colorHex) {
++				try {
++					leatherMeta.setColor(Color.fromRGB(
++							Integer.parseInt(colorHex, 16)
++					));
+ 				}
+-			}
 -			if (current.contains("enchants")) {
 -				for (String enchantKey : current.getConfigurationSection("enchants").getKeys(false)) {
 -					ConfigurationSection enchantConfig = current.getConfigurationSection("enchants")
@@ -64,16 +187,35 @@ index 9f26a8331e60bb40d32445f63eaca95c22d80e84..18dbd20f338cd4be042f165ddab32d66
 -					}
 -					int level = enchantConfig.getInt("level", 1);
 -					meta.addEnchant(enchant, level, true);
--				}
--			}
-+			parseEnchants(current.getConfigurationSection("enchants")).forEach((enchant, level) -> meta.addEnchant(enchant, level, true)); // CivPatched
- 			if (m == Material.LEATHER_BOOTS || m == Material.LEATHER_CHESTPLATE || m == Material.LEATHER_HELMET
- 					|| m == Material.LEATHER_LEGGINGS) {
- 				ConfigurationSection color = current.getConfigurationSection("color");
-@@ -225,25 +213,7 @@ public final class ConfigHelper {
++				catch (final NumberFormatException thrown) {
++					LOGGER.warning("Leather colour in [" + current.getCurrentPath() + "] is not a valid hex colour: " + colorHex);
  				}
  			}
- 			if (m == Material.ENCHANTED_BOOK) {
+-			if (m == Material.LEATHER_BOOTS || m == Material.LEATHER_CHESTPLATE || m == Material.LEATHER_HELMET
+-					|| m == Material.LEATHER_LEGGINGS) {
+-				ConfigurationSection color = current.getConfigurationSection("color");
+-				Color leatherColor = null;
+-				if (color != null) {
+-					int red = color.getInt("red");
+-					int blue = color.getInt("blue");
+-					int green = color.getInt("green");
+-					leatherColor = Color.fromRGB(red, green, blue);
+-				} else {
+-					String hexColorCode = current.getString("color");
+-					if (hexColorCode != null) {
+-						Integer hexColor = Integer.parseInt(hexColorCode, 16);
+-						if (hexColor != null) {
+-							leatherColor = Color.fromRGB(hexColor);
+-						}
+-					}
+-				}
+-				if (leatherColor != null) {
+-					((LeatherArmorMeta) meta).setColor(leatherColor);
+-				}
++			else if (colour != null) {
++				LOGGER.warning("Leather colour in [" + current.getCurrentPath() + "] is not of a supported type: " + colour);
+ 			}
+-			if (m == Material.ENCHANTED_BOOK) {
 -				ConfigurationSection storedEnchantSection = current.getConfigurationSection("stored_enchants");
 -				if (storedEnchantSection != null) {
 -					EnchantmentStorageMeta enchantMeta = (EnchantmentStorageMeta) meta;
@@ -91,16 +233,53 @@ index 9f26a8331e60bb40d32445f63eaca95c22d80e84..18dbd20f338cd4be042f165ddab32d66
 -										+ ", it was not applied");
 -							}
 -						}
--					}
--				}
-+				parseEnchants(current.getConfigurationSection("stored_enchants")).forEach((enchant, level) -> ((EnchantmentStorageMeta) meta).addStoredEnchant(enchant, level, true)); // CivPatched
++		}
++		// Book Enchants
++		if (meta instanceof final EnchantmentStorageMeta bookchantMeta) {
++			parseEnchants(current.getConfigurationSection("stored_enchants")).forEach((enchant, level) -> bookchantMeta.addStoredEnchant(enchant, level, true));
++		}
++		// Potion Effects
++		if (meta instanceof final PotionMeta potionMeta) {
++			if (current.get("potion_effects", null) instanceof final ConfigurationSection potionSection) {
++				PotionType potionType = EnumUtils.getEnum(PotionType.class, potionSection.getString("type"), null);
++				if (potionType == null) {
++					LOGGER.warning("Potion type in [" + potionSection.getCurrentPath() + "] is not valid: " + potionSection.getString("type") + ". Defaulting to AWKWARD.");
++					potionType = PotionType.AWKWARD;
++				}
++				final boolean upgraded = potionSection.getBoolean("upgraded", false);
++				final boolean extended = potionSection.getBoolean("extended", false);
++				potionMeta.setBasePotionData(new PotionData(potionType, extended, upgraded));
++				if (potionSection.get("custom_effects", null) instanceof final ConfigurationSection effectsSection) {
++					final List<PotionEffect> customEffects = parsePotionEffects(effectsSection);
++					for (final PotionEffect customEffect : customEffects) {
++						potionMeta.addCustomEffect(customEffect, true);
+ 					}
+ 				}
  			}
- 			if (m == Material.POTION || m == Material.SPLASH_POTION || m == Material.LINGERING_POTION
- 					|| m == Material.TIPPED_ARROW) {
-@@ -285,6 +255,74 @@ public final class ConfigHelper {
- 		return im;
- 	}
- 
+-			if (m == Material.POTION || m == Material.SPLASH_POTION || m == Material.LINGERING_POTION
+-					|| m == Material.TIPPED_ARROW) {
+-				ConfigurationSection potion = current.getConfigurationSection("potion_effects");
+-				if (potion != null) {
+-					PotionType potType;
++		}
++		toAdd.setItemMeta(meta);
++		// NBT
++		if (current.get("nbt", null) instanceof final ConfigurationSection nbtSection) {
++			final ItemStack nbtItem = ItemMap.enrichWithNBT(toAdd, 1, nbtSection.getValues(true));
++			if (nbtItem == null) {
++				LOGGER.warning("Something went wrong while enriching item at [" + current.getCurrentPath() + "] with NBT!");
++			}
++			else {
++				toAdd = nbtItem;
++			}
++		}
++		// Setting amount must be last just in cast enrichWithNBT is called, which resets the amount to 1.
++		toAdd.setAmount(amount);
++		itemMap.addItemStack(toAdd);
++		return itemMap;
++		// CivPatched End
++	}
++
 +	// CivPatched Start
 +	/**
 +	 * Parses enchants from a given config section. Supports legacy config structures.
@@ -110,10 +289,10 @@ index 9f26a8331e60bb40d32445f63eaca95c22d80e84..18dbd20f338cd4be042f165ddab32d66
 +	 */
 +	public @NotNull Map<Enchantment, Integer> parseEnchants(final ConfigurationSection config) {
 +		if (config == null) {
-+			return new java.util.HashMap<>(0);
++			return new HashMap<>(0);
 +		}
 +		final var keys = config.getKeys(false);
-+		final var enchants = new java.util.HashMap<Enchantment, Integer>(keys.size());
++		final var enchants = new HashMap<Enchantment, Integer>(keys.size());
 +		for (final String key : keys) {
 +			final Object value = config.get(key, null);
 +			final String rawEnchant;
@@ -138,37 +317,87 @@ index 9f26a8331e60bb40d32445f63eaca95c22d80e84..18dbd20f338cd4be042f165ddab32d66
 +					level = rawLevel.intValue();
 +				}
 +				else if (value instanceof final String rawLevel) {
-+					try {
+ 					try {
+-						potType = PotionType.valueOf(potion.getString("type", "AWKWARD"));
+-					} catch (IllegalArgumentException e) {
+-						LOGGER.warning("Expected potion type at " + potion.getCurrentPath() + ", but "
+-								+ potion.getString("type") + " is not a valid potion type");
+-						potType = PotionType.AWKWARD;
 +						level = Integer.parseInt(rawLevel);
-+					}
+ 					}
+-					boolean upgraded = potion.getBoolean("upgraded", false);
+-					boolean extended = potion.getBoolean("extended", false);
+-					PotionMeta potMeta = (PotionMeta) meta;
+-					potMeta.setBasePotionData(new PotionData(potType, extended, upgraded));
+-					ConfigurationSection customEffects = potion.getConfigurationSection("custom_effects");
+-					if (customEffects != null) {
+-						List<PotionEffect> pots = parsePotionEffects(potion);
+-						for (PotionEffect pe : pots) {
+-							potMeta.addCustomEffect(pe, true);
+-						}
 +					catch (final NumberFormatException thrown) {
 +						LOGGER.warning("Could not parse \"" + rawLevel + "\" as an enchant level for "
 +								+ "\"" + rawEnchant + "\" at " + config.getCurrentPath());
 +						continue;
-+					}
-+				}
+ 					}
+ 				}
+-
 +				// Otherwise, it's unknown
 +				else {
 +					LOGGER.warning("Unsupported enchant section \"" + key + "\" at " + config.getCurrentPath());
 +					continue;
 +				}
-+			}
+ 			}
+-			toAdd.setItemMeta(meta);
+-			if (current.contains("nbt")) {
+-				toAdd = ItemMap.enrichWithNBT(toAdd, 1, current.getConfigurationSection("nbt").getValues(true));
 +			final Enchantment enchant = EnchantUtils.getEnchantment(rawEnchant);
 +			if (enchant == null) {
 +				LOGGER.warning("Could not match \"" + rawEnchant + "\" with an enchant at " + config.getCurrentPath());
 +				continue;
-+			}
+ 			}
 +			if (level < enchant.getStartLevel() || level > enchant.getMaxLevel()) {
 +				LOGGER.warning("Be aware that enchant \"" + rawEnchant + "\" is set to \"" + level + "\" even "
 +						+ "though it's minimum level is \"" + enchant.getStartLevel() + "\" and its maximum level "
 +						+ "level is \"" + enchant.getMaxLevel() + "\"!");
 +			}
 +			enchants.put(enchant, level);
-+		}
+ 		}
+-		// Setting amount must be last just in cast enrichWithNBT is called,
+-		// which
+-		// resets the amount to 1.
+-		int amount = current.getInt("amount", 1);
+-		toAdd.setAmount(amount);
+-		im.addItemStack(toAdd);
+-		return im;
 +		return enchants;
-+	}
+ 	}
 +	// CivPatched End
-+
+ 
  	public static int parseTimeAsTicks(@Nonnull final String arg) {
  		return (int) (parseTime(arg, TimeUnit.MILLISECONDS) / 50L);
- 	}
+@@ -392,7 +438,7 @@ public final class ConfigHelper {
+ 		StringBuilder number = new StringBuilder();
+ 		for (int i = arg.length() - 1; i >= 0; i--) {
+ 			if (selector.test(arg.charAt(i))) {
+-				number.insert(0, arg.substring(i, i + 1));
++				number.insert(0, arg.charAt(i)); // CivPatched: Simplify to chatAt
+ 			} else {
+ 				break;
+ 			}
+@@ -412,6 +458,7 @@ public final class ConfigHelper {
+ 		if (configurationSection != null) {
+ 			for (String name : configurationSection.getKeys(false)) {
+ 				ConfigurationSection configEffect = configurationSection.getConfigurationSection(name);
++				if (configEffect == null) continue; // CivPatched: Prevent NPE
+ 				String type = configEffect.getString("type");
+ 				if (type == null) {
+ 					LOGGER.severe("Expected potion type to be specified, but found no \"type\" option at "
+@@ -422,6 +469,7 @@ public final class ConfigHelper {
+ 				if (effect == null) {
+ 					LOGGER.severe("Expected potion type to be specified at " + configEffect.getCurrentPath()
+ 							+ " but found " + type + " which is no valid type");
++					continue; // CivPatched: Prevent IAE
+ 				}
+ 				int duration = configEffect.getInt("duration", 200);
+ 				int amplifier = configEffect.getInt("amplifier", 0);
