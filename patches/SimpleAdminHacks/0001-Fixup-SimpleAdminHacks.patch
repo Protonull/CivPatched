@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Wed, 24 May 2023 03:02:30 +0100
+Date: Sun, 4 Jun 2023 17:43:22 +0100
 Subject: [PATCH] Fixup SimpleAdminHacks
 
 Goodbye Bungee.
@@ -8,10 +8,10 @@ Goodbye Bungee.
 Fix BedLocator oopsie.
 
 diff --git a/build.gradle.kts b/build.gradle.kts
-index 7bf669fe4fab8df60efb867c2f83548aa4941abd..5481a61546a6745ba37a2f26826dc8c164aea35d 100644
+index 7bf669fe4fab8df60efb867c2f83548aa4941abd..d09d37a195533a507a234c2fd9af50989cf7e94f 100644
 --- a/build.gradle.kts
 +++ b/build.gradle.kts
-@@ -1,23 +1,16 @@
+@@ -1,23 +1,17 @@
 -import net.civmc.civgradle.CivGradleExtension
 +group = "civ.genre.simpleadminhacks"
 +version = "2.2.1"
@@ -46,6 +46,7 @@ index 7bf669fe4fab8df60efb867c2f83548aa4941abd..5481a61546a6745ba37a2f26826dc8c1
 +    compileOnly("net.civmc.combattagplus:paper:2.0.0-SNAPSHOT:dev")
 +    compileOnly("net.civmc.banstick:banstick-paper:2.0.1:dev")
 +    compileOnly("com.comphenix.protocol:ProtocolLib:4.8.0")
++    compileOnly("net.civmc.bastion:bastion-paper:3.0.1:dev")
  }
 diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/configs/IntrobookConfig.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/configs/IntrobookConfig.java
 index 7c0c7275e22bedee70dacaa0f5a82bfc913bfe71..c946ec6339812bea403b3bd7619e9562ed3e8091 100644
