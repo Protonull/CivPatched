@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Sun, 4 Jun 2023 06:44:03 +0100
+Date: Sun, 4 Jun 2023 08:05:04 +0100
 Subject: [PATCH] Update DAO
 
 Entirely overhaul database migrations.
@@ -305,10 +305,10 @@ index 85707ef2bfec4dc4f5f9398b578436f31ffc03a3..c19c241091f7b1590ea8564ce0823d4c
 +	// CivPatched End
  }
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/dao/DatabaseMigration.java b/src/main/java/vg/civcraft/mc/civmodcore/dao/DatabaseMigration.java
-index 852aabcc189759aa7078a530f57c8d496f62f250..7ed48b4dd45b4dffe0d34d88c463684b40cabd9d 100644
+index 852aabcc189759aa7078a530f57c8d496f62f250..198846add618ec4c6475f7b0be37d53c217986b6 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/dao/DatabaseMigration.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/dao/DatabaseMigration.java
-@@ -1,56 +1,107 @@
+@@ -1,56 +1,105 @@
  package vg.civcraft.mc.civmodcore.dao;
  
 +import java.sql.Connection;
@@ -437,18 +437,16 @@ index 852aabcc189759aa7078a530f57c8d496f62f250..7ed48b4dd45b4dffe0d34d88c463684b
 +            try (final Statement statement = connection.createStatement()) {
 +                statement.executeUpdate(query);
 +                boolean hadErrors = false;
-+                if (!ignoreErrors) { // if we ignore errors we totally ignore warnings.
-+                    SQLWarning warning = statement.getWarnings();
-+                    while (warning != null) {
-+                        hadErrors = true;
-+                        logger.warning("Warning: " + warning.getMessage());
-+                        warning = warning.getNextWarning();
-+                    }
++                SQLWarning warning = statement.getWarnings();
++                while (warning != null) {
++                    hadErrors = true;
++                    logger.warning("Warning: " + warning.getMessage());
++                    warning = warning.getNextWarning();
 +                }
-+                return !hadErrors;
++                return ignoreErrors || !hadErrors;
 +            }
 +            catch (final SQLException thrown) {
-+                if (!ignoreErrors) {
++                if (ignoreErrors) {
 +                    logger.warning("Ignoring error: " + thrown.getMessage());
 +                    return true;
 +                }
