@@ -1,15 +1,27 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Tue, 16 May 2023 02:13:05 +0100
+Date: Sun, 4 Jun 2023 16:33:21 +0100
 Subject: [PATCH] Ensure block->item material conversion
 
-Placing an oak sign on a wall will not show on snitches because OAK_WALL_SIGN is not an item material. This update should ensure that an item is always shown, even if the item isn't covered by the switch statement.
+Placing an oak sign on a wall will not show on snitches because OAK_WALL_SIGN is not an item material. This defers this to a new function in MaterialUtils.
 
 diff --git a/src/main/java/com/untamedears/jukealert/model/actions/abstr/LoggableBlockAction.java b/src/main/java/com/untamedears/jukealert/model/actions/abstr/LoggableBlockAction.java
-index 9bf22e376ba99b48dd156409f19e2960c5caa4bb..55cdb9768632e69206242cf1b93d688c1d4d9e52 100644
+index 9bf22e376ba99b48dd156409f19e2960c5caa4bb..62aa65759fa4f02a7c225c6b6ba7cfe07e292444 100644
 --- a/src/main/java/com/untamedears/jukealert/model/actions/abstr/LoggableBlockAction.java
 +++ b/src/main/java/com/untamedears/jukealert/model/actions/abstr/LoggableBlockAction.java
-@@ -39,16 +39,44 @@ public abstract class LoggableBlockAction extends LoggablePlayerAction {
+@@ -12,6 +12,11 @@ import vg.civcraft.mc.civmodcore.inventory.gui.DecorationStack;
+ import vg.civcraft.mc.civmodcore.inventory.gui.IClickable;
+ import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
+ 
++// CivPatched Start
++import java.util.Objects;
++import vg.civcraft.mc.civmodcore.inventory.items.MaterialUtils;
++// CivPatched End
++
+ public abstract class LoggableBlockAction extends LoggablePlayerAction {
+ 
+ 	protected final Location location;
+@@ -39,16 +44,7 @@ public abstract class LoggableBlockAction extends LoggablePlayerAction {
  	the correct inventory item to represent.
  	 */
  	public Material getMaterial() {
@@ -23,48 +35,11 @@ index 9bf22e376ba99b48dd156409f19e2960c5caa4bb..55cdb9768632e69206242cf1b93d688c
 -			return Material.SWEET_BERRIES;
 -		}
 -		return material;
-+		// CivPatched Start
-+		return switch (this.material) {
-+			case POWDER_SNOW -> Material.POWDER_SNOW_BUCKET;
-+			case FIRE, SOUL_FIRE -> Material.FLINT_AND_STEEL;
-+			case SWEET_BERRY_BUSH -> Material.SWEET_BERRIES;
-+			case OAK_WALL_SIGN -> Material.OAK_SIGN;
-+			case DARK_OAK_WALL_SIGN -> Material.DARK_OAK_SIGN;
-+			case BIRCH_WALL_SIGN -> Material.BIRCH_SIGN;
-+			case SPRUCE_WALL_SIGN -> Material.SPRUCE_SIGN;
-+			case JUNGLE_WALL_SIGN -> Material.JUNGLE_SIGN;
-+			case ACACIA_WALL_SIGN -> Material.ACACIA_SIGN;
-+			case WARPED_WALL_SIGN -> Material.WARPED_SIGN;
-+			case CRIMSON_WALL_SIGN -> Material.CRIMSON_SIGN;
-+			case WALL_TORCH -> Material.TORCH;
-+			case SOUL_WALL_TORCH -> Material.SOUL_TORCH;
-+			case WHITE_WALL_BANNER -> Material.WHITE_BANNER;
-+			case BLACK_WALL_BANNER -> Material.BLACK_BANNER;
-+			case BLUE_WALL_BANNER -> Material.BLUE_BANNER;
-+			case BROWN_WALL_BANNER -> Material.BROWN_BANNER;
-+			case CYAN_WALL_BANNER -> Material.CYAN_BANNER;
-+			case GRAY_WALL_BANNER -> Material.GRAY_BANNER;
-+			case GREEN_WALL_BANNER -> Material.GREEN_BANNER;
-+			case LIGHT_BLUE_WALL_BANNER -> Material.LIGHT_BLUE_BANNER;
-+			case LIGHT_GRAY_WALL_BANNER -> Material.LIGHT_GRAY_BANNER;
-+			case LIME_WALL_BANNER -> Material.LIME_BANNER;
-+			case MAGENTA_WALL_BANNER -> Material.MAGENTA_BANNER;
-+			case ORANGE_WALL_BANNER -> Material.ORANGE_BANNER;
-+			case PINK_WALL_BANNER -> Material.PINK_BANNER;
-+			case PURPLE_WALL_BANNER -> Material.PURPLE_BANNER;
-+			case RED_WALL_BANNER -> Material.RED_BANNER;
-+			case YELLOW_WALL_BANNER -> Material.YELLOW_BANNER;
-+			case DRAGON_WALL_HEAD -> Material.DRAGON_HEAD;
-+			case PLAYER_WALL_HEAD -> Material.PLAYER_HEAD;
-+			case ZOMBIE_WALL_HEAD -> Material.ZOMBIE_HEAD;
-+			case CREEPER_WALL_HEAD -> Material.CREEPER_HEAD;
-+			default -> this.material;
-+		};
-+		// CivPatched End
++		return Objects.requireNonNullElse(MaterialUtils.getBlocksItemMaterial(this.material), this.material); // CivPatched
  	}
  
  	@Override
-@@ -58,10 +86,14 @@ public abstract class LoggableBlockAction extends LoggablePlayerAction {
+@@ -58,10 +54,14 @@ public abstract class LoggableBlockAction extends LoggablePlayerAction {
  
  	@Override
  	public IClickable getGUIRepresentation() {

@@ -244,7 +244,7 @@ index 840bf20abecde5762b6b7cb3167500935a31919d..cff21256aa07029e6c70750078b5f50e
 +	@NotNull Component getChatRepresentationIdentifier(); // CivPatched
  }
 diff --git a/src/main/java/com/untamedears/jukealert/model/actions/abstr/LoggableBlockAction.java b/src/main/java/com/untamedears/jukealert/model/actions/abstr/LoggableBlockAction.java
-index 55cdb9768632e69206242cf1b93d688c1d4d9e52..271bc468a0f78f579bc18d926c43908132b3a89a 100644
+index 62aa65759fa4f02a7c225c6b6ba7cfe07e292444..00a2bd78e8bd3ad286ced7a60edb611c742aad15 100644
 --- a/src/main/java/com/untamedears/jukealert/model/actions/abstr/LoggableBlockAction.java
 +++ b/src/main/java/com/untamedears/jukealert/model/actions/abstr/LoggableBlockAction.java
 @@ -4,7 +4,6 @@ import com.untamedears.jukealert.model.Snitch;
@@ -255,19 +255,16 @@ index 55cdb9768632e69206242cf1b93d688c1d4d9e52..271bc468a0f78f579bc18d926c439081
  import org.bukkit.Location;
  import org.bukkit.Material;
  import org.bukkit.inventory.ItemStack;
-@@ -12,6 +11,11 @@ import vg.civcraft.mc.civmodcore.inventory.gui.DecorationStack;
- import vg.civcraft.mc.civmodcore.inventory.gui.IClickable;
- import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
+@@ -14,6 +13,8 @@ import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
  
-+// CivPatched Start
+ // CivPatched Start
+ import java.util.Objects;
 +import net.kyori.adventure.text.Component;
 +import net.kyori.adventure.text.format.NamedTextColor;
-+// CivPatched End
-+
- public abstract class LoggableBlockAction extends LoggablePlayerAction {
+ import vg.civcraft.mc.civmodcore.inventory.items.MaterialUtils;
+ // CivPatched End
  
- 	protected final Location location;
-@@ -95,11 +99,20 @@ public abstract class LoggableBlockAction extends LoggablePlayerAction {
+@@ -63,11 +64,20 @@ public abstract class LoggableBlockAction extends LoggablePlayerAction {
  		else {
  			// CivPatched End
  			is = new ItemStack(Material.STONE);

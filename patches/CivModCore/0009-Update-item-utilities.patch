@@ -1,11 +1,13 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Sun, 4 Jun 2023 07:43:27 +0100
+Date: Sun, 4 Jun 2023 16:42:52 +0100
 Subject: [PATCH] Update item utilities
 
 Add getRepairable to ItemUtils, which is pretty identical to getDamageable, except it returns the Repairable type instead.
 
 Add getMaterials to MaterialUtils, which returns a Set of all Materials.
+
+Add getBlocksItemMaterial to MaterialUtils and a unit-test for it.
 
 Add getEnchants, clearEnchants, addEnchants, and setEnchants to MetaUtils. And deprecate clearEnchants on EnchantUtils.
 
@@ -118,28 +120,44 @@ index f84ec069bd4bd46c38f473c1eb06d47bce8576c5..cf7f1dc1b28b25a5e7f9279c767bf6e5
  	 * Makes an item glow by adding an enchantment and the flag for hiding enchantments, so it has the enchantment glow
  	 * without an enchantment being visible. Note that this does actually apply an enchantment to an item.
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MaterialUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MaterialUtils.java
-index 7613b5129e55b275e1122e4e709d8b11aa19d568..8e22ae05e1c631c91f57fb5ddf216dacee72fef8 100644
+index 7613b5129e55b275e1122e4e709d8b11aa19d568..39156fe52971a264b0b1c014e693d1fb8b3fce36 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MaterialUtils.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MaterialUtils.java
-@@ -14,6 +14,12 @@ import org.bukkit.Material;
+@@ -5,7 +5,6 @@ import com.google.common.math.IntMath;
+ import java.util.ArrayList;
+ import java.util.List;
+ import javax.annotation.Nonnull;
+-import javax.annotation.Nullable;
+ import lombok.experimental.UtilityClass;
+ import net.kyori.adventure.text.Component;
+ import net.kyori.adventure.text.TranslatableComponent;
+@@ -14,6 +13,16 @@ import org.bukkit.Material;
  import org.bukkit.Tag;
  import org.bukkit.inventory.ItemStack;
  
 +// CivPatched Start
 +import java.util.HashSet;
 +import java.util.Set;
++import org.jetbrains.annotations.Contract;
 +import org.jetbrains.annotations.NotNull;
++import org.jetbrains.annotations.Nullable;
++import vg.civcraft.mc.civmodcore.utilities.JavaHelpers;
++import vg.civcraft.mc.civmodcore.utilities.MoreCollectionUtils;
 +// CivPatched End
 +
  /**
   * <p>See <a href="https://github.com/Protonull/BukkitReport/tree/master/reports">BukkitReports</a>.</p>
   *
-@@ -34,6 +40,18 @@ public final class MaterialUtils {
+@@ -34,6 +43,22 @@ public final class MaterialUtils {
  		addAll(MaterialTags.CONCRETES.getValues());
  	}};
  
 +	// CivPatched Start
-+	public final Set<Material> MATERIALS = Set.of(Material.values());
++	public final Set<Material> MATERIALS = JavaHelpers.yield(() -> {
++		final Set<Material> materials = MoreCollectionUtils.collectExact(HashSet::new, Material.values());
++		materials.removeIf(Material::isLegacy);
++		return Set.copyOf(materials);
++	});
 +	/**
 +	 * @return Returns a new material set. DO NOT USE {@link java.util.EnumSet<Material>}! As it'll force load all
 +	 * materials, including all legacy materials, forcing the server into legacy mode. For some reason
@@ -153,6 +171,131 @@ index 7613b5129e55b275e1122e4e709d8b11aa19d568..8e22ae05e1c631c91f57fb5ddf216dac
  	/**
  	 * Attempts to retrieve a material by its slug.
  	 *
+@@ -84,4 +109,124 @@ public final class MaterialUtils {
+ 		return HASH_MATERIALS.get(index);
+ 	}
+ 
++	// CivPatched Start
++	/**
++	 * Attempts to match a block material with an item material. For example,
++	 * {@link Material#OAK_WALL_SIGN} with {@link Material#OAK_SIGN}. This is
++	 * useful for GUIs and drops, for example.
++	 */
++	@Contract("null -> null")
++	public @Nullable Material getBlocksItemMaterial(
++			final Material material
++	) {
++		if (material == null || !material.isBlock()) {
++			return null;
++		}
++		if (material.isItem()) {
++			return material;
++		}
++		return switch (material) {
++			// Signs
++			case OAK_WALL_SIGN -> Material.OAK_SIGN;
++			case DARK_OAK_WALL_SIGN -> Material.DARK_OAK_SIGN;
++			case BIRCH_WALL_SIGN -> Material.BIRCH_SIGN;
++			case SPRUCE_WALL_SIGN -> Material.SPRUCE_SIGN;
++			case JUNGLE_WALL_SIGN -> Material.JUNGLE_SIGN;
++			case ACACIA_WALL_SIGN -> Material.ACACIA_SIGN;
++			case WARPED_WALL_SIGN -> Material.WARPED_SIGN;
++			case CRIMSON_WALL_SIGN -> Material.CRIMSON_SIGN;
++
++			// Torches
++			case WALL_TORCH -> Material.TORCH;
++			case SOUL_WALL_TORCH -> Material.SOUL_TORCH;
++			case REDSTONE_WALL_TORCH -> Material.REDSTONE_TORCH;
++
++			// Banners
++			case WHITE_WALL_BANNER -> Material.WHITE_BANNER;
++			case BLACK_WALL_BANNER -> Material.BLACK_BANNER;
++			case BLUE_WALL_BANNER -> Material.BLUE_BANNER;
++			case BROWN_WALL_BANNER -> Material.BROWN_BANNER;
++			case CYAN_WALL_BANNER -> Material.CYAN_BANNER;
++			case GRAY_WALL_BANNER -> Material.GRAY_BANNER;
++			case GREEN_WALL_BANNER -> Material.GREEN_BANNER;
++			case LIGHT_BLUE_WALL_BANNER -> Material.LIGHT_BLUE_BANNER;
++			case LIGHT_GRAY_WALL_BANNER -> Material.LIGHT_GRAY_BANNER;
++			case LIME_WALL_BANNER -> Material.LIME_BANNER;
++			case MAGENTA_WALL_BANNER -> Material.MAGENTA_BANNER;
++			case ORANGE_WALL_BANNER -> Material.ORANGE_BANNER;
++			case PINK_WALL_BANNER -> Material.PINK_BANNER;
++			case PURPLE_WALL_BANNER -> Material.PURPLE_BANNER;
++			case RED_WALL_BANNER -> Material.RED_BANNER;
++			case YELLOW_WALL_BANNER -> Material.YELLOW_BANNER;
++
++			// Heads
++			case DRAGON_WALL_HEAD -> Material.DRAGON_HEAD;
++			case PLAYER_WALL_HEAD -> Material.PLAYER_HEAD;
++			case ZOMBIE_WALL_HEAD -> Material.ZOMBIE_HEAD;
++			case CREEPER_WALL_HEAD -> Material.CREEPER_HEAD;
++			case SKELETON_WALL_SKULL -> Material.SKELETON_SKULL;
++			case WITHER_SKELETON_WALL_SKULL -> Material.WITHER_SKELETON_SKULL;
++
++			// Machines
++			case PISTON_HEAD, MOVING_PISTON -> Material.PISTON;
++			case REDSTONE_WIRE -> Material.REDSTONE;
++			case TRIPWIRE -> Material.STRING;
++
++			// Cauldron (liquid is lost)
++			case WATER_CAULDRON, LAVA_CAULDRON, POWDER_SNOW_CAULDRON -> Material.CAULDRON;
++
++			// Potted Plants (plant is lost)
++			case POTTED_OAK_SAPLING, POTTED_SPRUCE_SAPLING, POTTED_BIRCH_SAPLING, POTTED_JUNGLE_SAPLING,
++					POTTED_ACACIA_SAPLING, POTTED_DARK_OAK_SAPLING, POTTED_FERN, POTTED_DANDELION, POTTED_POPPY,
++					POTTED_BLUE_ORCHID, POTTED_ALLIUM, POTTED_AZURE_BLUET, POTTED_RED_TULIP, POTTED_ORANGE_TULIP,
++					POTTED_WHITE_TULIP, POTTED_PINK_TULIP, POTTED_OXEYE_DAISY, POTTED_CORNFLOWER,
++					POTTED_LILY_OF_THE_VALLEY, POTTED_WITHER_ROSE, POTTED_RED_MUSHROOM, POTTED_BROWN_MUSHROOM,
++					POTTED_DEAD_BUSH, POTTED_CACTUS, POTTED_BAMBOO, POTTED_CRIMSON_FUNGUS, POTTED_WARPED_FUNGUS,
++					POTTED_CRIMSON_ROOTS, POTTED_WARPED_ROOTS, POTTED_AZALEA_BUSH, POTTED_FLOWERING_AZALEA_BUSH -> Material.FLOWER_POT;
++
++			// Plants
++			case CARROTS -> Material.CARROT;
++			case POTATOES -> Material.POTATO;
++			case BEETROOTS -> Material.BEETROOT;
++			case COCOA -> Material.COCOA_BEANS;
++			case ATTACHED_PUMPKIN_STEM, PUMPKIN_STEM -> Material.PUMPKIN_SEEDS;
++			case ATTACHED_MELON_STEM, MELON_STEM -> Material.MELON_SEEDS;
++			case TALL_SEAGRASS -> Material.SEAGRASS;
++			case SWEET_BERRY_BUSH -> Material.SWEET_BERRIES;
++			case KELP_PLANT -> Material.KELP;
++			case BAMBOO_SAPLING -> Material.BAMBOO;
++			case WEEPING_VINES_PLANT -> Material.WEEPING_VINES;
++			case TWISTING_VINES_PLANT -> Material.TWISTING_VINES;
++			case CAVE_VINES, CAVE_VINES_PLANT -> Material.GLOW_BERRIES;
++			case BIG_DRIPLEAF_STEM -> Material.BIG_DRIPLEAF;
++			
++			// Coral
++			case TUBE_CORAL_WALL_FAN -> Material.TUBE_CORAL_FAN;
++			case BRAIN_CORAL_WALL_FAN -> Material.BRAIN_CORAL_FAN;
++			case BUBBLE_CORAL_WALL_FAN -> Material.BUBBLE_CORAL_FAN;
++			case FIRE_CORAL_WALL_FAN -> Material.FIRE_CORAL_FAN;
++			case HORN_CORAL_WALL_FAN -> Material.HORN_CORAL_FAN;
++			// Dead Coral
++			case DEAD_TUBE_CORAL_WALL_FAN -> Material.DEAD_TUBE_CORAL_FAN;
++			case DEAD_BRAIN_CORAL_WALL_FAN -> Material.DEAD_BRAIN_CORAL_FAN;
++			case DEAD_BUBBLE_CORAL_WALL_FAN -> Material.DEAD_BUBBLE_CORAL_FAN;
++			case DEAD_FIRE_CORAL_WALL_FAN -> Material.DEAD_FIRE_CORAL_FAN;
++			case DEAD_HORN_CORAL_WALL_FAN -> Material.DEAD_HORN_CORAL_FAN;
++
++			// Candle Cakes (candle is lost)
++			case CANDLE_CAKE, WHITE_CANDLE_CAKE, ORANGE_CANDLE_CAKE, MAGENTA_CANDLE_CAKE, LIGHT_BLUE_CANDLE_CAKE,
++					YELLOW_CANDLE_CAKE, LIME_CANDLE_CAKE, PINK_CANDLE_CAKE, GRAY_CANDLE_CAKE, LIGHT_GRAY_CANDLE_CAKE,
++					CYAN_CANDLE_CAKE, PURPLE_CANDLE_CAKE, BLUE_CANDLE_CAKE, BROWN_CANDLE_CAKE, GREEN_CANDLE_CAKE,
++					RED_CANDLE_CAKE, BLACK_CANDLE_CAKE -> Material.CAKE;
++
++			// Unobtainable (substituted)
++			case WATER -> Material.WATER_BUCKET;
++			case LAVA -> Material.LAVA_BUCKET;
++			case POWDER_SNOW -> Material.POWDER_SNOW_BUCKET;
++			case FIRE, SOUL_FIRE -> Material.FLINT_AND_STEEL;
++			case FROSTED_ICE -> Material.ICE; // More info: https://minecraft.fandom.com/wiki/Frosted_Ice
++			default -> null;
++		};
++	}
++	// CivPatched End
+ }
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MetaUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MetaUtils.java
 index df12e06426c42e386c8a7367c310ce94e7fa7f94..d20147be5520fc7036b575503ac78a56d3b15752 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MetaUtils.java
@@ -607,3 +750,60 @@ index 0000000000000000000000000000000000000000..7ef13fec94d69ad677a04f3667bcbe26
 +
 +}
 \ No newline at end of file
+diff --git a/src/test/java/vg/civcraft/mc/civmodcore/items/MissingMaterialsTests.java b/src/test/java/vg/civcraft/mc/civmodcore/items/MissingMaterialsTests.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..40f94eb4f83a12c491fa7243d5cb1a646938f88e
+--- /dev/null
++++ b/src/test/java/vg/civcraft/mc/civmodcore/items/MissingMaterialsTests.java
+@@ -0,0 +1,51 @@
++package vg.civcraft.mc.civmodcore.items;
++
++import java.util.Set;
++import net.kyori.adventure.text.Component;
++import org.apache.commons.lang3.StringUtils;
++import org.bukkit.Material;
++import org.bukkit.pseudo.PseudoServer;
++import org.junit.jupiter.api.BeforeAll;
++import org.junit.jupiter.api.Test;
++import vg.civcraft.mc.civmodcore.chat.ChatUtils;
++import vg.civcraft.mc.civmodcore.inventory.items.MaterialUtils;
++
++/**
++ * @author CivPatched
++ */
++public class MissingMaterialsTests {
++
++    @BeforeAll
++    public static void setupBukkit() {
++        PseudoServer.setup();
++    }
++
++    /**
++     * Tests whether {@link ChatUtils#isBaseComponent(Component)} works.
++     */
++    //@Test // Uncomment when MaterialUtils.HASH_MATERIALS stops throwing errors
++    public void testMissingRepresentativeItems() {
++        final Set<Material> missing = MaterialUtils.getMaterials();
++        // Remove materials that aren't blocks or are already items, or are legacy materials.
++        missing.removeIf((material) -> !material.isBlock() || material.isLegacy());
++        // Remove materials that are matched.
++        missing.removeIf((material) -> {
++            material = MaterialUtils.getBlocksItemMaterial(material);
++            return material != null && material.isItem();
++        });
++        // Remove impossible materials.
++        missing.removeAll(Set.of(
++                Material.AIR,
++                Material.CAVE_AIR,
++                Material.VOID_AIR,
++                Material.NETHER_PORTAL,
++                Material.END_PORTAL,
++                Material.END_GATEWAY,
++                Material.BUBBLE_COLUMN
++        ));
++        if (!missing.isEmpty()) {
++            throw new IllegalStateException("The following Materials do not have an matching item material!: " + StringUtils.join(missing, ","));
++        }
++    }
++
++}
