@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Sat, 13 May 2023 10:04:27 +0100
+Date: Sun, 4 Jun 2023 06:44:03 +0100
 Subject: [PATCH] Update DAO
 
 Entirely overhaul database migrations.
@@ -8,6 +8,8 @@ Entirely overhaul database migrations.
 Allow ManagedDatasource to be constructed with a HikariConfig.
 
 Add DefaultDatasource, which allows other plugins to use CivModCore's database.
+
+Update MoreMapUtils.attemptGet.
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java b/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java
 index 146c7b181acdc67f5eb375644db485af384a5e0a..7b3268b88363ed23db328f726c43f00f4b2cee24 100644
@@ -33,10 +35,10 @@ index 146c7b181acdc67f5eb375644db485af384a5e0a..7b3268b88363ed23db328f726c43f00f
  		saveDefaultResource("enchants.yml");
  		super.onEnable();
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java b/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
-index a6fd2d739756fe119c0889d8a39e8cd74c45bc0b..5d143636f05e21edd206b9362892686b6fd8894e 100644
+index 563f1145d55fa97624a640ccfde9fa3c11596159..63ddafbb65600f76609126dceeff0d7a093b29aa 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
-@@ -41,7 +41,12 @@ import vg.civcraft.mc.civmodcore.world.model.RectangleArea;
+@@ -41,8 +41,13 @@ import vg.civcraft.mc.civmodcore.world.model.RectangleArea;
  import java.util.HashMap;
  import org.apache.commons.lang3.EnumUtils;
  import org.jetbrains.annotations.NotNull;
@@ -45,11 +47,12 @@ index a6fd2d739756fe119c0889d8a39e8cd74c45bc0b..5d143636f05e21edd206b9362892686b
 +import vg.civcraft.mc.civmodcore.dao.DefaultDatasource;
 +import vg.civcraft.mc.civmodcore.dao.ManagedDatasource;
  import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
+ import vg.civcraft.mc.civmodcore.inventory.items.MetaUtils;
 +import vg.civcraft.mc.civmodcore.utilities.CivLogger;
  // CivPatched End
  
  @UtilityClass
-@@ -49,6 +54,41 @@ public final class ConfigHelper {
+@@ -50,6 +55,41 @@ public final class ConfigHelper {
  
  	private static final Logger LOGGER = Bukkit.getLogger();
  
@@ -92,7 +95,7 @@ index a6fd2d739756fe119c0889d8a39e8cd74c45bc0b..5d143636f05e21edd206b9362892686b
  	 * Retrieves the configuration section at the given key on the given configuration section.
  	 *
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/dao/ConnectionPool.java b/src/main/java/vg/civcraft/mc/civmodcore/dao/ConnectionPool.java
-index 6b9098ba8c0d71130fb3baf09b661205416642b0..66acb754bb358822e796642e9c3d050fdd0b532a 100644
+index 6b9098ba8c0d71130fb3baf09b661205416642b0..c6d3708e5ec25705d6b5322ae86113d11208e505 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/dao/ConnectionPool.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/dao/ConnectionPool.java
 @@ -1,17 +1,21 @@
@@ -159,8 +162,8 @@ index 6b9098ba8c0d71130fb3baf09b661205416642b0..66acb754bb358822e796642e9c3d050f
 -		catch (SQLException exception) {
 -			LOGGER.severe("Unable to connect to the database.");
 -			exception.printStackTrace();
-+		catch (final SQLException exception) {
-+			LOGGER.log(Level.SEVERE, "Unable to connect to the database.", exception);
++		catch (final SQLException thrown) {
++			LOGGER.log(Level.SEVERE, "Unable to connect to the database.", thrown);
  			this.datasource = null;
  		}
  	}
@@ -168,25 +171,44 @@ index 6b9098ba8c0d71130fb3baf09b661205416642b0..66acb754bb358822e796642e9c3d050f
  
  	/**
  	 * Creates a new ConnectionPool based on explicitly defined parameters. Note that these parameters are not
-@@ -94,7 +88,7 @@ public class ConnectionPool {
+@@ -73,6 +67,7 @@ public class ConnectionPool {
+ 	 * @param idleTimeout The longest a connection can sit idle before recycling (10 minutes recommended, check dbms)
+ 	 * @param maxLifetime The longest a connection can exist in total. (2 hours recommended, check dbms)
  	 */
++	@Deprecated // CivPatched
+ 	public ConnectionPool(final String user,
+ 						  final String pass,
+ 						  final String host,
+@@ -92,9 +87,10 @@ public class ConnectionPool {
+ 	 *
+ 	 * @return Returns the credentials being used.
+ 	 */
++	@Deprecated // CivPatched
  	@Nonnull
  	public DatabaseCredentials getCredentials() {
 -		return this.credentials;
-+		throw new DeprecationUtils.DeprecationException("ConnectionPool doesn't use DatabaseCredentials anymore!");
++		throw new DeprecationUtils.DeprecationException("ConnectionPool doesn't use DatabaseCredentials anymore!"); // CivPatched
  	}
  
  	/**
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/dao/DatabaseCredentials.java b/src/main/java/vg/civcraft/mc/civmodcore/dao/DatabaseCredentials.java
-index 85707ef2bfec4dc4f5f9398b578436f31ffc03a3..2b025cc68a243e2fb518dff32752ddaaeaef3b94 100644
+index 85707ef2bfec4dc4f5f9398b578436f31ffc03a3..c19c241091f7b1590ea8564ce0823d4cf14a6215 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/dao/DatabaseCredentials.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/dao/DatabaseCredentials.java
-@@ -9,6 +9,12 @@ import org.bukkit.configuration.serialization.ConfigurationSerializable;
+@@ -1,6 +1,5 @@
+ package vg.civcraft.mc.civmodcore.dao;
+ 
+-import java.util.HashMap;
+ import java.util.Map;
+ import javax.annotation.Nonnull;
+ import javax.annotation.Nullable;
+@@ -9,6 +8,13 @@ import org.bukkit.configuration.serialization.ConfigurationSerializable;
  import org.bukkit.util.NumberConversions;
  import vg.civcraft.mc.civmodcore.utilities.MoreMapUtils;
  
 +// CivPatched Start
 +import com.zaxxer.hikari.HikariConfig;
++import java.util.List;
 +import org.apache.commons.lang3.StringUtils;
 +import org.jetbrains.annotations.NotNull;
 +// CivPatched End
@@ -194,8 +216,76 @@ index 85707ef2bfec4dc4f5f9398b578436f31ffc03a3..2b025cc68a243e2fb518dff32752ddaa
  /**
   * This is a data class representing a set of credentials used for connecting to databases.
   *
-@@ -71,4 +77,19 @@ public record DatabaseCredentials(String username,
- 						"maxLifetime", "max_lifetime")); // keys
+@@ -29,18 +35,20 @@ public record DatabaseCredentials(String username,
+ 	@Nonnull
+ 	@Override
+ 	public Map<String, Object> serialize() {
+-		final var data = new HashMap<String, Object>(10);
+-		data.put("username", this.username);
+-		data.put("password", this.password);
+-		data.put("hostname", this.host);
+-		data.put("port", this.port);
+-		data.put("driver", this.driver);
+-		data.put("database", this.database);
+-		data.put("poolSize", this.poolSize);
+-		data.put("connectionTimeout", this.connectionTimeout);
+-		data.put("idleTimeout", this.idleTimeout);
+-		data.put("maxLifetime", this.maxLifetime);
+-		return data;
++		// CivPatched Start
++		return Map.ofEntries(
++				Map.entry("username", this.username),
++				Map.entry("password", this.password),
++				Map.entry("hostname", this.host),
++				Map.entry("port", this.port),
++				Map.entry("driver", this.driver),
++				Map.entry("database", this.database),
++				Map.entry("poolSize", this.poolSize),
++				Map.entry("connectionTimeout", this.connectionTimeout),
++				Map.entry("idleTimeout", this.idleTimeout),
++				Map.entry("maxLifetime", this.maxLifetime)
++		);
++		// CivPatched End
+ 	}
+ 
+ 	@Nullable
+@@ -49,26 +57,34 @@ public record DatabaseCredentials(String username,
+ 			return null;
+ 		}
+ 		return new DatabaseCredentials(
+-				MoreMapUtils.attemptGet(data, "root",
+-						"username", "user"), // keys
+-				MoreMapUtils.attemptGet(data, "",
+-						"password", "pass"), // keys
+-				MoreMapUtils.attemptGet(data, "localhost",
+-						"hostname", "host"), // keys
+-				MoreMapUtils.attemptGet(data, NumberConversions::toInt, 3306,
+-						"port"), // keys
+-				MoreMapUtils.attemptGet(data, "mysql",
+-						"driver"), // keys
+-				MoreMapUtils.attemptGet(data, "minecraft",
+-						"database", "dbname", "db"), // keys
+-				MoreMapUtils.attemptGet(data, NumberConversions::toInt, 10,
+-						"poolSize", "poolsize"), // keys
+-				MoreMapUtils.attemptGet(data, NumberConversions::toLong, 10_000L,
+-						"connectionTimeout", "connection_timeout"), // keys
+-				MoreMapUtils.attemptGet(data, NumberConversions::toLong, 600_000L,
+-						"idleTimeout", "idle_timeout"), // keys
+-				MoreMapUtils.attemptGet(data, NumberConversions::toLong, 7_200_000L,
+-						"maxLifetime", "max_lifetime")); // keys
++				// CivPatched Start
++				String.valueOf(MoreMapUtils.attemptGet(data, List.of("username", "user"), "root")),
++				String.valueOf(MoreMapUtils.attemptGet(data, List.of("password", "pass"), "")),
++				String.valueOf(MoreMapUtils.attemptGet(data, List.of("hostname", "host"), "localhost")),
++				NumberConversions.toInt(MoreMapUtils.attemptGet(data, List.of("port"), 3306)),
++				String.valueOf(MoreMapUtils.attemptGet(data, List.of("driver"), "mysql")),
++				String.valueOf(MoreMapUtils.attemptGet(data, List.of("database", "dbname", "db"), "minecraft")),
++				NumberConversions.toInt(MoreMapUtils.attemptGet(data, List.of("poolSize", "poolsize"), 10)),
++				NumberConversions.toLong(MoreMapUtils.attemptGet(data, List.of("connectionTimeout", "connection_timeout"), 10_000L)),
++				NumberConversions.toLong(MoreMapUtils.attemptGet(data, List.of("idleTimeout", "idle_timeout"), 600_000L)),
++				NumberConversions.toLong(MoreMapUtils.attemptGet(data, List.of("maxLifetime", "max_lifetime"), 7_200_000L))
++		);
++		// CivPatched End
  	}
  
 +	// CivPatched Start
@@ -786,3 +876,104 @@ index 61429ec3b1155b6e7955325f216dd62c388435d2..98dd608ee43dc72b8e7b40fe49eb5317
 -	}
 -
  }
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreMapUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreMapUtils.java
+index b4162aea8d8920d417a1b020153bc9bd200e6a1b..b004f6f48575ec22d8d94898fc18b0cb83df2bbf 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreMapUtils.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreMapUtils.java
+@@ -4,13 +4,13 @@ import com.google.common.collect.BiMap;
+ import java.util.Map;
+ import java.util.Objects;
+ import java.util.TreeMap;
+-import java.util.function.Function;
+ import lombok.experimental.UtilityClass;
+ import org.apache.commons.collections4.MapUtils;
+ import org.apache.commons.lang3.ArrayUtils;
+ 
+ // CivPatched Start
+ import java.util.function.BiFunction;
++import java.util.List;
+ import org.jetbrains.annotations.NotNull;
+ // CivPatched End
+ 
+@@ -66,64 +66,33 @@ public final class MoreMapUtils {
+ 		return null;
+ 	}
+ 
++	// CivPatched Start
+ 	/**
+-	 * Attempts to retrieve a value from a given map from a range of keys.
+-	 *
+-	 * @param <K> The key type of the map.
+-	 * @param <V> The value type of the map.
+-	 * @param <R> The desired return type.
+-	 * @param map The map to retrieve the value from.
+-	 * @param fallback The value that should be returned if none of the keys return a [valid] value.
+-	 * @param keys The keys to check.
+-	 * @return Returns a value, either from the keys or the fallback, both of which may be null.
++	 * @return Returns the first non-null value at the given keys, or null.
+ 	 */
+-	@SafeVarargs
+-	public static <K, V, R> R attemptGet(final Map<K, V> map, final R fallback, final K... keys) {
+-		return attemptGet(map, null, fallback, keys);
++	public <K, V> V attemptGet(
++			final @NotNull Map<K, V> map,
++			final @NotNull List<@NotNull K> keys
++	) {
++		return attemptGet(map, keys, null);
+ 	}
+-
+ 	/**
+-	 * Attempts to retrieve a value from a given map from a range of keys.
+-	 *
+-	 * @param <K> The key type of the map.
+-	 * @param <V> The value type of the map.
+-	 * @param <R> The desired return type.
+-	 * @param map The map to retrieve the value from.
+-	 * @param parser The function to process the value from the map. Null will use a default parser.
+-	 * @param fallback The value that should be returned if none of the keys return a [valid] value.
+-	 * @param keys The keys to check.
+-	 * @return Returns a value, either from the keys or the fallback, both of which may be null.
++	 * @return Returns the first non-null value at the given keys, or the given fallback.
+ 	 */
+-	@SafeVarargs
+-	@SuppressWarnings("unchecked")
+-	public static <K, V, R> R attemptGet(final Map<K, V> map,
+-										 final Function<V, R> parser,
+-										 final R fallback,
+-										 final K... keys) {
+-		if (parser == null) {
+-			// Default parser (basic cast)
+-			return attemptGet(map, (V v) -> (R) v, fallback, keys);
+-		}
+-		if (MapUtils.isEmpty(map) || ArrayUtils.isEmpty(keys)) {
+-			return fallback;
+-		}
++	public <K, V> V attemptGet(
++			final @NotNull Map<K, V> map,
++			final @NotNull List<@NotNull K> keys,
++			final V fallback
++	) {
+ 		for (final K key : keys) {
+-			if (!map.containsKey(key)) {
+-				continue;
+-			}
+-			try {
+-				return parser.apply(map.get(key));
+-			}
+-			// Yeeeaaaah, I know this is a catch all exception and that's bad, but this really could be anything since
+-			// the parser function could be anything.. it could be a class cast, a null reference, number format...
+-			// But since this is a value parser and not an arbitrary code executor, nothing complication will be run,
+-			// so any exception cab be interpreted as a bad or unexpected value.
+-			catch (final Throwable ignored) {
+-				return fallback;
++			final V value = map.get(key);
++			if (value != null) {
++				return value;
+ 			}
+ 		}
+ 		return fallback;
+ 	}
++	// CivPatched End
+ 
+ 	/**
+ 	 * Sets all the given keys a particular value.

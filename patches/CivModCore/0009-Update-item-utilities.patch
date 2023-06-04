@@ -1,11 +1,13 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Sat, 3 Jun 2023 06:47:24 +0100
+Date: Sun, 4 Jun 2023 07:43:27 +0100
 Subject: [PATCH] Update item utilities
 
 Add getRepairable to ItemUtils, which is pretty identical to getDamageable, except it returns the Repairable type instead.
 
 Add getMaterials to MaterialUtils, which returns a Set of all Materials.
+
+Add getEnchants, clearEnchants, addEnchants, and setEnchants to MetaUtils. And deprecate clearEnchants on EnchantUtils.
 
 Add AmountMap, which is a more robust and efficient replacement of Map<?, Integer> and a preliminary replacement to ItemMap.
 
@@ -13,6 +15,25 @@ Update NBTHelper to use ISerializer.
 
 Standardises NBTSerializationException.
 
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/EnchantUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/EnchantUtils.java
+index 59749d7b9c7271d5442e43ef2f06ed9ca2d8e6c1..d330c37dab95aade24213a11eaa0bd38e981358a 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/EnchantUtils.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/EnchantUtils.java
+@@ -215,12 +215,9 @@ public final class EnchantUtils {
+ 	 * Removes all enchantments from an item.
+ 	 *
+ 	 * @param item The item to clear enchantment from.
+-	 */
++	 * @deprecated Use {@link MetaUtils#clearEnchants(ItemMeta)} instead! */ @Deprecated // CivPatched
+ 	public static void clearEnchantments(@Nonnull final ItemStack item) {
+-		ItemUtils.handleItemMeta(Objects.requireNonNull(item), (ItemMeta meta) -> {
+-			meta.getEnchants().forEach((key, value) -> meta.removeEnchant(key));
+-			return true;
+-		});
++		 item.editMeta(MetaUtils::clearEnchants); // CivPatched
+ 	}
+ 
+ }
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemUtils.java
 index f84ec069bd4bd46c38f473c1eb06d47bce8576c5..cf7f1dc1b28b25a5e7f9279c767bf6e5b4aa8162 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemUtils.java
@@ -132,6 +153,74 @@ index 7613b5129e55b275e1122e4e709d8b11aa19d568..8e22ae05e1c631c91f57fb5ddf216dac
  	/**
  	 * Attempts to retrieve a material by its slug.
  	 *
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MetaUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MetaUtils.java
+index df12e06426c42e386c8a7367c310ce94e7fa7f94..d20147be5520fc7036b575503ac78a56d3b15752 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MetaUtils.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MetaUtils.java
+@@ -18,6 +18,13 @@ import org.bukkit.inventory.ItemStack;
+ import org.bukkit.inventory.meta.ItemMeta;
+ import vg.civcraft.mc.civmodcore.chat.ChatUtils;
+ 
++// CivPatched Start
++import java.util.HashMap;
++import java.util.Map;
++import org.apache.commons.collections4.MapUtils;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ /**
+  * Class of static utilities for when you already have an instance of {@link ItemMeta}, such as inside of
+  * {@link ItemUtils#handleItemMeta(ItemStack, Predicate)}'s handler, thus all the methods defined below will assume the
+@@ -190,6 +197,49 @@ public final class MetaUtils {
+ 		meta.lore(lore);
+ 	}
+ 
++	// CivPatched Start
++	/**
++	 * Returns a mutable map of enchantments. This is a convenience function
++	 * since {@link ItemMeta#getEnchants()} returns an immutable map.
++	 */
++	public @NotNull Map<Enchantment, Integer> getEnchants(
++			final @NotNull ItemMeta meta
++	) {
++		return new HashMap<>(meta.getEnchants());
++	}
++	/**
++	 * Removes all enchantments.
++	 */
++	public void clearEnchants(
++			final @NotNull ItemMeta meta
++	) {
++		meta.getEnchants().forEach((enchant, level) -> meta.removeEnchant(enchant));
++	}
++	/**
++	 * Adds a given Map of enchantments.
++	 */
++	public void addEnchants(
++			final @NotNull ItemMeta meta,
++			final @NotNull Map<Enchantment, Integer> enchants,
++			final boolean ignoreLevelRestriction
++	) {
++		enchants.forEach((enchant, level) -> meta.addEnchant(enchant, level, ignoreLevelRestriction));
++	}
++	/**
++	 * Replaces all enchantments with the given Map, which can be null.
++	 */
++	public void setEnchants(
++			final @NotNull ItemMeta meta,
++			final Map<Enchantment, Integer> enchants,
++			final boolean ignoreLevelRestriction
++	) {
++		clearEnchants(meta);
++		if (MapUtils.isNotEmpty(enchants)) {
++			addEnchants(meta, enchants, ignoreLevelRestriction);
++		}
++	}
++	// CivPatched End
++
+ 	/**
+ 	 * Makes an item glow by adding an enchantment and the flag for hiding enchantments, so it has the enchantment glow
+ 	 * without an enchantment being visible. Note that this does actually apply an enchantment to an item.
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/nbt/NBTHelper.java b/src/main/java/vg/civcraft/mc/civmodcore/nbt/NBTHelper.java
 index eeeced8ac5c0f39119145f76f0811164d18da730..e0bd7dad25467052623234d2d9b9112da134f743 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/nbt/NBTHelper.java

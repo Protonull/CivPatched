@@ -29,7 +29,9 @@ git rm -rfq \
     "src/main/java/vg/civcraft/mc/civmodcore/players/settings/AltRequestEvent.java" \
     "src/main/java/vg/civcraft/mc/civmodcore/players/settings/gui/ClickableMenuItem.java" \
     "src/main/java/vg/civcraft/mc/civmodcore/events/CustomEventMapper.java" \
-    "src/main/java/vg/civcraft/mc/civmodcore/events/PlayerMoveBlockEvent.java"
+    "src/main/java/vg/civcraft/mc/civmodcore/events/PlayerMoveBlockEvent.java" \
+    "src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemBuilder.java" \
+    "src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemFactory.java"
 git commit --quiet -m "Remove extraneous code"
 
 git checkout --quiet -B patches ignored

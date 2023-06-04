@@ -12,7 +12,7 @@ Vastly upgrade parseItemMapDirectly.
 Fix getSection to not use undefined default.
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java b/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
-index 9f26a8331e60bb40d32445f63eaca95c22d80e84..a6fd2d739756fe119c0889d8a39e8cd74c45bc0b 100644
+index 9f26a8331e60bb40d32445f63eaca95c22d80e84..563f1145d55fa97624a640ccfde9fa3c11596159 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
 @@ -16,7 +16,6 @@ import org.bukkit.Bukkit;
@@ -23,7 +23,7 @@ index 9f26a8331e60bb40d32445f63eaca95c22d80e84..a6fd2d739756fe119c0889d8a39e8cd7
  import org.bukkit.World;
  import org.bukkit.configuration.ConfigurationSection;
  import org.bukkit.enchantments.Enchantment;
-@@ -38,6 +37,13 @@ import vg.civcraft.mc.civmodcore.world.model.GlobalYLimitedArea;
+@@ -38,6 +37,14 @@ import vg.civcraft.mc.civmodcore.world.model.GlobalYLimitedArea;
  import vg.civcraft.mc.civmodcore.world.model.IArea;
  import vg.civcraft.mc.civmodcore.world.model.RectangleArea;
  
@@ -32,12 +32,13 @@ index 9f26a8331e60bb40d32445f63eaca95c22d80e84..a6fd2d739756fe119c0889d8a39e8cd7
 +import org.apache.commons.lang3.EnumUtils;
 +import org.jetbrains.annotations.NotNull;
 +import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
++import vg.civcraft.mc.civmodcore.inventory.items.MetaUtils;
 +// CivPatched End
 +
  @UtilityClass
  public final class ConfigHelper {
  
-@@ -53,11 +59,12 @@ public final class ConfigHelper {
+@@ -53,11 +60,12 @@ public final class ConfigHelper {
  	@Nonnull
  	public static ConfigurationSection getSection(@NonNull final ConfigurationSection config,
  												  @NonNull final String key) {
@@ -54,7 +55,7 @@ index 9f26a8331e60bb40d32445f63eaca95c22d80e84..a6fd2d739756fe119c0889d8a39e8cd7
  	}
  
  	/**
-@@ -133,157 +140,196 @@ public final class ConfigHelper {
+@@ -133,157 +141,196 @@ public final class ConfigHelper {
  			return result;
  		}
  		for (final String key : config.getKeys(false)) {
@@ -147,7 +148,7 @@ index 9f26a8331e60bb40d32445f63eaca95c22d80e84..a6fd2d739756fe119c0889d8a39e8cd7
 -				meta.setUnbreakable(current.getBoolean("unbreakable"));
 +		}
 +		// Enchants
-+		parseEnchants(current.getConfigurationSection("enchants")).forEach((enchant, level) -> meta.addEnchant(enchant, level, true));
++		MetaUtils.setEnchants(meta, parseEnchants(current.getConfigurationSection("enchants")), true);
 +		// Leather Colour
 +		if (meta instanceof final LeatherArmorMeta leatherMeta) {
 +			final Object colour = current.get("color", null);
@@ -376,7 +377,7 @@ index 9f26a8331e60bb40d32445f63eaca95c22d80e84..a6fd2d739756fe119c0889d8a39e8cd7
  
  	public static int parseTimeAsTicks(@Nonnull final String arg) {
  		return (int) (parseTime(arg, TimeUnit.MILLISECONDS) / 50L);
-@@ -392,7 +438,7 @@ public final class ConfigHelper {
+@@ -392,7 +439,7 @@ public final class ConfigHelper {
  		StringBuilder number = new StringBuilder();
  		for (int i = arg.length() - 1; i >= 0; i--) {
  			if (selector.test(arg.charAt(i))) {
@@ -385,7 +386,7 @@ index 9f26a8331e60bb40d32445f63eaca95c22d80e84..a6fd2d739756fe119c0889d8a39e8cd7
  			} else {
  				break;
  			}
-@@ -412,6 +458,7 @@ public final class ConfigHelper {
+@@ -412,6 +459,7 @@ public final class ConfigHelper {
  		if (configurationSection != null) {
  			for (String name : configurationSection.getKeys(false)) {
  				ConfigurationSection configEffect = configurationSection.getConfigurationSection(name);
@@ -393,7 +394,7 @@ index 9f26a8331e60bb40d32445f63eaca95c22d80e84..a6fd2d739756fe119c0889d8a39e8cd7
  				String type = configEffect.getString("type");
  				if (type == null) {
  					LOGGER.severe("Expected potion type to be specified, but found no \"type\" option at "
-@@ -422,6 +469,7 @@ public final class ConfigHelper {
+@@ -422,6 +470,7 @@ public final class ConfigHelper {
  				if (effect == null) {
  					LOGGER.severe("Expected potion type to be specified at " + configEffect.getCurrentPath()
  							+ " but found " + type + " which is no valid type");
