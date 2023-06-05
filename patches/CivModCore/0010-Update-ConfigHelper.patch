@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Sun, 4 Jun 2023 05:41:56 +0100
+Date: Mon, 5 Jun 2023 05:45:11 +0100
 Subject: [PATCH] Update ConfigHelper
 
 Allow ItemMap to parse serialised items.
@@ -9,10 +9,10 @@ Add parseEnchants utils.
 
 Vastly upgrade parseItemMapDirectly.
 
-Fix getSection to not use undefined default.
+Rename getSection to getOrCreateSection and have it not use an unknown default.
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java b/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
-index 9f26a8331e60bb40d32445f63eaca95c22d80e84..563f1145d55fa97624a640ccfde9fa3c11596159 100644
+index 9f26a8331e60bb40d32445f63eaca95c22d80e84..57c94185a6a42b507c442cc839ee278fb3aa33b8 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
 @@ -16,7 +16,6 @@ import org.bukkit.Bukkit;
@@ -38,14 +38,21 @@ index 9f26a8331e60bb40d32445f63eaca95c22d80e84..563f1145d55fa97624a640ccfde9fa3c
  @UtilityClass
  public final class ConfigHelper {
  
-@@ -53,11 +60,12 @@ public final class ConfigHelper {
- 	@Nonnull
- 	public static ConfigurationSection getSection(@NonNull final ConfigurationSection config,
- 												  @NonNull final String key) {
+@@ -50,14 +57,16 @@ public final class ConfigHelper {
+ 	 * @param key The key of the section to retrieve.
+ 	 * @return Returns the configuration section at the given key, or returns a new, empty section.
+ 	 */
+-	@Nonnull
+-	public static ConfigurationSection getSection(@NonNull final ConfigurationSection config,
+-												  @NonNull final String key) {
 -		ConfigurationSection found = config.getConfigurationSection(key);
 -		if (found == null) {
 -			found = config.createSection(key);
-+		// CivPatched Start
++	// CivPatched Start
++	public static @NonNull ConfigurationSection getOrCreateSection(
++			final @NonNull ConfigurationSection config,
++			final @NonNull String key
++	) {
 +		if (config.get(key, null) instanceof final ConfigurationSection found) {
 +			return found;
  		}
@@ -55,7 +62,7 @@ index 9f26a8331e60bb40d32445f63eaca95c22d80e84..563f1145d55fa97624a640ccfde9fa3c
  	}
  
  	/**
-@@ -133,157 +141,196 @@ public final class ConfigHelper {
+@@ -133,157 +142,196 @@ public final class ConfigHelper {
  			return result;
  		}
  		for (final String key : config.getKeys(false)) {
@@ -377,7 +384,7 @@ index 9f26a8331e60bb40d32445f63eaca95c22d80e84..563f1145d55fa97624a640ccfde9fa3c
  
  	public static int parseTimeAsTicks(@Nonnull final String arg) {
  		return (int) (parseTime(arg, TimeUnit.MILLISECONDS) / 50L);
-@@ -392,7 +439,7 @@ public final class ConfigHelper {
+@@ -392,7 +440,7 @@ public final class ConfigHelper {
  		StringBuilder number = new StringBuilder();
  		for (int i = arg.length() - 1; i >= 0; i--) {
  			if (selector.test(arg.charAt(i))) {
@@ -386,7 +393,7 @@ index 9f26a8331e60bb40d32445f63eaca95c22d80e84..563f1145d55fa97624a640ccfde9fa3c
  			} else {
  				break;
  			}
-@@ -412,6 +459,7 @@ public final class ConfigHelper {
+@@ -412,6 +460,7 @@ public final class ConfigHelper {
  		if (configurationSection != null) {
  			for (String name : configurationSection.getKeys(false)) {
  				ConfigurationSection configEffect = configurationSection.getConfigurationSection(name);
@@ -394,7 +401,7 @@ index 9f26a8331e60bb40d32445f63eaca95c22d80e84..563f1145d55fa97624a640ccfde9fa3c
  				String type = configEffect.getString("type");
  				if (type == null) {
  					LOGGER.severe("Expected potion type to be specified, but found no \"type\" option at "
-@@ -422,6 +470,7 @@ public final class ConfigHelper {
+@@ -422,6 +471,7 @@ public final class ConfigHelper {
  				if (effect == null) {
  					LOGGER.severe("Expected potion type to be specified at " + configEffect.getCurrentPath()
  							+ " but found " + type + " which is no valid type");

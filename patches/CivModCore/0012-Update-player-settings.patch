@@ -30,7 +30,7 @@ index 090172096da1d8841107efb1f99210e77c8fdfa4..dba242f180ea16e5a2597c636ebbacdb
  		getDeferredFunctions().UNSAFE_run(); // CivPatched
  	}
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java b/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java
-index dbf5d5e1be70d67748f0562395767d9c163b094a..c475a3ad29feb65c3e623df83a17786a79a06f91 100644
+index dbf5d5e1be70d67748f0562395767d9c163b094a..2f8af326924a70313106320bb2335ce8593ccc4d 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java
 @@ -3,7 +3,6 @@ package vg.civcraft.mc.civmodcore.players.settings;
@@ -179,7 +179,7 @@ index dbf5d5e1be70d67748f0562395767d9c163b094a..c475a3ad29feb65c3e623df83a17786a
 -					section.set(entry.getKey(), entry.getValue());
 -				}
 +			for (final PlayerSetting<?> setting : settings) {
-+				final ConfigurationSection section = ConfigHelper.getSection(config, setting.getIdentifier());
++				final ConfigurationSection section = ConfigHelper.getOrCreateSection(config, setting.getIdentifier());
 +				setting.dumpAllSerialized().forEach(section::set);
  			}
  			try {

@@ -35,7 +35,7 @@ index 146c7b181acdc67f5eb375644db485af384a5e0a..7b3268b88363ed23db328f726c43f00f
  		saveDefaultResource("enchants.yml");
  		super.onEnable();
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java b/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
-index 563f1145d55fa97624a640ccfde9fa3c11596159..63ddafbb65600f76609126dceeff0d7a093b29aa 100644
+index 57c94185a6a42b507c442cc839ee278fb3aa33b8..8cb623a227da3887b3c5271686375256ffe1e78b 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
 @@ -41,8 +41,13 @@ import vg.civcraft.mc.civmodcore.world.model.RectangleArea;
