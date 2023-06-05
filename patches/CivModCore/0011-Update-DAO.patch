@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Sun, 4 Jun 2023 08:05:04 +0100
+Date: Mon, 5 Jun 2023 08:46:55 +0100
 Subject: [PATCH] Update DAO
 
 Entirely overhaul database migrations.
@@ -515,10 +515,10 @@ index 0000000000000000000000000000000000000000..8ac5c108163854fe704f1c2430fd22f4
 +}
 \ No newline at end of file
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/dao/ManagedDatasource.java b/src/main/java/vg/civcraft/mc/civmodcore/dao/ManagedDatasource.java
-index 61429ec3b1155b6e7955325f216dd62c388435d2..98dd608ee43dc72b8e7b40fe49eb5317da62edd2 100644
+index 61429ec3b1155b6e7955325f216dd62c388435d2..6d807337d9b8cd66a731bb06e15ee8d90c019b15 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/dao/ManagedDatasource.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/dao/ManagedDatasource.java
-@@ -4,10 +4,7 @@ import java.sql.Connection;
+@@ -4,24 +4,25 @@ import java.sql.Connection;
  import java.sql.PreparedStatement;
  import java.sql.ResultSet;
  import java.sql.SQLException;
@@ -529,7 +529,9 @@ index 61429ec3b1155b6e7955325f216dd62c388435d2..98dd608ee43dc72b8e7b40fe49eb5317
  import java.util.NavigableMap;
  import java.util.TreeMap;
  import java.util.concurrent.Callable;
-@@ -17,11 +14,18 @@ import java.util.concurrent.Future;
+-import java.util.concurrent.ExecutorService;
+-import java.util.concurrent.Executors;
+-import java.util.concurrent.Future;
  import java.util.concurrent.TimeoutException;
  import java.util.logging.Level;
  import javax.annotation.Nonnull;
@@ -550,10 +552,11 @@ index 61429ec3b1155b6e7955325f216dd62c388435d2..98dd608ee43dc72b8e7b40fe49eb5317
  
  /**
   * Plugins should replace their custom Database handlers with an instance of ManagedDatasource.
-@@ -121,12 +125,12 @@ public class ManagedDatasource {
+@@ -120,23 +121,47 @@ public class ManagedDatasource {
+ 	private final CivLogger logger;
  	private final Plugin plugin;
  	private final ConnectionPool connections;
- 	private final ExecutorService postExecutor;
+-	private final ExecutorService postExecutor;
 -	private final TreeMap<Integer, Migration> migrations;
 +	private final TreeMap<Integer, DatabaseMigration> migrations; // CivPatched
  	private int firstMigration;
@@ -565,7 +568,10 @@ index 61429ec3b1155b6e7955325f216dd62c388435d2..98dd608ee43dc72b8e7b40fe49eb5317
  							  final ConnectionPool connections) {
  		this.logger = logger;
  		this.plugin = plugin;
-@@ -137,6 +141,32 @@ public class ManagedDatasource {
+ 		this.connections = connections;
+-		this.postExecutor = Executors.newSingleThreadExecutor();
+ 		this.migrations = new TreeMap<>();
+ 		this.firstMigration = Integer.MAX_VALUE;
  		this.lastMigration = Integer.MIN_VALUE;
  	}
  
@@ -598,7 +604,7 @@ index 61429ec3b1155b6e7955325f216dd62c388435d2..98dd608ee43dc72b8e7b40fe49eb5317
  	/**
  	 * Create a new ManagedDatasource.
  	 *
-@@ -188,26 +218,23 @@ public class ManagedDatasource {
+@@ -188,26 +213,23 @@ public class ManagedDatasource {
  			logger.warning("You must pass in a set of credentials");
  			return null;
  		}
@@ -639,7 +645,7 @@ index 61429ec3b1155b6e7955325f216dd62c388435d2..98dd608ee43dc72b8e7b40fe49eb5317
  
  	/**
  	 * Use this to register a migration. After all migrations have been registered, call {@link #updateDatabase()}.
-@@ -218,6 +245,7 @@ public class ManagedDatasource {
+@@ -218,6 +240,7 @@ public class ManagedDatasource {
  	 * @param ignoreErrors Indicates if errors in this migration should be ignored.
  	 * @param queries The queries to run, in sequence.
  	 */
@@ -647,7 +653,7 @@ index 61429ec3b1155b6e7955325f216dd62c388435d2..98dd608ee43dc72b8e7b40fe49eb5317
  	public void registerMigration(final int id,
  								  final boolean ignoreErrors,
  								  final String... queries) {
-@@ -234,17 +262,50 @@ public class ManagedDatasource {
+@@ -234,17 +257,49 @@ public class ManagedDatasource {
  	 * @param callback An optional callback that'll run after the migration has completed.
  	 * @param queries The queries to run, in sequence.
  	 */
@@ -674,9 +680,8 @@ index 61429ec3b1155b6e7955325f216dd62c388435d2..98dd608ee43dc72b8e7b40fe49eb5317
 +				return false;
 +			}
 +			if (callback != null) {
-+				final Future<Boolean> doing = this.postExecutor.submit(callback);
 +				try {
-+					if (doing.get()) {
++					if (callback.call()) {
 +						logger.info("Post Call Complete");
 +					}
 +					else {
@@ -705,7 +710,7 @@ index 61429ec3b1155b6e7955325f216dd62c388435d2..98dd608ee43dc72b8e7b40fe49eb5317
  	}
  
  	/**
-@@ -293,7 +354,7 @@ public class ManagedDatasource {
+@@ -293,7 +348,7 @@ public class ManagedDatasource {
  			releaseLock();
  			return false;
  		}
@@ -714,7 +719,7 @@ index 61429ec3b1155b6e7955325f216dd62c388435d2..98dd608ee43dc72b8e7b40fe49eb5317
  		try {
  			if (newApply.size() > 0) {
  				this.logger.info(String.format("%s database is behind, %s migrations found",
-@@ -321,110 +382,56 @@ public class ManagedDatasource {
+@@ -321,110 +376,56 @@ public class ManagedDatasource {
  		}
  	}
  
@@ -863,7 +868,7 @@ index 61429ec3b1155b6e7955325f216dd62c388435d2..98dd608ee43dc72b8e7b40fe49eb5317
  
  	/**
  	 * Checks if this plugin is already managed by the ManagedDatasource infrastructure or not.
-@@ -538,10 +545,4 @@ public class ManagedDatasource {
+@@ -538,10 +539,4 @@ public class ManagedDatasource {
  		this.connections.close();
  	}
  
