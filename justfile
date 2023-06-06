@@ -42,12 +42,13 @@ fetch:
     #!/bin/bash
     git submodule status | awk '{ print $2 }' | while read submodule; do
         projectFolder=$(realpath --canonicalize-missing "$submodule")
+        currentCommit=$(git rev-parse HEAD:"$submodule")
         echo "Fetching $submodule"
         if ! (
             cd "$projectFolder"
             git fetch --quiet
-            git checkout --quiet upstream
-            howFarBehind=$(git rev-list --count upstream..@{u})
+            upstreamCommit=$(git show-ref refs/remotes/origin/HEAD | awk '{ print $1 }')
+            howFarBehind=$(git rev-list --count "$currentCommit..$upstreamCommit")
             if [ "$((howFarBehind))" -gt 0 ]; then
                 echo " - is $howFarBehind commits behind!"
             fi
@@ -79,8 +80,9 @@ applyPatches:
         fi
         if ! (
             git -C "$projectFolder" checkout --quiet -B upstream "$(git rev-parse HEAD:"$submodule")"
+            git -C "$projectFolder" checkout --quiet -B ignored upstream
         ); then
-            echo "Could not checkout upstream"
+            echo "Could not setup upstream and ignored branches"
             exit 1
         fi
         resetScript="$patchesFolder/0000-reset.bash"

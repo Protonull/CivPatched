@@ -1,10 +1,6 @@
 #!/bin/bash
 cd "$1" || exit 1
 
-# Ensure remote upstream and checkout ignored
-git branch --quiet --set-upstream-to=origin/master upstream
-git checkout --quiet -B ignored upstream
-
 # Relocate Java src to root of submodule
 git mv "paper/src" "src"
 git rm -rfq "paper"
