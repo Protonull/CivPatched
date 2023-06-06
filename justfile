@@ -21,6 +21,8 @@ reset:
         echo "Resetting $submodule"
         if ! (
             cd "$projectFolder"
+            git rebase --quiet --abort 2>/dev/null
+            git am --quiet --abort 2>/dev/null
             if [ -n "$(git status --short --porcelain)" ]; then
                 git reset --quiet --hard HEAD
             fi
