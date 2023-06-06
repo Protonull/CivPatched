@@ -68,11 +68,19 @@ applyPatches:
             git config core.eol lf
             git config core.autocrlf false
             git tag | xargs git tag -d >/dev/null
+            git rebase --quiet --abort 2>/dev/null
+            git am --quiet --abort 2>/dev/null
             if [ -n "$(git status --short --porcelain)" ]; then
                 git reset --quiet --hard HEAD
             fi
         ); then
             echo "Could not reset $submodule"
+            exit 1
+        fi
+        if ! (
+            git -C "$projectFolder" checkout --quiet -B upstream "$(git rev-parse HEAD:"$submodule")"
+        ); then
+            echo "Could not checkout upstream"
             exit 1
         fi
         resetScript="$patchesFolder/0000-reset.bash"
@@ -94,7 +102,6 @@ applyPatches:
         fi
         if ! (
             cd "$projectFolder"
-            git am --abort >/dev/null 2>&1
             git am --reject --ignore-whitespace "$patchesFolder/"*.patch 2>/dev/null
         ); then
             echo "Could not apply patches to $submodule"

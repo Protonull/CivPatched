@@ -1,8 +1,7 @@
 #!/bin/bash
 cd "$1" || exit 1
 
-# Checkout the submodule upstream commit
-git checkout --quiet -B upstream "6439102f9cd5ed59a039a704e239638ac3f18b39"
+# Ensure remote upstream and checkout ignored
 git branch --quiet --set-upstream-to=origin/master upstream
 git checkout --quiet -B ignored upstream
 
