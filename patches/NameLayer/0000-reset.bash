@@ -1,21 +1,17 @@
 #!/bin/bash
 cd "$1" || exit 1
 
-# Relocate Java src to root of submodule
 git mv "paper/src" "src"
 git rm -rfq "paper"
+git commit --quiet -m "Flatten project structure"
 
-# Remove submodule's Gradle wrapper and files
-git rm -rfq "gradle" "gradlew" "gradlew.bat" "gradle.properties" "settings.gradle.kts"
+git rm -rfq "gradle" "gradlew" "gradlew.bat"
+git commit --quiet -m "Remove Gradle wrapper"
 
-# Remove unused modules
+git rm -rfq ".github" ".editorconfig" "gradle.properties" "settings.gradle.kts"
+git commit --quiet -m "Remove extraneous boilerplate"
+
 git rm -rfq "nms" "namelayer-bungee"
+git commit --quiet -m "Remove extraneous modules"
 
-# Remove .editorconfig
-git rm -rfq ".editorconfig"
-
-# Remove Github workflows
-git rm -rfq  ".github"
-
-git commit --quiet -m "Reset NameLayer"
 git checkout --quiet -B patches ignored
