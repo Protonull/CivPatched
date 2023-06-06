@@ -16,7 +16,7 @@ build module="":
 # Reset all submodules to their init-state.
 reset:
     #!/bin/bash
-    git submodule status | awk '{ print $2 }' | while read submodule; do
+    git submodule status | awk '{ print $2 }' | while read -r submodule; do
         projectFolder=$(realpath --canonicalize-missing "$submodule")
         echo "Resetting $submodule"
         if ! (
@@ -42,7 +42,7 @@ reset:
 # Fetches each submodule's upstream, printing how many commits behind they are.
 fetch:
     #!/bin/bash
-    git submodule status | awk '{ print $2 }' | while read submodule; do
+    git submodule status | awk '{ print $2 }' | while read -r submodule; do
         projectFolder=$(realpath --canonicalize-missing "$submodule")
         currentCommit=$(git rev-parse HEAD:"$submodule")
         echo "Fetching $submodule"
@@ -62,7 +62,7 @@ fetch:
 # Applies each submodule's respective patches.
 applyPatches:
     #!/bin/bash
-    git submodule status | awk '{ print $2 }' | while read submodule; do
+    git submodule status | awk '{ print $2 }' | while read -r submodule; do
         projectFolder=$(realpath --canonicalize-missing "$submodule")
         patchesFolder=$(realpath --canonicalize-missing "patches/$submodule")
         echo "Patching $submodule"
@@ -116,7 +116,7 @@ applyPatches:
 # Generates patches for each submodule.
 generatePatches:
     #!/bin/bash
-    git submodule status | awk '{ print $2 }' | while read submodule; do
+    git submodule status | awk '{ print $2 }' | while read -r submodule; do
         projectFolder=$(realpath --canonicalize-missing "$submodule")
         patchesFolder=$(realpath --canonicalize-missing "patches/$submodule")
         echo "Generating patches for $submodule"
