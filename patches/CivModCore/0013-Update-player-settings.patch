@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Sat, 3 Jun 2023 06:26:20 +0100
+Date: Fri, 9 Jun 2023 10:57:07 +0100
 Subject: [PATCH] Update player settings
 
 Allows players to open a specific config window.
@@ -10,7 +10,7 @@ Restore setting deregistering.
 Remove SETTINGS_BY_PLUGIN.
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java b/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java
-index 090172096da1d8841107efb1f99210e77c8fdfa4..dba242f180ea16e5a2597c636ebbacdb43f62c8d 100644
+index e761cb1c18a033647b28369a213d889c02c9a5df..db1058f5ec4a47882ea8e5b7641ddd151df75cc8 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java
 @@ -23,6 +23,7 @@ import org.jetbrains.annotations.Contract;
@@ -28,6 +28,83 @@ index 090172096da1d8841107efb1f99210e77c8fdfa4..dba242f180ea16e5a2597c636ebbacdb
 +		PlayerSettingAPI.deregisterAllPluginSettings(this); // CivPatched
  		this.configClasses.forEach(ConfigurationSerialization::unregisterClass);
  		getDeferredFunctions().UNSAFE_run(); // CivPatched
+ 	}
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSetting.java b/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSetting.java
+index 09a166aee942b87b1de52288ddba478deb6a99e5..aa21e27f446970e9d080d0aa2784c9c258f188d4 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSetting.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSetting.java
+@@ -2,7 +2,6 @@ package vg.civcraft.mc.civmodcore.players.settings;
+ 
+ import com.google.common.base.Preconditions;
+ import java.util.ArrayList;
+-import java.util.Arrays;
+ import java.util.HashMap;
+ import java.util.List;
+ import java.util.Map;
+@@ -13,10 +12,14 @@ import org.bukkit.ChatColor;
+ import org.bukkit.entity.Player;
+ import org.bukkit.inventory.ItemStack;
+ import org.bukkit.plugin.java.JavaPlugin;
+-import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
+ import vg.civcraft.mc.civmodcore.inventory.items.MaterialUtils;
+ import vg.civcraft.mc.civmodcore.players.settings.gui.MenuSection;
+ 
++// CivPatched Start
++import org.apache.commons.lang3.StringUtils;
++import vg.civcraft.mc.civmodcore.inventory.items.MetaUtils;
++// CivPatched End
++
+ /**
+  * Contains a value for every players for one setting
+  */
+@@ -47,11 +50,16 @@ public abstract class PlayerSetting<T> {
+ 	}
+ 
+ 	protected void applyInfoToItemStack(ItemStack item, UUID player) {
+-		ItemUtils.setDisplayName(item, niceName);
+-		ItemUtils.addLore(item, ChatColor.LIGHT_PURPLE + "Value: " + ChatColor.RESET + toText(getValue(player)));
+-		if (description != null) {
+-			ItemUtils.addLore(item, Arrays.stream(WordUtils.wrap(description, 32, "@", false).split("@")).toList());
+-		}
++		// CivPatched Start
++		item.editMeta((meta) -> {
++			meta.setDisplayName(getNiceName()); // Use Getter
++			MetaUtils.addLore(meta, ChatColor.LIGHT_PURPLE + "Value: " + ChatColor.RESET + toText(getValue(player)));
++			final var description = getDescription(); // Use Getter
++			if (StringUtils.isNotEmpty(description)) {
++				MetaUtils.addLore(meta, WordUtils.wrap(description, 32, "\n", false));
++			}
++		});
++		// CivPatched End
+ 	}
+ 
+ 	/**
+@@ -85,13 +93,10 @@ public abstract class PlayerSetting<T> {
+ 	 * @return ItemStack to show for this setting
+ 	 */
+ 	public ItemStack getGuiRepresentation(UUID player) {
+-		ItemStack copy;
+-		if (visualization == null) {
+-			copy = new ItemStack(MaterialUtils.getMaterialHash(getValue(player)));
+-		}
+-		else {
+-			copy = visualization.clone();
+-		}
++		// CivPatched Start
++		ItemStack copy = getVisualization(); // Use Getter
++		copy = copy != null ? copy.clone() : new ItemStack(MaterialUtils.getMaterialHash(getValue(player)));
++		// CivPatched End
+ 		applyInfoToItemStack(copy, player);
+ 		return copy;
+ 	}
+@@ -120,7 +125,7 @@ public abstract class PlayerSetting<T> {
+ 	public T getValue(UUID player) {
+ 		T value = values.get(player);
+ 		if (value == null) {
+-			return defaultValue;
++			return getDefaultValue(); // CivPatched: Use getter
+ 		}
+ 		return value;
  	}
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java b/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java
 index dbf5d5e1be70d67748f0562395767d9c163b094a..2f8af326924a70313106320bb2335ce8593ccc4d 100644

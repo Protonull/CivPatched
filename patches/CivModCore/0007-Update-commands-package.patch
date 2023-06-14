@@ -1,17 +1,19 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Sat, 13 May 2023 10:22:46 +0100
+Date: Wed, 14 Jun 2023 03:54:11 +0100
 Subject: [PATCH] Update commands package
 
 Aikar commands need to be registered last otherwise custom contexts (handlers for non-String paramters) wont be found and the command registration will fail.
 
 Also, add custom world and console sender contexts.
 
+Make non, materials, and itemMaterials static completions.
+
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/commands/CommandManager.java b/src/main/java/vg/civcraft/mc/civmodcore/commands/CommandManager.java
-index 9ddec69108166c28d097ddf42b4972a92e1dd78a..4c33c6a5a34fac5a676f08c428397dc86b350534 100644
+index 9ddec69108166c28d097ddf42b4972a92e1dd78a..1b6e43591d5c0d6a2936e0fdb651cdb9859c2478 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/commands/CommandManager.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/commands/CommandManager.java
-@@ -28,6 +28,14 @@ import org.bukkit.plugin.Plugin;
+@@ -28,16 +28,19 @@ import org.bukkit.plugin.Plugin;
  import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
  import vg.civcraft.mc.civmodcore.utilities.CivLogger;
  
@@ -26,7 +28,17 @@ index 9ddec69108166c28d097ddf42b4972a92e1dd78a..4c33c6a5a34fac5a676f08c428397dc8
  /**
   * Command registration class wrapper around {@link BukkitCommandManager}.
   */
-@@ -76,9 +84,9 @@ public class CommandManager extends BukkitCommandManager {
+ public class CommandManager extends BukkitCommandManager {
+ 
+-	// allMaterials and itemMaterials won't change over a run, so autocomplete lists can be prebuilt globally.
+-	private final static List<String> allMaterials = Arrays.stream(Material.values()).map(Enum::name).toList();
+-
+-	private final static List<String> itemMaterials = Arrays.stream(Material.values()).filter(ItemUtils::isValidItemMaterial).map(Enum::name).toList();
+-
+ 	// Track players to offer quick completion where necessary.
+ 	private final Set<String> autocompletePlayerNames = new ConcurrentSkipListSet<>();
+ 
+@@ -76,9 +79,9 @@ public class CommandManager extends BukkitCommandManager {
  			}
  		}, plugin);
  
@@ -38,7 +50,26 @@ index 9ddec69108166c28d097ddf42b4972a92e1dd78a..4c33c6a5a34fac5a676f08c428397dc8
  	}
  
  	/**
-@@ -114,6 +122,33 @@ public class CommandManager extends BukkitCommandManager {
+@@ -97,13 +100,15 @@ public class CommandManager extends BukkitCommandManager {
+ 	 *                    {@link #getCommandCompletions()}.
+ 	 */
+ 	public void registerCompletions(@Nonnull final CommandCompletions<BukkitCommandCompletionContext> completions) {
+-		completions.registerCompletion("none", (context) -> Collections.emptyList());
++		completions.registerStaticCompletion("none", Collections.emptyList()); // CivPatched: Make static
+ 		// Completion lists are copied so outer code can modify the lists without breaking our inner contracts,
+ 		// namely that all players should be searchable by completion.
+ 		// Using Collections.immutableList is an alternative, but both variants aren't expensive.
+ 		completions.registerAsyncCompletion("allplayers", (context) -> new ArrayList<>(autocompletePlayerNames));
+-		completions.registerAsyncCompletion("materials", (context) -> new ArrayList<>(allMaterials));
+-		completions.registerAsyncCompletion("itemMaterials", (context) -> new ArrayList<>(itemMaterials));
++		// CivPatched Start: Make static
++		completions.registerStaticCompletion("materials", Arrays.stream(Material.values()).map(Enum::name).toList());
++		completions.registerStaticCompletion("itemMaterials", Arrays.stream(Material.values()).filter(ItemUtils::isValidItemMaterial).map(Enum::name).toList());
++		// CivPatched End
+ 	}
+ 
+ 	/**
+@@ -114,6 +119,33 @@ public class CommandManager extends BukkitCommandManager {
  	 *                 {@link #getCommandContexts()}.
  	 */
  	public void registerContexts(@Nonnull final CommandContexts<BukkitCommandExecutionContext> contexts) {

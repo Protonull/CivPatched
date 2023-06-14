@@ -12,10 +12,10 @@ Add DefaultDatasource, which allows other plugins to use CivModCore's database.
 Update MoreMapUtils.attemptGet.
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java b/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java
-index 146c7b181acdc67f5eb375644db485af384a5e0a..7b3268b88363ed23db328f726c43f00f4b2cee24 100644
+index ad2218b9b629766fae137d9563a0c650d098c6ae..ca968415eab3bd47c51277944663e88bccb829f2 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java
-@@ -28,6 +28,10 @@ import vg.civcraft.mc.civmodcore.world.locations.chunkmeta.stat.LoadStatisticMan
+@@ -27,6 +27,10 @@ import vg.civcraft.mc.civmodcore.world.locations.chunkmeta.stat.LoadStatisticMan
  import vg.civcraft.mc.civmodcore.world.locations.global.CMCWorldDAO;
  import vg.civcraft.mc.civmodcore.world.locations.global.WorldIDManager;
  
@@ -26,7 +26,7 @@ index 146c7b181acdc67f5eb375644db485af384a5e0a..7b3268b88363ed23db328f726c43f00f
  public final class CivModCorePlugin extends ACivMod {
  
  	private static CivModCorePlugin instance;
-@@ -43,6 +47,7 @@ public final class CivModCorePlugin extends ACivMod {
+@@ -42,6 +46,7 @@ public final class CivModCorePlugin extends ACivMod {
  	public void onEnable() {
  		instance = this;
  		registerConfigClass(DatabaseCredentials.class);
@@ -879,104 +879,3 @@ index 61429ec3b1155b6e7955325f216dd62c388435d2..6d807337d9b8cd66a731bb06e15ee8d9
 -	}
 -
  }
-diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreMapUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreMapUtils.java
-index b4162aea8d8920d417a1b020153bc9bd200e6a1b..b004f6f48575ec22d8d94898fc18b0cb83df2bbf 100644
---- a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreMapUtils.java
-+++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreMapUtils.java
-@@ -4,13 +4,13 @@ import com.google.common.collect.BiMap;
- import java.util.Map;
- import java.util.Objects;
- import java.util.TreeMap;
--import java.util.function.Function;
- import lombok.experimental.UtilityClass;
- import org.apache.commons.collections4.MapUtils;
- import org.apache.commons.lang3.ArrayUtils;
- 
- // CivPatched Start
- import java.util.function.BiFunction;
-+import java.util.List;
- import org.jetbrains.annotations.NotNull;
- // CivPatched End
- 
-@@ -66,64 +66,33 @@ public final class MoreMapUtils {
- 		return null;
- 	}
- 
-+	// CivPatched Start
- 	/**
--	 * Attempts to retrieve a value from a given map from a range of keys.
--	 *
--	 * @param <K> The key type of the map.
--	 * @param <V> The value type of the map.
--	 * @param <R> The desired return type.
--	 * @param map The map to retrieve the value from.
--	 * @param fallback The value that should be returned if none of the keys return a [valid] value.
--	 * @param keys The keys to check.
--	 * @return Returns a value, either from the keys or the fallback, both of which may be null.
-+	 * @return Returns the first non-null value at the given keys, or null.
- 	 */
--	@SafeVarargs
--	public static <K, V, R> R attemptGet(final Map<K, V> map, final R fallback, final K... keys) {
--		return attemptGet(map, null, fallback, keys);
-+	public <K, V> V attemptGet(
-+			final @NotNull Map<K, V> map,
-+			final @NotNull List<@NotNull K> keys
-+	) {
-+		return attemptGet(map, keys, null);
- 	}
--
- 	/**
--	 * Attempts to retrieve a value from a given map from a range of keys.
--	 *
--	 * @param <K> The key type of the map.
--	 * @param <V> The value type of the map.
--	 * @param <R> The desired return type.
--	 * @param map The map to retrieve the value from.
--	 * @param parser The function to process the value from the map. Null will use a default parser.
--	 * @param fallback The value that should be returned if none of the keys return a [valid] value.
--	 * @param keys The keys to check.
--	 * @return Returns a value, either from the keys or the fallback, both of which may be null.
-+	 * @return Returns the first non-null value at the given keys, or the given fallback.
- 	 */
--	@SafeVarargs
--	@SuppressWarnings("unchecked")
--	public static <K, V, R> R attemptGet(final Map<K, V> map,
--										 final Function<V, R> parser,
--										 final R fallback,
--										 final K... keys) {
--		if (parser == null) {
--			// Default parser (basic cast)
--			return attemptGet(map, (V v) -> (R) v, fallback, keys);
--		}
--		if (MapUtils.isEmpty(map) || ArrayUtils.isEmpty(keys)) {
--			return fallback;
--		}
-+	public <K, V> V attemptGet(
-+			final @NotNull Map<K, V> map,
-+			final @NotNull List<@NotNull K> keys,
-+			final V fallback
-+	) {
- 		for (final K key : keys) {
--			if (!map.containsKey(key)) {
--				continue;
--			}
--			try {
--				return parser.apply(map.get(key));
--			}
--			// Yeeeaaaah, I know this is a catch all exception and that's bad, but this really could be anything since
--			// the parser function could be anything.. it could be a class cast, a null reference, number format...
--			// But since this is a value parser and not an arbitrary code executor, nothing complication will be run,
--			// so any exception cab be interpreted as a bad or unexpected value.
--			catch (final Throwable ignored) {
--				return fallback;
-+			final V value = map.get(key);
-+			if (value != null) {
-+				return value;
- 			}
- 		}
- 		return fallback;
- 	}
-+	// CivPatched End
- 
- 	/**
- 	 * Sets all the given keys a particular value.

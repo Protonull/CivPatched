@@ -1,0 +1,106 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Wed, 14 Jun 2023 03:59:20 +0100
+Subject: [PATCH] Update player package
+
+Added PlayerNames, standardising player name retrieval.
+
+Added PlayerUtils.
+
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/players/PlayerNames.java b/src/main/java/vg/civcraft/mc/civmodcore/players/PlayerNames.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..23300c7bc9490ec29081e77371e8d7dbc22a064d
+--- /dev/null
++++ b/src/main/java/vg/civcraft/mc/civmodcore/players/PlayerNames.java
+@@ -0,0 +1,55 @@
++package vg.civcraft.mc.civmodcore.players;
++
++import java.util.Objects;
++import java.util.Optional;
++import java.util.UUID;
++import java.util.function.Function;
++import lombok.experimental.UtilityClass;
++import org.bukkit.Bukkit;
++import org.bukkit.entity.Player;
++import org.jetbrains.annotations.NotNull;
++import org.jetbrains.annotations.Nullable;
++import vg.civcraft.mc.civmodcore.utilities.defer.Deregisterable;
++
++/**
++ * @author CivPatched
++ */
++@UtilityClass
++public class PlayerNames {
++    private Function<@NotNull UUID, @Nullable String> customGetter;
++
++    /**
++     * Registers a custom player-name getter. It accepts a UUID should return
++     * a non-blank player name, or null.
++     */
++    public @NotNull Deregisterable registerCustomGetter(
++            final @NotNull Function<@NotNull UUID, @Nullable String> getter
++    ) {
++        customGetter = Objects.requireNonNull(getter, "Custom getter cannot be null!");
++        return () -> {
++            if (customGetter == getter) {
++                customGetter = null;
++            }
++        };
++    }
++
++    /**
++     * Attempts to match the given UUID with a name, deferring to any custom
++     * getter set via {@link #registerCustomGetter(Function)}.
++     */
++    public Optional<String> get(
++            final UUID playerUUID
++    ) {
++        if (playerUUID == null) {
++            return Optional.empty();
++        }
++        if (customGetter != null) {
++            return Optional.ofNullable(customGetter.apply(playerUUID));
++        }
++        final Player onlinePlayer = Bukkit.getPlayer(playerUUID);
++        if (onlinePlayer != null) {
++            return Optional.of(onlinePlayer.getName());
++        }
++        return Optional.empty();
++    }
++}
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/players/PlayerUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/players/PlayerUtils.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..a7bdef3881a87ad1f01aea8bead5f78752408590
+--- /dev/null
++++ b/src/main/java/vg/civcraft/mc/civmodcore/players/PlayerUtils.java
+@@ -0,0 +1,30 @@
++package vg.civcraft.mc.civmodcore.players;
++
++import java.util.Objects;
++import java.util.Optional;
++import java.util.UUID;
++import lombok.experimental.UtilityClass;
++import org.bukkit.Bukkit;
++import org.bukkit.entity.Player;
++import org.jetbrains.annotations.NotNull;
++
++/**
++ * @author CivPatched
++ */
++@UtilityClass
++public class PlayerUtils {
++
++    /**
++     * Attempts to match an online player with the given UUID.
++     */
++    public Optional<Player> getOnlinePlayer(
++            final @NotNull UUID playerUUID
++    ) {
++        return Optional.ofNullable(
++                Bukkit.getPlayer(
++                        Objects.requireNonNull(playerUUID, "Player UUID cannot be null!")
++                )
++        );
++    }
++
++}

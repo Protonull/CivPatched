@@ -44,10 +44,10 @@ index 59aa4b7b2ea86655902bd5b5e140e77003b8e65a..1f7991da7e8c7fa084a8e10c46d8718c
 +	api("org.apache.commons:commons-collections4:4.4")
  }
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java b/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java
-index b42c2547061518f92bafe8438fab105213510095..146c7b181acdc67f5eb375644db485af384a5e0a 100644
+index b42c2547061518f92bafe8438fab105213510095..ad2218b9b629766fae137d9563a0c650d098c6ae 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java
-@@ -10,13 +10,11 @@ import vg.civcraft.mc.civmodcore.commands.CommandManager;
+@@ -10,26 +10,22 @@ import vg.civcraft.mc.civmodcore.commands.CommandManager;
  import vg.civcraft.mc.civmodcore.commands.StatCommand;
  import vg.civcraft.mc.civmodcore.dao.DatabaseCredentials;
  import vg.civcraft.mc.civmodcore.dao.ManagedDatasource;
@@ -61,7 +61,12 @@ index b42c2547061518f92bafe8438fab105213510095..146c7b181acdc67f5eb375644db485af
  import vg.civcraft.mc.civmodcore.players.scoreboard.bottom.BottomLineAPI;
  import vg.civcraft.mc.civmodcore.players.scoreboard.side.ScoreBoardAPI;
  import vg.civcraft.mc.civmodcore.players.scoreboard.side.ScoreBoardListener;
-@@ -29,7 +27,6 @@ import vg.civcraft.mc.civmodcore.world.locations.chunkmeta.api.ChunkMetaAPI;
+ import vg.civcraft.mc.civmodcore.players.settings.PlayerSettingAPI;
+ import vg.civcraft.mc.civmodcore.players.settings.commands.ConfigCommand;
+ import vg.civcraft.mc.civmodcore.utilities.SkinCache;
+-import vg.civcraft.mc.civmodcore.world.WorldTracker;
+ import vg.civcraft.mc.civmodcore.world.locations.chunkmeta.GlobalChunkMetaManager;
+ import vg.civcraft.mc.civmodcore.world.locations.chunkmeta.api.ChunkMetaAPI;
  import vg.civcraft.mc.civmodcore.world.locations.chunkmeta.stat.LoadStatisticManager;
  import vg.civcraft.mc.civmodcore.world.locations.global.CMCWorldDAO;
  import vg.civcraft.mc.civmodcore.world.locations.global.WorldIDManager;
@@ -69,12 +74,12 @@ index b42c2547061518f92bafe8438fab105213510095..146c7b181acdc67f5eb375644db485af
  
  public final class CivModCorePlugin extends ACivMod {
  
-@@ -77,14 +74,11 @@ public final class CivModCorePlugin extends ACivMod {
+@@ -77,14 +73,10 @@ public final class CivModCorePlugin extends ACivMod {
  		registerListener(new ClickableInventoryListener());
  		registerListener(DialogManager.INSTANCE);
  		registerListener(new ScoreBoardListener());
 -		registerListener(new CustomEventMapper());
- 		registerListener(new WorldTracker());
+-		registerListener(new WorldTracker());
 -		registerListener(ChunkOperationManager.INSTANCE);
  		// Register commands
  		this.commands = new CommandManager(this);
@@ -84,7 +89,7 @@ index b42c2547061518f92bafe8438fab105213510095..146c7b181acdc67f5eb375644db485af
  		this.commands.registerCommand(new StatCommand());
  		// Load APIs
  		EnchantUtils.loadEnchantAbbreviations(this);
-@@ -92,7 +86,6 @@ public final class CivModCorePlugin extends ACivMod {
+@@ -92,7 +84,6 @@ public final class CivModCorePlugin extends ACivMod {
  		SpawnEggUtils.init();
  		TreeTypeUtils.init();
  		BottomLineAPI.init();
@@ -92,6 +97,14 @@ index b42c2547061518f92bafe8438fab105213510095..146c7b181acdc67f5eb375644db485af
  		this.skinCache = new SkinCache(this, this.config.getSkinCacheThreads());
  
  		if (this.config.getChunkLoadingStatistics())
+@@ -116,7 +107,6 @@ public final class CivModCorePlugin extends ACivMod {
+ 			this.database = null;
+ 		}
+ 		DialogManager.resetDialogs();
+-		WorldTracker.reset();
+ 		PlayerSettingAPI.saveAll();
+ 		ConfigurationSerialization.unregisterClass(DatabaseCredentials.class);
+ 		if (this.commands != null) {
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java b/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java
 index 082191b08165e894c97c23efff15d7192cb185f5..dbf5d5e1be70d67748f0562395767d9c163b094a 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java

@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Sat, 3 Jun 2023 06:54:38 +0100
+Date: Wed, 14 Jun 2023 04:13:29 +0100
 Subject: [PATCH] Update utility package
 
 Add ISerializer.
@@ -13,9 +13,17 @@ Add MoreEnumUtils.
 
 Add MoreIterationUtils.
 
-Add computeAll to MoreMapUtils.
+Add computeAll and mapEntry to MoreMapUtils, and redo attemptGets.
+
+Add getCharStrings to MoreStringUtils.
+
+Add mapIfPresent and nonNullMapper to NullUtils.
 
 Add inject to CivLogger, which allows you to create a Logger and modify the logged messages in some way.
+
+Add getMissing to MoreIterationUtils.
+
+Updated DependencyGlue, making getDependencyInstance non-nullable, and adding an optional-returning dependencyInstance method.
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/CivLogger.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/CivLogger.java
 index 335f7b2d5f528999872a2ac55fc19ffc780de202..b1ff9da40ea3b317ab9468ad52c1650121646599 100644
@@ -45,6 +53,103 @@ index 335f7b2d5f528999872a2ac55fc19ffc780de202..b1ff9da40ea3b317ab9468ad52c16501
  	private final String prefix;
  
  	private CivLogger(@Nonnull final Logger logger, @Nonnull final String prefix) {
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/DependencyGlue.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/DependencyGlue.java
+index c94ee254c64b875443c027b70360ffbddc39dad3..b9ecde2334e474bdc90766ef494cbbd126d8d468 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/utilities/DependencyGlue.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/DependencyGlue.java
+@@ -3,7 +3,6 @@ package vg.civcraft.mc.civmodcore.utilities;
+ import java.util.Objects;
+ import java.util.logging.Logger;
+ import javax.annotation.Nonnull;
+-import javax.annotation.Nullable;
+ import org.apache.commons.lang3.StringUtils;
+ import org.bukkit.Bukkit;
+ import org.bukkit.event.EventHandler;
+@@ -13,7 +12,10 @@ import org.bukkit.event.server.PluginDisableEvent;
+ import org.bukkit.event.server.PluginEnableEvent;
+ import org.bukkit.event.server.ServerLoadEvent;
+ import org.bukkit.plugin.Plugin;
+-import org.bukkit.plugin.PluginManager;
++
++// CivPatched Start
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
+ 
+ /**
+  * Class designed to make creating glue classes easier, particularly with soft dependencies where your plugins may use
+@@ -23,7 +25,6 @@ import org.bukkit.plugin.PluginManager;
+  */
+ public abstract class DependencyGlue implements Listener {
+ 
+-	private final PluginManager pluginManager;
+ 	protected final Plugin plugin;
+ 	protected final Logger logger;
+ 	protected final String dependencyName;
+@@ -36,7 +37,6 @@ public abstract class DependencyGlue implements Listener {
+ 	 * @param dependencyName The name of the plugin you wish to glue.
+ 	 */
+ 	protected DependencyGlue(@Nonnull final Plugin plugin, @Nonnull final String dependencyName) {
+-		this.pluginManager = Bukkit.getPluginManager();
+ 		this.plugin = Objects.requireNonNull(plugin);
+ 		this.logger = CivLogger.getLogger(plugin.getClass(), getClass());
+ 		this.dependencyName = Objects.requireNonNull(dependencyName);
+@@ -55,23 +55,24 @@ public abstract class DependencyGlue implements Listener {
+ 	/**
+ 	 * @return Returns the current dependency instance.
+ 	 */
+-	@Nullable
+-	public Plugin getDependencyInstance() {
+-		return this.dependencyInstance;
++	// CivPatched Start: Make this non-nullable
++	public @NotNull Plugin getDependencyInstance() {
++		return Objects.requireNonNull(this.dependencyInstance, "You're attempting to get dependency instance when it's not enabled!");
++		// CivPatched End
+ 	}
+ 
+ 	/**
+ 	 * @return Returns true if the dependency is currently enabled.
+ 	 */
+ 	public boolean isDependencyEnabled() {
+-		return this.pluginManager.isPluginEnabled(this.dependencyInstance);
++		return Bukkit.getPluginManager().isPluginEnabled(this.dependencyInstance); // CivPatched: Get plugin manager directly
+ 	}
+ 
+ 	/**
+ 	 * Will register this glue with Bukkit.
+ 	 */
+ 	public void registerGlue() {
+-		this.pluginManager.registerEvents(this, this.plugin);
++		Bukkit.getPluginManager().registerEvents(this, this.plugin); // CivPatched: Get plugin manager directly
+ 	}
+ 
+ 	/**
+@@ -92,7 +93,7 @@ public abstract class DependencyGlue implements Listener {
+ 	protected abstract void onDependencyDisabled();
+ 
+ 	@EventHandler
+-	public final void INTERNAL_onServerLoad(final ServerLoadEvent event) {
++	private void INTERNAL_onServerLoad(final ServerLoadEvent event) { // CivPatched: Make private
+ 		for (final Plugin plugin : Bukkit.getPluginManager().getPlugins()) {
+ 			if (plugin.isEnabled() && StringUtils.equalsIgnoreCase(plugin.getName(), this.dependencyName)) {
+ 				this.dependencyInstance = plugin;
+@@ -104,7 +105,7 @@ public abstract class DependencyGlue implements Listener {
+ 	}
+ 
+ 	@EventHandler
+-	public final void INTERNAL_onPluginEnable(final PluginEnableEvent event) {
++	private void INTERNAL_onPluginEnable(final PluginEnableEvent event) { // CivPatched: Make private
+ 		if (StringUtils.equalsIgnoreCase(event.getPlugin().getName(), this.dependencyName)) {
+ 			this.dependencyInstance = event.getPlugin();
+ 			INTERNAL_logDependencyEnabled();
+@@ -113,7 +114,7 @@ public abstract class DependencyGlue implements Listener {
+ 	}
+ 
+ 	@EventHandler
+-	public final void INTERNAL_onPluginDisable(final PluginDisableEvent event) {
++	private void INTERNAL_onPluginDisable(final PluginDisableEvent event) { // CivPatched: Make private
+ 		if (StringUtils.equalsIgnoreCase(event.getPlugin().getName(), this.dependencyName)) {
+ 			INTERNAL_logDependencyDisabled();
+ 			onDependencyDisabled();
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/DeprecationUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/DeprecationUtils.java
 new file mode 100644
 index 0000000000000000000000000000000000000000..7a4b6f1bdf0691b0abab5900bd74000e2d7510f1
@@ -120,6 +225,16 @@ index 0000000000000000000000000000000000000000..0efd7387edd4e60705e719f37ac0fc86
 +    }
 +
 +}
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreCollectionUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreCollectionUtils.java
+index febd2e2247f4b90725a64c20a33245768e684979..deb52408971bf2ce43fd9cc601eafac7453003f4 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreCollectionUtils.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreCollectionUtils.java
+@@ -217,5 +217,4 @@ public final class MoreCollectionUtils {
+ 		}
+ 		return lazyList;
+ 	}
+-
+ }
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreEnumUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreEnumUtils.java
 new file mode 100644
 index 0000000000000000000000000000000000000000..692b5df27f083c7da6ead64fca1b2b9c578b64af
@@ -211,10 +326,10 @@ index 0000000000000000000000000000000000000000..692b5df27f083c7da6ead64fca1b2b9c
 \ No newline at end of file
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreIterationUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreIterationUtils.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..ab3c8a544ef4c03513809b4d69933f531774bb4f
+index 0000000000000000000000000000000000000000..f97425c8e52fff51ebf0e0ed67cf3caccbd09341
 --- /dev/null
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreIterationUtils.java
-@@ -0,0 +1,68 @@
+@@ -0,0 +1,80 @@
 +package vg.civcraft.mc.civmodcore.utilities;
 +
 +import java.util.ArrayList;
@@ -272,7 +387,7 @@ index 0000000000000000000000000000000000000000..ab3c8a544ef4c03513809b4d69933f53
 +            final @NotNull Collection<E> collection,
 +            final @NotNull Function<E, K> discriminator
 +    ) {
-+        final var map = new HashMap<K, List<E>>();
++        final var map = new HashMap<K, List<E>>(collection.size());
 +        for (final var element : collection) {
 +            map.computeIfAbsent(
 +                    discriminator.apply(element),
@@ -282,28 +397,114 @@ index 0000000000000000000000000000000000000000..ab3c8a544ef4c03513809b4d69933f53
 +        return map;
 +    }
 +
++    /**
++     * Checks whether a given collection of elements are contained within a
++     * reference collection, returning all elements that are NOT contained.
++     */
++    public <T> @NotNull Collection<T> getMissing(
++            final @NotNull Collection<T> from,
++            @NotNull Collection<T> elements
++    ) {
++        elements = new ArrayList<>(elements);
++        elements.removeIf(from::contains);
++        return elements;
++    }
 +}
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreMapUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreMapUtils.java
-index 7d3cf8949491b914933ce445e4e545d8fe22871e..b4162aea8d8920d417a1b020153bc9bd200e6a1b 100644
+index 7d3cf8949491b914933ce445e4e545d8fe22871e..09daa3ea03a2c11e8596b73dd01773f808cd21b4 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreMapUtils.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreMapUtils.java
-@@ -9,6 +9,11 @@ import lombok.experimental.UtilityClass;
+@@ -9,6 +9,12 @@ import lombok.experimental.UtilityClass;
  import org.apache.commons.collections4.MapUtils;
  import org.apache.commons.lang3.ArrayUtils;
  
 +// CivPatched Start
 +import java.util.function.BiFunction;
++import java.util.List;
 +import org.jetbrains.annotations.NotNull;
 +// CivPatched End
 +
  /**
   * Utility class that fills in the gaps of {@link MapUtils}.
   *
-@@ -139,6 +144,29 @@ public final class MoreMapUtils {
- 		}
+@@ -61,64 +67,61 @@ public final class MoreMapUtils {
+ 		return null;
  	}
  
 +	// CivPatched Start
+ 	/**
+-	 * Attempts to retrieve a value from a given map from a range of keys.
+-	 *
+-	 * @param <K> The key type of the map.
+-	 * @param <V> The value type of the map.
+-	 * @param <R> The desired return type.
+-	 * @param map The map to retrieve the value from.
+-	 * @param fallback The value that should be returned if none of the keys return a [valid] value.
+-	 * @param keys The keys to check.
+-	 * @return Returns a value, either from the keys or the fallback, both of which may be null.
++	 * @return Returns the first non-null value at the given keys, or null.
+ 	 */
+-	@SafeVarargs
+-	public static <K, V, R> R attemptGet(final Map<K, V> map, final R fallback, final K... keys) {
+-		return attemptGet(map, null, fallback, keys);
++	public <K, V> V attemptGet(
++			final @NotNull Map<K, V> map,
++			final @NotNull List<@NotNull K> keys
++	) {
++		return attemptGet(map, keys, null);
+ 	}
+-
+ 	/**
+-	 * Attempts to retrieve a value from a given map from a range of keys.
+-	 *
+-	 * @param <K> The key type of the map.
+-	 * @param <V> The value type of the map.
+-	 * @param <R> The desired return type.
+-	 * @param map The map to retrieve the value from.
+-	 * @param parser The function to process the value from the map. Null will use a default parser.
+-	 * @param fallback The value that should be returned if none of the keys return a [valid] value.
+-	 * @param keys The keys to check.
+-	 * @return Returns a value, either from the keys or the fallback, both of which may be null.
++	 * @return Returns the first non-null value at the given keys, or the given fallback.
+ 	 */
+-	@SafeVarargs
+-	@SuppressWarnings("unchecked")
+-	public static <K, V, R> R attemptGet(final Map<K, V> map,
+-										 final Function<V, R> parser,
+-										 final R fallback,
+-										 final K... keys) {
+-		if (parser == null) {
+-			// Default parser (basic cast)
+-			return attemptGet(map, (V v) -> (R) v, fallback, keys);
+-		}
+-		if (MapUtils.isEmpty(map) || ArrayUtils.isEmpty(keys)) {
+-			return fallback;
+-		}
++	public <K, V> V attemptGet(
++			final @NotNull Map<K, V> map,
++			final @NotNull List<@NotNull K> keys,
++			final V fallback
++	) {
+ 		for (final K key : keys) {
+-			if (!map.containsKey(key)) {
+-				continue;
+-			}
+-			try {
+-				return parser.apply(map.get(key));
+-			}
+-			// Yeeeaaaah, I know this is a catch all exception and that's bad, but this really could be anything since
+-			// the parser function could be anything.. it could be a class cast, a null reference, number format...
+-			// But since this is a value parser and not an arbitrary code executor, nothing complication will be run,
+-			// so any exception cab be interpreted as a bad or unexpected value.
+-			catch (final Throwable ignored) {
+-				return fallback;
++			final V value = map.get(key);
++			if (value != null) {
++				return value;
+ 			}
+ 		}
+ 		return fallback;
+ 	}
 +	/**
 +	 * Computes every key-value paid in the map.
 +	 */
@@ -324,11 +525,117 @@ index 7d3cf8949491b914933ce445e4e545d8fe22871e..b4162aea8d8920d417a1b020153bc9bd
 +			entry.setValue(computedValue);
 +		}
 +	}
++	/**
++	 * Convenience function to make mapping entry-sets less aids.
++	 */
++	public <K, V, R> @NotNull Function<Map.Entry<K, V>, R> mapEntry(
++			final @NotNull BiFunction<K, V, R> mapper
++	) {
++		return (entry) -> mapper.apply(entry.getKey(), entry.getValue());
++	}
 +	// CivPatched End
-+
+ 
  	/**
- 	 * @param <T> The type of the map's values.
- 	 * @return Returns a new TreeMap with a String keys that are <b>NOT</b> case sensitive.
+ 	 * Sets all the given keys a particular value.
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreStringUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreStringUtils.java
+index 91937661adbe7395864a4ceb09a1e925a74b2b76..f3dc6b8f3f3b54ee18dc4bd31bdeaea327d63d4e 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreStringUtils.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreStringUtils.java
+@@ -6,6 +6,12 @@ import org.apache.commons.collections4.CollectionUtils;
+ import org.apache.commons.lang3.ArrayUtils;
+ import org.apache.commons.lang3.StringUtils;
+ 
++// CivPatched Start
++import java.text.BreakIterator;
++import java.util.ArrayList;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ @UtilityClass
+ public class MoreStringUtils {
+ 
+@@ -39,4 +45,33 @@ public class MoreStringUtils {
+ 		return joinOxfordComma(strings, ", ", " and ");
+ 	}
+ 
++	// CivPatched Start
++	/**
++	 * Splits a string into an array of its constituent characters, respecting
++	 * UTF-32 characters. For example, this will split "{@code 😀😁😂}" into
++	 * {@code ["😀", "😁", "😂"]}, whereas {@link String#toCharArray()} will
++	 * produce {@code ['\uD83D', '\uDE00', '\uD83D', '\uDE01', '\uD83D', '\uDE02']}.
++	 */
++	public String[] getCharStrings(
++			final @NotNull String string
++	) {
++		if (string.isEmpty()) {
++			return new String[0];
++		}
++
++		final BreakIterator iterator = BreakIterator.getCharacterInstance();
++		iterator.setText(string);
++
++		int start = iterator.first();
++		int end = iterator.next();
++		final var result = new ArrayList<String>(string.length() * 2);
++		while (end != BreakIterator.DONE) {
++			result.add(string.substring(start, end));
++			start = end;
++			end = iterator.next();
++		}
++
++		return result.toArray(String[]::new);
++	}
++	// CivPatched End
+ }
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/NullUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/NullUtils.java
+index b6cc83872716bfedc2b4114ad3fc920294f78a4f..d83155a1a87e8a991e6ac253d4397467ff17dd78 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/utilities/NullUtils.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/NullUtils.java
+@@ -3,6 +3,11 @@ package vg.civcraft.mc.civmodcore.utilities;
+ import javax.annotation.Nonnull;
+ import lombok.experimental.UtilityClass;
+ 
++// CivPatched Start
++import java.util.function.Function;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ /**
+  * @author Protonull
+  */
+@@ -56,4 +61,31 @@ public final class NullUtils {
+ 		return object;
+ 	}
+ 
++	// CivPatched Start
++	/**
++	 * Maps a value if it's non-null.
++	 * @return Returns null if the given value is null, or otherwise whatever the mapper returned.
++	 */
++	public <T, R> R mapIfPresent(
++			final T value,
++			final @NotNull Function<T, R> mapper
++	) {
++		return value == null ? null : mapper.apply(value);
++	}
++	/**
++	 * <p>Converts {@link #mapIfPresent(Object, Function)} into a functional-lambda.
++	 * You'll no longer have to do:</p>
++	 *
++	 * <p>{@code MoreArrayUtils.computeElements(array, (ele) -> NullUtils.mapIfPresent(ele, this::someFunc))}</p>
++	 *
++	 * <p>You can instead do:</p>
++	 *
++	 * <p>{@code MoreArrayUtils.computeElements(array, NullUtils.nonNullMapper(this::someFunc))}</p>
++	 */
++	public <T, R> Function<T, R> nonNullMapper(
++			final @NotNull Function<T, R> mapper
++	) {
++		return (value) -> mapIfPresent(value, mapper);
++	}
++	// CivPatched End
+ }
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/serialization/ISerializer.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/serialization/ISerializer.java
 new file mode 100644
 index 0000000000000000000000000000000000000000..afe2d7bf61e54f001024d9575efd283fb36d6d45
@@ -476,3 +783,51 @@ index 0000000000000000000000000000000000000000..afe2d7bf61e54f001024d9575efd283f
 +    }
 +
 +}
+diff --git a/src/test/java/vg/civcraft/mc/civmodcore/text/TextTests.java b/src/test/java/vg/civcraft/mc/civmodcore/text/TextTests.java
+index ba039e91ac3148dae36bf0083cd447715af2ebcc..ad2bb43bbdbe81ac1e950b7faa4ddf04b9c73703 100644
+--- a/src/test/java/vg/civcraft/mc/civmodcore/text/TextTests.java
++++ b/src/test/java/vg/civcraft/mc/civmodcore/text/TextTests.java
+@@ -7,6 +7,13 @@ import org.junit.jupiter.api.Assertions;
+ import org.junit.jupiter.api.Test;
+ import vg.civcraft.mc.civmodcore.chat.ChatUtils;
+ 
++// CivPatched Start
++import java.util.Arrays;
++import org.apache.commons.lang3.ArrayUtils;
++import org.apache.commons.lang3.StringUtils;
++import vg.civcraft.mc.civmodcore.utilities.MoreStringUtils;
++// CivPatched End
++
+ public class TextTests {
+ 
+ 	/**
+@@ -37,4 +44,29 @@ public class TextTests {
+ 		Assertions.assertTrue(ChatUtils.areComponentsEqual(formerComponent, latterComponent));
+ 	}
+ 
++	// CivPatched Start
++	/**
++	 * Tests whether different split methods produce the correct split.
++	 */
++	@Test
++	public void testSplitEquality() {
++		final String exampleString = "\uD83D\uDE00\uD83D\uDE01\uD83D\uDE02"; // 😀😁😂
++		final String[] targetResult = new String[] { "\uD83D\uDE00", "\uD83D\uDE01", "\uD83D\uDE02" };
++		// Assert that "exampleString.toCharArray()" doesn't match "targetResult"
++		Assertions.assertFalse(Arrays.equals(
++				targetResult,
++				ArrayUtils.toStringArray(ArrayUtils.toObject(exampleString.toCharArray()))
++		));
++		// Assert that "StringUtils.split(exampleString, "")" doesn't match "targetResult"
++		Assertions.assertFalse(Arrays.equals(
++				targetResult,
++				StringUtils.split(exampleString, "")
++		));
++		// Assert that "MoreStringUtils.splitStringIntoCharacters(exampleString)" matches "targetResult"
++		Assertions.assertArrayEquals(
++				targetResult,
++				MoreStringUtils.getCharStrings(exampleString)
++		);
++	}
++	// CivPatched End
+ }

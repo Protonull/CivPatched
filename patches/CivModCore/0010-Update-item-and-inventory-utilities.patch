@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Sun, 4 Jun 2023 16:42:52 +0100
-Subject: [PATCH] Update item utilities
+Date: Wed, 14 Jun 2023 04:25:04 +0100
+Subject: [PATCH] Update item and inventory utilities
 
 Add getRepairable to ItemUtils, which is pretty identical to getDamageable, except it returns the Repairable type instead.
 
@@ -17,6 +17,104 @@ Update NBTHelper to use ISerializer.
 
 Standardises NBTSerializationException.
 
+Add cloneContents and wrapContents to InventoryUtils.
+
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/inventory/InventoryUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/inventory/InventoryUtils.java
+index 2f1749f144bd0a95d3740ef8f978d74978313047..5b99b92dc1985591cc9b46cd3507119f6befbba7 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/inventory/InventoryUtils.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/inventory/InventoryUtils.java
+@@ -2,20 +2,26 @@ package vg.civcraft.mc.civmodcore.inventory;
+ 
+ import com.google.common.base.Preconditions;
+ import java.util.ArrayList;
+-import java.util.Arrays;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.stream.Collectors;
+ import javax.annotation.Nonnull;
+-import javax.annotation.Nullable;
+ import lombok.experimental.UtilityClass;
+ import org.apache.commons.lang3.ArrayUtils;
+-import org.bukkit.Material;
+ import org.bukkit.entity.Player;
+ import org.bukkit.inventory.Inventory;
+ import org.bukkit.inventory.ItemStack;
+ import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
+ 
++// CivPatched Start
++import org.bukkit.craftbukkit.v1_18_R2.inventory.CraftInventoryCustom;
++import org.bukkit.inventory.InventoryHolder;
++import org.jetbrains.annotations.Contract;
++import org.jetbrains.annotations.NotNull;
++import org.jetbrains.annotations.Nullable;
++import vg.civcraft.mc.civmodcore.utilities.MoreArrayUtils;
++// CivPatched End
++
+ @UtilityClass
+ public final class InventoryUtils {
+ 
+@@ -97,11 +103,9 @@ public final class InventoryUtils {
+ 	 * Clears an inventory of items.
+ 	 *
+ 	 * @param inventory The inventory to clear of items.
+-	 */
++	 * @deprecated Use {@link Inventory#clear()} instead! */ @Deprecated // CivPatched
+ 	public static void clearInventory(@Nonnull final Inventory inventory) {
+-		final ItemStack[] contents = inventory.getContents();
+-		Arrays.fill(contents, new ItemStack(Material.AIR));
+-		inventory.setContents(contents);
++		inventory.setContents(new ItemStack[inventory.getSize()]); // CivPatched: Creating a defaulted-array is more efficient
+ 	}
+ 
+ 	/**
+@@ -126,6 +130,47 @@ public final class InventoryUtils {
+ 				&& (slots % 9) == 0;
+ 	}
+ 
++	// CivPatched Start
++	/**
++	 * Clones an array of items, useful for {@link Inventory#getContents()} and
++	 * {@link Inventory#getStorageContents()}.
++	 */
++	@Contract("!null -> !null")
++	public ItemStack @Nullable [] cloneContents(
++			ItemStack[] items
++	) {
++		if (ArrayUtils.isNotEmpty(items)) {
++			items = items.clone();
++			MoreArrayUtils.computeElements(items, (item) -> item == null ? null : item.clone());
++		}
++		return items;
++	}
++	/**
++	 * Pretends that a given array of items is an inventory, giving you access
++	 * to inventory methods.
++	 */
++	public @NotNull Inventory wrapContents(
++			final ItemStack @NotNull [] contents
++	) {
++		final var holder = new InventoryHolder() {
++			private final Object $lock = new Object[0];
++			private Inventory inventory;
++			@Override
++			public @NotNull Inventory getInventory() {
++				synchronized (this.$lock) {
++					if (this.inventory == null) {
++						this.inventory = new CraftInventoryCustom(this, contents.length, "");
++					}
++					return this.inventory;
++				}
++			}
++		};
++		final Inventory inventory = holder.getInventory();
++		inventory.setContents(contents);
++		return inventory;
++	}
++	// CivPatched End
++
+ 	/**
+ 	 * Will safely add a set of items to an inventory. If not all items are added, it's not committed to the inventory.
+ 	 *
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/EnchantUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/EnchantUtils.java
 index 59749d7b9c7271d5442e43ef2f06ed9ca2d8e6c1..d330c37dab95aade24213a11eaa0bd38e981358a 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/EnchantUtils.java

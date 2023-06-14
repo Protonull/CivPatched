@@ -15,7 +15,12 @@ git commit --quiet -m "Remove extraneous boilerplate"
 git rm -rfq \
     "src/main/java/vg/civcraft/mc/civmodcore/maps" \
     "src/main/java/vg/civcraft/mc/civmodcore/util" \
+    "src/main/java/vg/civcraft/mc/civmodcore/utilities/JavaExtensions.java" \
+    "src/main/java/vg/civcraft/mc/civmodcore/utilities/Resettable.java" \
+    "src/main/java/vg/civcraft/mc/civmodcore/utilities/ResourceUtils.java" \
     "src/main/java/vg/civcraft/mc/civmodcore/utilities/Title.java" \
+    "src/main/java/vg/civcraft/mc/civmodcore/world/ImmutableLocation.java" \
+    "src/main/java/vg/civcraft/mc/civmodcore/world/WorldTracker.java" \
     "src/main/java/vg/civcraft/mc/civmodcore/world/WorldXZ.java" \
     "src/main/java/vg/civcraft/mc/civmodcore/world/operations" \
     "src/main/java/vg/civcraft/mc/civmodcore/nbt/storage" \

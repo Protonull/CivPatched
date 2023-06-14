@@ -1,0 +1,80 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Wed, 14 Jun 2023 04:17:45 +0100
+Subject: [PATCH] Add Accessor
+
+
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/Accessor.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/Accessor.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..eb9e1b7fefa6dc3811363254b9ca7460c4940598
+--- /dev/null
++++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/Accessor.java
+@@ -0,0 +1,68 @@
++package vg.civcraft.mc.civmodcore.utilities;
++
++import java.util.function.Consumer;
++import java.util.function.Function;
++import java.util.function.Supplier;
++import org.jetbrains.annotations.NotNull;
++
++/**
++ * This is an abstraction to help with isolated API data, ie, data that, once
++ * changed, needs to be re-set to for those changes to apply. For example, item
++ * meta is isolated. If you were to set a new display name, you'd need to
++ * re-set that meta to the item for it to apply. This abstraction also helps in
++ * cases where the API is the same, but the target is different. For example,
++ * an inventory's contents versus its storage contents.
++ *
++ * @author CivPatched
++ */
++public interface Accessor<T> {
++
++    T get();
++
++    void set(T value);
++
++    /**
++     * Edits the value, saving whatever changes you make to it. This is useful
++     * for mutable structures like Lists. If your value-type is immutable, use
++     * {@link #compute(Function)} instead.
++     */
++    default void edit(
++            final @NotNull Consumer<T> editor
++    ) {
++        final T items = get();
++        editor.accept(items);
++        set(items);
++    }
++
++    /**
++     * Computes the value, calling {@link #set(Object)} with whatever the
++     * computer returns. If your value-type is mutable, such as a List, you
++     * may prefer to use {@link #edit(Consumer)} instead.
++     */
++    default void compute(
++            final @NotNull Function<T, T> computer
++    ) {
++        set(computer.apply(get()));
++    }
++
++    /**
++     * Creates an Accessor from getter and setter lambdas.
++     */
++    static <T> @NotNull Accessor<T> from(
++            final @NotNull Supplier<T> getter,
++            final @NotNull Consumer<T> setter
++    ) {
++        return new Accessor<>() {
++            @Override
++            public T get() {
++                return getter.get();
++            }
++            @Override
++            public void set(
++                    final T value
++            ) {
++                setter.accept(value);
++            }
++        };
++    }
++}

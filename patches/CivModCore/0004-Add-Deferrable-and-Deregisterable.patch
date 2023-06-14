@@ -1,11 +1,11 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Wed, 24 May 2023 04:21:57 +0100
-Subject: [PATCH] Add Deferrable
+Date: Wed, 14 Jun 2023 03:58:28 +0100
+Subject: [PATCH] Add Deferrable and Deregisterable
 
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java b/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java
-index 0cf5ed14fff426640a8b0f0e94c078bc5c5f645f..090172096da1d8841107efb1f99210e77c8fdfa4 100644
+index 0cf5ed14fff426640a8b0f0e94c078bc5c5f645f..e761cb1c18a033647b28369a213d889c02c9a5df 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java
 @@ -21,7 +21,13 @@ import org.bukkit.plugin.Plugin;
@@ -23,7 +23,7 @@ index 0cf5ed14fff426640a8b0f0e94c078bc5c5f645f..090172096da1d8841107efb1f99210e7
  
  	private final Set<Class<? extends ConfigurationSerializable>> configClasses = new HashSet<>(0);
  
-@@ -43,7 +49,16 @@ public abstract class ACivMod extends JavaPlugin {
+@@ -43,7 +49,20 @@ public abstract class ACivMod extends JavaPlugin {
  	@Override
  	public void onDisable() {
  		this.configClasses.forEach(ConfigurationSerialization::unregisterClass);
@@ -32,6 +32,10 @@ index 0cf5ed14fff426640a8b0f0e94c078bc5c5f645f..090172096da1d8841107efb1f99210e7
 +
 +	// CivPatched Start
 +	private final DeferredFunctions deferredFunctions = new DeferredFunctions(this);
++	/**
++	 * <p><b>Deferred functions are called during plugin disable.</b></p>
++	 * {@inheritDoc}
++	 */
 +	@Override
 +	public @NotNull DeferredFunctions getDeferredFunctions() {
 +		return this.deferredFunctions;
@@ -42,21 +46,31 @@ index 0cf5ed14fff426640a8b0f0e94c078bc5c5f645f..090172096da1d8841107efb1f99210e7
  	 * Registers a listener class with this plugin.
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/defer/Deferrable.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/defer/Deferrable.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..95f34391f26493f68e8373984378bafe8877b737
+index 0000000000000000000000000000000000000000..88ee7af99eaa00c4d1a6392fcf89ba8b9f46ddf3
 --- /dev/null
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/defer/Deferrable.java
-@@ -0,0 +1,22 @@
+@@ -0,0 +1,32 @@
 +package vg.civcraft.mc.civmodcore.utilities.defer;
 +
 +import org.jetbrains.annotations.NotNull;
 +
 +/**
++ * This is inspired by Go's anonymous defers. That being said, that's the
++ * extent of the similarity. Do NOT presume that Go-defer rules apply unless
++ * the implementation explicitly says so. Since it's unlikely that implementers
++ * will duplicate {@link #defer(Runnable)} just to update its documentation,
++ * implements are instead encouraged to specify on {@link #getDeferredFunctions()}
++ * exactly when deferred functions are invoked.
++ *
 + * @author CivPatched
 + */
 +public interface Deferrable {
 +
 +    /**
-+     * Defers a method to be run once at a later time.
++     * <p>Defers a method to be run once at a later time.</p>
++     *
++     * <p><b>See the documentation for getDeferredFunctions() for information
++     * on when your deferred functions will run.</b></p>
 +     */
 +    default void defer(final @NotNull Runnable function) {
 +        getDeferredFunctions().defer(function);
@@ -70,10 +84,10 @@ index 0000000000000000000000000000000000000000..95f34391f26493f68e8373984378bafe
 +}
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/defer/DeferredFunctions.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/defer/DeferredFunctions.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..601e4e918ed1c5a4a4381fddcdef35c59757a658
+index 0000000000000000000000000000000000000000..a3da356510c6bdd31ee76ae9c3a11740f85bf6f0
 --- /dev/null
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/defer/DeferredFunctions.java
-@@ -0,0 +1,89 @@
+@@ -0,0 +1,99 @@
 +package vg.civcraft.mc.civmodcore.utilities.defer;
 +
 +import java.util.ArrayList;
@@ -81,7 +95,9 @@ index 0000000000000000000000000000000000000000..601e4e918ed1c5a4a4381fddcdef35c5
 +import java.util.Objects;
 +import java.util.logging.Level;
 +import java.util.logging.Logger;
++import lombok.experimental.StandardException;
 +import org.bukkit.plugin.java.JavaPlugin;
++import org.jetbrains.annotations.ApiStatus;
 +import org.jetbrains.annotations.NotNull;
 +
 +/**
@@ -124,11 +140,12 @@ index 0000000000000000000000000000000000000000..601e4e918ed1c5a4a4381fddcdef35c5
 +        synchronized (this.$lock) {
 +            this.deferred.add(new Deferred(
 +                    function,
-+                    new Throwable()
++                    new DeferredRegistrationStacktrace()
 +            ));
 +        }
 +    }
 +
++    @Deprecated
 +    @Override
 +    public @NotNull DeferredFunctions getDeferredFunctions() {
 +        return this;
@@ -137,6 +154,7 @@ index 0000000000000000000000000000000000000000..601e4e918ed1c5a4a4381fddcdef35c5
 +    /**
 +     * Runs all the deferred functions.
 +     */
++    @ApiStatus.Internal
 +    public void UNSAFE_run() {
 +        this.logger.info("Running deferred functions");
 +        final List<Deferred> deferred;
@@ -147,7 +165,8 @@ index 0000000000000000000000000000000000000000..601e4e918ed1c5a4a4381fddcdef35c5
 +        for (final Deferred current : deferred) {
 +            try {
 +                current.function.run();
-+            } catch (final Throwable thrown) {
++            }
++            catch (final Throwable thrown) {
 +                this.logger.log(Level.WARNING, "============================================================");
 +                this.logger.log(Level.WARNING, "Something went wrong while running a deferred function.");
 +                this.logger.log(Level.WARNING, "Here's the registration stacktrace:", current.stacktrace);
@@ -161,5 +180,29 @@ index 0000000000000000000000000000000000000000..601e4e918ed1c5a4a4381fddcdef35c5
 +            @NotNull Runnable function,
 +            @NotNull Throwable stacktrace
 +    ) { }
++
++    @StandardException
++    private static class DeferredRegistrationStacktrace extends Throwable {
++
++    }
++
++}
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/defer/Deregisterable.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/defer/Deregisterable.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..c1cb13395d9bec8444b79c65cd316b9ce74a453c
+--- /dev/null
++++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/defer/Deregisterable.java
+@@ -0,0 +1,13 @@
++package vg.civcraft.mc.civmodcore.utilities.defer;
++
++/**
++ * This is a functional alternative to dedicated deregister methods - it works
++ * very nicely in conjunction with {@link Deferrable}. And since this is an
++ * interface, you can return a tuple-record implementing this if you need to
++ * return additional stuff.
++ */
++public interface Deregisterable {
++
++    void deregister();
 +
 +}

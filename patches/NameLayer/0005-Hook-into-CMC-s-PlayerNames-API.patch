@@ -1,0 +1,29 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Wed, 14 Jun 2023 06:16:56 +0100
+Subject: [PATCH] Hook into CMC's PlayerNames API
+
+
+diff --git a/src/main/java/vg/civcraft/mc/namelayer/NameLayerPlugin.java b/src/main/java/vg/civcraft/mc/namelayer/NameLayerPlugin.java
+index fe4d0081138178fedf71ff82fc6c47d8f1aaccd1..625d0eb62849e65ccea0a64eb3476dde0a1a65aa 100644
+--- a/src/main/java/vg/civcraft/mc/namelayer/NameLayerPlugin.java
++++ b/src/main/java/vg/civcraft/mc/namelayer/NameLayerPlugin.java
+@@ -22,6 +22,10 @@ import vg.civcraft.mc.namelayer.misc.ClassHandler;
+ import vg.civcraft.mc.namelayer.misc.NameCleanser;
+ import vg.civcraft.mc.namelayer.permission.PermissionType;
+ 
++// CivPatched Start
++import vg.civcraft.mc.civmodcore.players.PlayerNames;
++// CivPatched End
++
+ public class NameLayerPlugin extends ACivMod {
+ 
+ 	private static AssociationList associations;
+@@ -52,6 +56,7 @@ public class NameLayerPlugin extends ACivMod {
+ 		new NameAPI(new GroupManager(), associations);
+ 		NameCleanser.load(config.getConfigurationSection("name_cleanser"));
+ 		MojangNames.init(this);
++		defer(PlayerNames.registerCustomGetter(NameAPI::getCurrentName)::deregister); // CivPatched
+ 		registerListeners();
+ 		if (loadGroups) {
+ 			PermissionType.initialize();
