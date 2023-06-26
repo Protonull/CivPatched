@@ -70,19 +70,17 @@ index 0000000000000000000000000000000000000000..23300c7bc9490ec29081e77371e8d7db
 +}
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/players/PlayerUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/players/PlayerUtils.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..a7bdef3881a87ad1f01aea8bead5f78752408590
+index 0000000000000000000000000000000000000000..d2c2639e480d55f15089dcc8854775194bad1177
 --- /dev/null
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/players/PlayerUtils.java
-@@ -0,0 +1,30 @@
+@@ -0,0 +1,24 @@
 +package vg.civcraft.mc.civmodcore.players;
 +
-+import java.util.Objects;
 +import java.util.Optional;
 +import java.util.UUID;
 +import lombok.experimental.UtilityClass;
 +import org.bukkit.Bukkit;
 +import org.bukkit.entity.Player;
-+import org.jetbrains.annotations.NotNull;
 +
 +/**
 + * @author CivPatched
@@ -94,13 +92,9 @@ index 0000000000000000000000000000000000000000..a7bdef3881a87ad1f01aea8bead5f787
 +     * Attempts to match an online player with the given UUID.
 +     */
 +    public Optional<Player> getOnlinePlayer(
-+            final @NotNull UUID playerUUID
++            final UUID playerUUID
 +    ) {
-+        return Optional.ofNullable(
-+                Bukkit.getPlayer(
-+                        Objects.requireNonNull(playerUUID, "Player UUID cannot be null!")
-+                )
-+        );
++        return playerUUID == null ? Optional.empty() : Optional.ofNullable(Bukkit.getPlayer(playerUUID));
 +    }
 +
 +}

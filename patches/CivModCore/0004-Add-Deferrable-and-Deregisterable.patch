@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Wed, 14 Jun 2023 03:58:28 +0100
+Date: Wed, 14 Jun 2023 19:23:33 +0100
 Subject: [PATCH] Add Deferrable and Deregisterable
 
 
@@ -84,13 +84,14 @@ index 0000000000000000000000000000000000000000..88ee7af99eaa00c4d1a6392fcf89ba8b
 +}
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/defer/DeferredFunctions.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/defer/DeferredFunctions.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..a3da356510c6bdd31ee76ae9c3a11740f85bf6f0
+index 0000000000000000000000000000000000000000..6164213247f206d71ea45730295c5e9b4ba290fa
 --- /dev/null
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/defer/DeferredFunctions.java
-@@ -0,0 +1,99 @@
+@@ -0,0 +1,101 @@
 +package vg.civcraft.mc.civmodcore.utilities.defer;
 +
 +import java.util.ArrayList;
++import java.util.Collections;
 +import java.util.List;
 +import java.util.Objects;
 +import java.util.logging.Level;
@@ -152,13 +153,14 @@ index 0000000000000000000000000000000000000000..a3da356510c6bdd31ee76ae9c3a11740
 +    }
 +
 +    /**
-+     * Runs all the deferred functions.
++     * Runs all the deferred functions in reverse order.
 +     */
 +    @ApiStatus.Internal
 +    public void UNSAFE_run() {
 +        this.logger.info("Running deferred functions");
 +        final List<Deferred> deferred;
 +        synchronized (this.$lock) {
++            Collections.reverse(this.deferred);
 +            deferred = List.copyOf(this.deferred);
 +            this.deferred.clear();
 +        }
@@ -189,10 +191,10 @@ index 0000000000000000000000000000000000000000..a3da356510c6bdd31ee76ae9c3a11740
 +}
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/defer/Deregisterable.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/defer/Deregisterable.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..c1cb13395d9bec8444b79c65cd316b9ce74a453c
+index 0000000000000000000000000000000000000000..f0cd795d3291d360a558b6656da0110fbe45b98f
 --- /dev/null
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/defer/Deregisterable.java
-@@ -0,0 +1,13 @@
+@@ -0,0 +1,15 @@
 +package vg.civcraft.mc.civmodcore.utilities.defer;
 +
 +/**
@@ -200,6 +202,8 @@ index 0000000000000000000000000000000000000000..c1cb13395d9bec8444b79c65cd316b9c
 + * very nicely in conjunction with {@link Deferrable}. And since this is an
 + * interface, you can return a tuple-record implementing this if you need to
 + * return additional stuff.
++ *
++ * @author CivPatched
 + */
 +public interface Deregisterable {
 +

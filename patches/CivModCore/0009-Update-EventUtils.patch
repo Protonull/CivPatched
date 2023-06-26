@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Wed, 24 May 2023 20:01:13 +0100
+Date: Wed, 14 Jun 2023 20:21:05 +0100
 Subject: [PATCH] Update EventUtils
 
 Add cancelPrepareItemCraftEvent.
@@ -8,26 +8,30 @@ Add cancelPrepareItemCraftEvent.
 Add injectOnDisable.
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/events/EventUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/events/EventUtils.java
-index bb45cc7787f5a6aa3d282f665a4238758b721107..9ca3b45444b029f1f24f5f7a1ade2d87677fc913 100644
+index bb45cc7787f5a6aa3d282f665a4238758b721107..b990638133d4574eae2f0caf218662b6c46c7235 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/events/EventUtils.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/events/EventUtils.java
-@@ -5,6 +5,15 @@ import org.bukkit.event.player.PlayerInteractEvent;
+@@ -5,7 +5,18 @@ import org.bukkit.event.player.PlayerInteractEvent;
  import org.bukkit.inventory.ItemStack;
  import org.jetbrains.annotations.NotNull;
  
+-public final class EventUtils {
 +// CivPatched Start
++import lombok.experimental.UtilityClass;
 +import org.bukkit.event.EventHandler;
 +import org.bukkit.event.EventPriority;
 +import org.bukkit.event.inventory.PrepareItemCraftEvent;
 +import org.bukkit.event.Listener;
 +import org.bukkit.event.server.PluginDisableEvent;
 +import org.bukkit.plugin.java.JavaPlugin;
-+// CivPatched End
 +
- public final class EventUtils {
++@UtilityClass
++public class EventUtils {
++	// CivPatched End
  
  	/**
-@@ -19,4 +28,35 @@ public final class EventUtils {
+ 	 * Updates the item used in the given interact event to the given item. This utility assumes that the interaction
+@@ -19,4 +30,34 @@ public final class EventUtils {
  		event.getPlayer().getInventory().setItem(Objects.requireNonNull(event.getHand()), item);
  	}
  
@@ -41,7 +45,6 @@ index bb45cc7787f5a6aa3d282f665a4238758b721107..9ca3b45444b029f1f24f5f7a1ade2d87
 +	public void cancelPrepareItemCraftEvent(final @NotNull PrepareItemCraftEvent event) {
 +		event.getInventory().setResult(null);
 +	}
-+
 +	/**
 +	 * This takes advantage of the fact that {@link PluginDisableEvent} is
 +	 * emitted before a plugin's listeners are deregistered. The event is also

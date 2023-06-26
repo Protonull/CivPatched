@@ -5,6 +5,8 @@ plugins {
     id("io.papermc.paperweight.userdev") version "1.5.5"
     // https://github.com/johnrengelman/shadow/releases
     id("com.github.johnrengelman.shadow") version "7.1.2"
+    // https://kotlinlang.org/docs/home.html
+    kotlin("jvm") version "1.8.22"
 }
 
 dependencies {
@@ -16,11 +18,16 @@ subprojects {
     apply(plugin = "net.civmc.civgradle")
     apply(plugin = "io.papermc.paperweight.userdev")
     apply(plugin = "com.github.johnrengelman.shadow")
+    apply(plugin = "kotlin")
 
     java {
         toolchain {
             languageVersion.set(JavaLanguageVersion.of(17))
         }
+    }
+
+    configure<org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension> {
+        jvmToolchain(17)
     }
 
     tasks {

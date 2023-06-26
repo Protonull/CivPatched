@@ -11,4 +11,7 @@ git commit --quiet -m "Remove Gradle wrapper"
 git rm -rfq ".github" ".editorconfig" "gradle.properties" "settings.gradle.kts"
 git commit --quiet -m "Remove extraneous boilerplate"
 
+git rm -rfq "src/main/java/com/untamedears/itemexchange/utility/functional"
+git commit --quiet -m "Remove extraneous code"
+
 git checkout --quiet -B patches ignored

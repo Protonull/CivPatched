@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Sat, 13 May 2023 10:18:51 +0100
+Date: Fri, 16 Jun 2023 00:56:37 +0100
 Subject: [PATCH] Update chat utilities
 
 That deprecation is a lie! It's an accidental leftover from move to Kyori.
@@ -13,11 +13,86 @@ Upgrade Componentify.
 
 The way components were made and appended to was really inefficient.
 
+Remove fromRGB, collapseColour, isNormalisedComponent, normaliseComponent, upgradeLegacyString, newComponent, and cloneComponent.
+
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java
-index c4f678ad5fdb2a2cb917186b93f098f7d9d037c0..9a4298c4f5bfd6a724ffd939d9979e43f8bd6602 100644
+index c4f678ad5fdb2a2cb917186b93f098f7d9d037c0..40429e80e23d43d1caf50ad272a27251e9b1af70 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java
-@@ -202,8 +202,6 @@ public final class ChatUtils {
+@@ -1,9 +1,6 @@
+ package vg.civcraft.mc.civmodcore.chat;
+ 
+-import io.papermc.paper.adventure.PaperAdventure;
+-import java.awt.Color;
+ import java.util.List;
+-import java.util.Map;
+ import java.util.Objects;
+ import javax.annotation.Nonnull;
+ import javax.annotation.Nullable;
+@@ -17,10 +14,7 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
+ import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+ import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+ import net.md_5.bungee.api.ChatColor;
+-import org.apache.commons.collections4.CollectionUtils;
+-import org.apache.commons.lang3.ArrayUtils;
+ import org.apache.commons.lang3.StringUtils;
+-import org.bukkit.craftbukkit.v1_18_R2.util.CraftChatMessage;
+ import org.bukkit.inventory.ItemStack;
+ import org.jetbrains.annotations.Contract;
+ import org.jetbrains.annotations.NotNull;
+@@ -52,51 +46,6 @@ public final class ChatUtils {
+ 			ChatColor.LIGHT_PURPLE,
+ 			ChatColor.YELLOW);
+ 
+-	/**
+-	 * Converts an RGB value into a Bungee ChatColor.
+-	 *
+-	 * @param r The red value.
+-	 * @param g The green value.
+-	 * @param b The blue value.
+-	 * @return Returns a valid Bungee ChatColor.
+-	 *
+-	 * @deprecated Use {@link net.kyori.adventure.text.format.TextColor#color(int, int, int)} instead.
+-	 */
+-	@Nonnull
+-	@Deprecated
+-	public static ChatColor fromRGB(final byte r, final byte g, final byte b) {
+-		return ChatColor.of(new Color(r, g, b));
+-	}
+-
+-	/**
+-	 * Attempts to collapse an RGB colour to established Minecraft colours.
+-	 *
+-	 * @param colour The given RGB colour.
+-	 * @return Returns the closest Minecraft match, or null.
+-	 */
+-	@Contract("!null -> !null")
+-	@Nullable
+-	public static ChatColor collapseColour(@Nullable final ChatColor colour) {
+-		if (colour == null) {
+-			return null;
+-		}
+-		final Color color = colour.getColor();
+-		ChatColor nearestColour = null;
+-		double nearestDistance = Double.MAX_VALUE;
+-		for (final ChatColor currentColour : COLOURS) {
+-			final Color currentColor = currentColour.getColor();
+-			final double distance = Math.sqrt(
+-					Math.pow(color.getRed() - currentColor.getRed(), 2)
+-					- Math.pow(color.getGreen() - currentColor.getGreen(), 2)
+-					- Math.pow(color.getBlue() - currentColor.getBlue(), 2));
+-			if (nearestDistance > distance) {
+-				nearestDistance = distance;
+-				nearestColour = currentColour;
+-			}
+-		}
+-		return nearestColour;
+-	}
+-
+ 	// -------------------------------------------- //
+ 	// Color parsing
+ 	// -------------------------------------------- //
+@@ -202,8 +151,6 @@ public final class ChatUtils {
  	 *
  	 * @param component The component to test if null or empty.
  	 * @return Returns true if the component is null or has no visible content.
@@ -26,7 +101,7 @@ index c4f678ad5fdb2a2cb917186b93f098f7d9d037c0..9a4298c4f5bfd6a724ffd939d9979e43
  	 */
  	public static boolean isNullOrEmpty(@Nullable final Component component) {
  		if (component == null || component == Component.empty()) {
-@@ -212,6 +210,25 @@ public final class ChatUtils {
+@@ -212,6 +159,25 @@ public final class ChatUtils {
  		return StringUtils.isBlank(PlainTextComponentSerializer.plainText().serialize(component));
  	}
  
@@ -52,7 +127,171 @@ index c4f678ad5fdb2a2cb917186b93f098f7d9d037c0..9a4298c4f5bfd6a724ffd939d9979e43
  	/**
  	 * <p>Determines whether a given base component is null or empty.</p>
  	 *
-@@ -397,12 +414,7 @@ public final class ChatUtils {
+@@ -232,66 +198,6 @@ public final class ChatUtils {
+ 				&& !component.hasStyling();
+ 	}
+ 
+-	private static final Map<TextDecoration, TextDecoration.State> NORMALISED_DECORATION_MAP =
+-			Map.of(TextDecoration.ITALIC, TextDecoration.State.FALSE);
+-
+-	/**
+-	 * Checks whether a given component is the result of {@link #normaliseComponent(Component...)} or
+-	 * {@link #normaliseComponent(List)}.
+-	 *
+-	 * @param component The component to check.
+-	 * @return Returns true if the given component is "normalised."
+-	 */
+-	public static boolean isNormalisedComponent(@Nullable final Component component) {
+-		if (!(component instanceof final TextComponent textComponent)) {
+-			return false;
+-		}
+-		return StringUtils.isEmpty(textComponent.content())
+-				&& !component.children().isEmpty()
+-				&& component.clickEvent() == null
+-				&& component.hoverEvent() == null
+-				&& Objects.equals(component.color(), NamedTextColor.WHITE)
+-				&& Objects.equals(component.decorations(), NORMALISED_DECORATION_MAP);
+-	}
+-
+-	/**
+-	 * Wraps a component or series of components into a "normalised" display component, meaning that the text is
+-	 * white and non-italic by default.
+-	 *
+-	 * @param components The component / components to wrap.
+-	 * @return Returns the normalised component, or empty if no components are passed.
+-	 */
+-	@Nonnull
+-	public static Component normaliseComponent(final Component... components) {
+-		if (ArrayUtils.isEmpty(components)) {
+-			return Component.empty();
+-		}
+-		return Component.text()
+-				.color(NamedTextColor.WHITE)
+-				.decoration(TextDecoration.ITALIC, TextDecoration.State.FALSE)
+-				.append(components)
+-				.build();
+-	}
+-
+-	/**
+-	 * Wraps a series of components into a "normalised" display component, meaning that the text is white and
+-	 * non-italic by default.
+-	 *
+-	 * @param components The components to wrap.
+-	 * @return Returns the normalised component, or empty if no components are passed.
+-	 */
+-	@Nonnull
+-	public static Component normaliseComponent(@Nullable final List<Component> components) {
+-		if (CollectionUtils.isEmpty(components)) {
+-			return Component.empty();
+-		}
+-		return Component.text()
+-				.color(NamedTextColor.WHITE)
+-				.decoration(TextDecoration.ITALIC, TextDecoration.State.FALSE)
+-				.append(components)
+-				.build();
+-	}
+-
+ 	/**
+ 	 * This will also happily translate any translatable components.
+ 	 *
+@@ -300,59 +206,24 @@ public final class ChatUtils {
+ 	 */
+ 	@Nonnull
+ 	public static String stringify(@Nullable final Component component) {
+-		return component == null || component == Component.empty() ? "" :
+-				CraftChatMessage.fromComponent(PaperAdventure.asVanilla(component));
++		return PlainTextComponentSerializer.plainText().serializeOr(component, ""); // CivPatched
+ 	}
+ 
+-	/**
+-	 * Upgrades a legacy string (eg: §6Hello, World!) to a Kyori component.
+-	 *
+-	 * @param string The string to convert into a component.
+-	 * @return Returns a new component, or null if the given string was null.
+-	 */
+-	@Contract("!null -> !null")
+-	@Nullable
+-	public static Component upgradeLegacyString(@Nullable final String string) {
+-		return string == null ? null : string.isEmpty() ? Component.empty() :
+-				LegacyComponentSerializer.legacySection().deserialize(string);
+-	}
+-
+-	/**
+-	 * @return Generates a new text component that's specifically <i>NOT</i> italicised. Use this for item names and
+-	 *         lore.
+-	 */
+-	@Nonnull
+-	public static TextComponent newComponent() {
+-		return newComponent("");
++	// CivPatched Start
++	public @NotNull TextComponent.Builder displayComponent() {
++		return Component.text().decoration(TextDecoration.ITALIC, TextDecoration.State.FALSE);
+ 	}
++	// CivPatched End
+ 
+ 	/**
+ 	 * Generates a new text component that's specifically <i>NOT</i> italicised. Use this for item names and lore.
+ 	 *
+ 	 * @param content The text content for the component.
+ 	 * @return Returns the generated text component.
+-	 */
++	 * @deprecated Use {@link #displayComponent()} instead. */ @Deprecated(forRemoval = true) // CivPatched
+ 	@Nonnull
+ 	public static TextComponent newComponent(final String content) {
+-		return Component.text(Objects.requireNonNull(content))
+-				.decoration(TextDecoration.ITALIC, TextDecoration.State.FALSE);
+-	}
+-
+-	/**
+-	 * Clones a component.
+-	 *
+-	 * @param component The component to clone.
+-	 * @return Returns a clone of the given component.
+-	 *
+-	 * @deprecated Kyori components are immutable, so any methods that offer to update the component will actually
+-	 *             instantiate a new component with the modification, thus making this utility unnecessary, if not
+-	 *             downright inefficient.
+-	 */
+-	@Contract("!null -> !null")
+-	@Nullable
+-	@Deprecated(forRemoval = true)
+-	public static Component cloneComponent(@Nullable final Component component) {
+-		return component == null ? null : component.style(component.style());
++		return displayComponent().content(Objects.requireNonNull(content)).build(); // CivPatched
+ 	}
+ 
+ 	/**
+@@ -364,23 +235,12 @@ public final class ChatUtils {
+ 	 */
+ 	public static boolean areComponentsEqual(@Nullable final Component former,
+ 											 @Nullable final Component latter) {
+-		if (Objects.equals(former, latter)) {
+-			return true;
+-		}
+-		if (former == null || latter == null) {
+-			return false;
+-		}
+-		if (StringUtils.equals(
+-				MiniMessage.miniMessage().serialize(former),
+-				MiniMessage.miniMessage().serialize(latter))) {
+-			return true;
+-		}
+-		if (StringUtils.equals(
+-				LegacyComponentSerializer.legacyAmpersand().serialize(former),
+-				LegacyComponentSerializer.legacyAmpersand().serialize(latter))) {
+-			return true;
+-		}
+-		return false;
++		// CivPatched Start
++		return Objects.equals(former, latter) || StringUtils.equals(
++				MiniMessage.miniMessage().serializeOrNull(former),
++				MiniMessage.miniMessage().serializeOrNull(latter)
++		);
++		// CivPatched End
+ 	}
+ 
+ 	/**
+@@ -397,12 +257,7 @@ public final class ChatUtils {
  					.content("<null item>")
  					.build());
  		}
@@ -207,70 +446,189 @@ index 8a5b98559fe289b61373b2af3140d45146d0f0f4..d0b2a6f3c422f47ed37154c680102c77
  
  }
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/entities/EntityUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/entities/EntityUtils.java
-index 129b5d9686b1fc8fda6985b0f2d6efa06161725e..91d9d275c705c36ef56c3634ff15c0ffa218d24d 100644
+index 129b5d9686b1fc8fda6985b0f2d6efa06161725e..73776a6592384da483cc018257fb9e1afb7836de 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/entities/EntityUtils.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/entities/EntityUtils.java
-@@ -42,8 +42,9 @@ public final class EntityUtils {
- 	 * @param entityType The entity type to translate.
- 	 * @return Returns a translatable component based on the given entity type.
- 	 */
-+	@Deprecated // CivPatched
- 	public static TranslatableComponent asTranslatable(@Nonnull final EntityType entityType) {
--		return Component.translatable(entityType.translationKey());
-+		return Component.translatable(entityType); // CivPatched
+@@ -1,10 +1,7 @@
+ package vg.civcraft.mc.civmodcore.entities;
+ 
+ import com.google.common.base.Strings;
+-import javax.annotation.Nonnull;
+ import lombok.experimental.UtilityClass;
+-import net.kyori.adventure.text.Component;
+-import net.kyori.adventure.text.TranslatableComponent;
+ import org.bukkit.entity.EntityType;
+ 
+ /**
+@@ -38,12 +35,4 @@ public final class EntityUtils {
+ 		return null;
  	}
  
+-	/**
+-	 * @param entityType The entity type to translate.
+-	 * @return Returns a translatable component based on the given entity type.
+-	 */
+-	public static TranslatableComponent asTranslatable(@Nonnull final EntityType entityType) {
+-		return Component.translatable(entityType.translationKey());
+-	}
+-
  }
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/EnchantUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/EnchantUtils.java
-index 3264efa21b3703098748e7a967f8d1d5a9049e2c..59749d7b9c7271d5442e43ef2f06ed9ca2d8e6c1 100644
+index 3264efa21b3703098748e7a967f8d1d5a9049e2c..eafbf5c958bfd04a357333bbadcdf78629c38ab0 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/EnchantUtils.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/EnchantUtils.java
-@@ -108,9 +108,10 @@ public final class EnchantUtils {
- 	 * @param enchant The enchantment to get a translatable component for.
- 	 * @return Returns a translatable component for the given enchantment.
- 	 */
-+	@Deprecated // CivPatched
- 	@Nonnull
- 	public static TranslatableComponent asTranslatable(@Nonnull final Enchantment enchant) {
+@@ -14,7 +14,6 @@ import javax.annotation.Nonnull;
+ import javax.annotation.Nullable;
+ import lombok.experimental.UtilityClass;
+ import net.kyori.adventure.text.Component;
+-import net.kyori.adventure.text.TranslatableComponent;
+ import org.apache.commons.collections4.CollectionUtils;
+ import org.bukkit.configuration.file.YamlConfiguration;
+ import org.bukkit.enchantments.Enchantment;
+@@ -25,6 +24,10 @@ import vg.civcraft.mc.civmodcore.chat.ChatUtils;
+ import vg.civcraft.mc.civmodcore.utilities.CivLogger;
+ import vg.civcraft.mc.civmodcore.utilities.KeyedUtils;
+ 
++// CivPatched Start
++import net.kyori.adventure.translation.Translatable;
++// CivPatched End
++
+ /**
+  * Class of static utilities for Enchantments.
+  */
+@@ -104,25 +107,15 @@ public final class EnchantUtils {
+ 		return null;
+ 	}
+ 
+-	/**
+-	 * @param enchant The enchantment to get a translatable component for.
+-	 * @return Returns a translatable component for the given enchantment.
+-	 */
+-	@Nonnull
+-	public static TranslatableComponent asTranslatable(@Nonnull final Enchantment enchant) {
 -		return Component.translatable(enchant.translationKey());
-+		return Component.translatable(enchant); // CivPatched
+-	}
+-
+ 	/**
+ 	 * @param enchant The enchantment to get the name of.
+ 	 * @return Returns the name of the enchantment, or null.
+ 	 *
+-	 * @deprecated Use {@link #asTranslatable(Enchantment)} instead.
+-	 */
++	 * @deprecated Use {@link Component#translatable(Translatable)} instead. */ // CivPatched
+ 	@Nullable
+ 	@Deprecated
+ 	public static String getEnchantNiceName(@Nullable final Enchantment enchant) {
+-		return enchant == null ? null : ChatUtils.stringify(asTranslatable(enchant));
++		return enchant == null ? null : ChatUtils.stringify(Component.translatable(enchant)); // CivPatched
  	}
  
  	/**
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemUtils.java
-index 091414d37aec82924aef713676d5bd6f9bee122f..f84ec069bd4bd46c38f473c1eb06d47bce8576c5 100644
+index 091414d37aec82924aef713676d5bd6f9bee122f..4c2499cc40c5442b00b3b8e0120845b06541e570 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemUtils.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemUtils.java
-@@ -28,9 +28,10 @@ public final class ItemUtils {
- 	 * @param item The item to get a translatable component for.
- 	 * @return Returns a translatable component of the given item.
- 	 */
-+	@Deprecated // CivPatched
- 	@Nonnull
- 	public static TranslatableComponent asTranslatable(@Nonnull final ItemStack item) {
+@@ -9,7 +9,6 @@ import javax.annotation.Nonnull;
+ import javax.annotation.Nullable;
+ import lombok.experimental.UtilityClass;
+ import net.kyori.adventure.text.Component;
+-import net.kyori.adventure.text.TranslatableComponent;
+ import org.bukkit.Material;
+ import org.bukkit.craftbukkit.v1_18_R2.inventory.CraftItemStack;
+ import org.bukkit.inventory.ItemStack;
+@@ -18,33 +17,27 @@ import org.bukkit.inventory.meta.ItemMeta;
+ import org.jetbrains.annotations.Contract;
+ import vg.civcraft.mc.civmodcore.chat.ChatUtils;
+ 
++// CivPatched Start
++import net.kyori.adventure.translation.Translatable;
++// CivPatched End
++
+ /**
+  * Class of static APIs for Items. Replaces ISUtils.
+  */
+ @UtilityClass
+ public final class ItemUtils {
+ 
+-	/**
+-	 * @param item The item to get a translatable component for.
+-	 * @return Returns a translatable component of the given item.
+-	 */
+-	@Nonnull
+-	public static TranslatableComponent asTranslatable(@Nonnull final ItemStack item) {
 -		return Component.translatable(item.translationKey());
-+		return Component.translatable(item); // CivPatched
+-	}
+-
+ 	/**
+ 	 * Gets the name of an item based off a material, e.g: POLISHED_GRANITE to Polished Granite
+ 	 *
+ 	 * @param material The material to get the name of.
+ 	 * @return Returns the material name.
+ 	 *
+-	 * @deprecated Use {@link MaterialUtils#asTranslatable(Material)} instead.
+-	 */
++	 * @deprecated Use {@link Component#translatable(Translatable)} instead. */ // CivPatched
+ 	@Deprecated
+ 	@Nonnull
+ 	public static String getItemName(@Nonnull final Material material) {
+-		return ChatUtils.stringify(MaterialUtils.asTranslatable(Objects.requireNonNull(material)));
++		return ChatUtils.stringify(Component.translatable(material));
+ 	}
+ 
+ 	/**
+@@ -53,12 +46,11 @@ public final class ItemUtils {
+ 	 * @param item The item to get the name of.
+ 	 * @return Returns the item's name.
+ 	 *
+-	 * @deprecated Use {@link #asTranslatable(ItemStack)} instead.
+-	 */
++	 * @deprecated Use {@link Component#translatable(Translatable)} instead. */ // CivPatched
+ 	@Deprecated
+ 	@Nullable
+ 	public static String getItemName(@Nullable final ItemStack item) {
+-		return item == null ? null : ChatUtils.stringify(asTranslatable(item));
++		return item == null ? null : ChatUtils.stringify(Component.translatable(item));
  	}
  
  	/**
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MaterialUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MaterialUtils.java
-index 60959ec9dbc94b0a3e993bf77ecdb79a75ba1c4e..7613b5129e55b275e1122e4e709d8b11aa19d568 100644
+index 60959ec9dbc94b0a3e993bf77ecdb79a75ba1c4e..480c012fa42ddcda30187217e69be745838600a5 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MaterialUtils.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MaterialUtils.java
-@@ -52,9 +52,10 @@ public final class MaterialUtils {
- 	 * @param material The material to translate.
- 	 * @return Returns a translatable component based on the given material.
- 	 */
-+	@Deprecated // CivPatched
- 	@Nonnull
- 	public static TranslatableComponent asTranslatable(@Nonnull final Material material) {
--		return Component.translatable(material.translationKey());
-+		return Component.translatable(material); // CivPatched
+@@ -7,12 +7,9 @@ import java.util.List;
+ import javax.annotation.Nonnull;
+ import javax.annotation.Nullable;
+ import lombok.experimental.UtilityClass;
+-import net.kyori.adventure.text.Component;
+-import net.kyori.adventure.text.TranslatableComponent;
+ import org.apache.commons.lang3.StringUtils;
+ import org.bukkit.Material;
+ import org.bukkit.Tag;
+-import org.bukkit.inventory.ItemStack;
+ 
+ /**
+  * <p>See <a href="https://github.com/Protonull/BukkitReport/tree/master/reports">BukkitReports</a>.</p>
+@@ -45,18 +42,6 @@ public final class MaterialUtils {
+ 		return StringUtils.isEmpty(value) ? null : Material.getMaterial(value.toUpperCase());
  	}
  
+-	/**
+-	 * {@link ItemUtils#asTranslatable(ItemStack)} is preferable since that will return a translatable based on
+-	 * additional item data, such as Potion becoming Potion of Water Breathing or Potion of Regeneration.
+-	 *
+-	 * @param material The material to translate.
+-	 * @return Returns a translatable component based on the given material.
+-	 */
+-	@Nonnull
+-	public static TranslatableComponent asTranslatable(@Nonnull final Material material) {
+-		return Component.translatable(material.translationKey());
+-	}
+-
  	/**
+ 	 * Checks whether a material is air.
+ 	 * Will also return true if the given material is null.
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/PotionUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/PotionUtils.java
-index 571c3ee4cb70375000ade0afe1dbb31363977e18..730993c16df6187ca63dee7801d1d95d2b622505 100644
+index 571c3ee4cb70375000ade0afe1dbb31363977e18..72cf9e15144335eebe301286ee47062dbdf16323 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/PotionUtils.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/PotionUtils.java
 @@ -7,7 +7,6 @@ import javax.annotation.Nullable;
@@ -281,14 +639,28 @@ index 571c3ee4cb70375000ade0afe1dbb31363977e18..730993c16df6187ca63dee7801d1d95d
  import org.apache.commons.lang3.tuple.Pair;
  import org.bukkit.Material;
  import org.bukkit.inventory.ItemStack;
-@@ -56,23 +55,10 @@ public final class PotionUtils {
- 	 * @param effect The potion effect to get a translatable component for.
- 	 * @return Returns a translatable component for the given potion effect.
- 	 */
+@@ -17,6 +16,10 @@ import org.bukkit.potion.PotionEffectType;
+ import org.bukkit.potion.PotionType;
+ import vg.civcraft.mc.civmodcore.chat.ChatUtils;
+ 
++// CivPatched Start
++import net.kyori.adventure.translation.Translatable;
++// CivPatched End
++
+ @UtilityClass
+ public final class PotionUtils {
+ 
+@@ -52,29 +55,6 @@ public final class PotionUtils {
+ 		});
+ 	}
+ 
+-	/**
+-	 * @param effect The potion effect to get a translatable component for.
+-	 * @return Returns a translatable component for the given potion effect.
+-	 */
 -	@SuppressWarnings("deprecation")
-+	@Deprecated // CivPatched
- 	@Nonnull
- 	public static TranslatableComponent asTranslatable(@Nonnull final PotionEffectType effect) {
+-	@Nonnull
+-	public static TranslatableComponent asTranslatable(@Nonnull final PotionEffectType effect) {
 -		final MobEffect mojang = MobEffect.byId(effect.getId());
 -		assert mojang != null;
 -		final String key = mojang.getDescriptionId(); // Gets the translation key
@@ -303,7 +675,23 @@ index 571c3ee4cb70375000ade0afe1dbb31363977e18..730993c16df6187ca63dee7801d1d95d
 -		//
 -		// then use whatever method calls that method
 -		return Component.translatable(key);
-+		return Component.translatable(effect); // CivPatched
+-	}
+-
+ 	/**
+ 	 * @param potion The potion type to get the name of.
+ 	 * @return Returns the name of the potion, or null.
+@@ -92,12 +72,11 @@ public final class PotionUtils {
+ 	 * @param effect The potion effect to get the name of.
+ 	 * @return Returns the name of the potion effect, or null.
+ 	 *
+-	 * @deprecated Use {@link #asTranslatable(PotionEffectType)} instead.
+-	 */
++	 * @deprecated Use {@link Component#translatable(Translatable)} instead. */ // CivPatched
+ 	@Deprecated
+ 	@Nullable
+ 	public static String getEffectNiceName(@Nullable final PotionEffectType effect) {
+-		return effect == null ? null : ChatUtils.stringify(asTranslatable(effect));
++		return effect == null ? null : ChatUtils.stringify(Component.translatable(effect)); // CivPatched
  	}
  
- 	/**
+ }

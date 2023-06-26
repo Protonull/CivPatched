@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Fri, 9 Jun 2023 10:57:07 +0100
+Date: Wed, 14 Jun 2023 20:36:12 +0100
 Subject: [PATCH] Update player settings
 
 Allows players to open a specific config window.
@@ -8,6 +8,8 @@ Allows players to open a specific config window.
 Restore setting deregistering.
 
 Remove SETTINGS_BY_PLUGIN.
+
+Add removeValue to PlayerSetting.
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java b/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java
 index e761cb1c18a033647b28369a213d889c02c9a5df..db1058f5ec4a47882ea8e5b7641ddd151df75cc8 100644
@@ -30,7 +32,7 @@ index e761cb1c18a033647b28369a213d889c02c9a5df..db1058f5ec4a47882ea8e5b7641ddd15
  		getDeferredFunctions().UNSAFE_run(); // CivPatched
  	}
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSetting.java b/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSetting.java
-index 09a166aee942b87b1de52288ddba478deb6a99e5..aa21e27f446970e9d080d0aa2784c9c258f188d4 100644
+index 09a166aee942b87b1de52288ddba478deb6a99e5..a5c2aadc2409145b72ccb2646c83b9a32f9c476c 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSetting.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSetting.java
 @@ -2,7 +2,6 @@ package vg.civcraft.mc.civmodcore.players.settings;
@@ -106,6 +108,25 @@ index 09a166aee942b87b1de52288ddba478deb6a99e5..aa21e27f446970e9d080d0aa2784c9c2
  		}
  		return value;
  	}
+@@ -221,6 +226,18 @@ public abstract class PlayerSetting<T> {
+ 		values.put(player, value);
+ 	}
+ 
++	// CivPatched Start
++	/**
++	 * Stops storing a value for the given player, returning whatever the value
++	 * was previously.
++	 */
++	public T removeValue(
++			final UUID playerUUID
++	) {
++		return this.values.remove(playerUUID);
++	}
++	// CivPatched End
++
+ 	/**
+ 	 * Sets the given value for the given player. Null values are only allowed if
+ 	 * the (de-)serialization implementation can properly handle it, which is not
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java b/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java
 index dbf5d5e1be70d67748f0562395767d9c163b094a..2f8af326924a70313106320bb2335ce8593ccc4d 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java

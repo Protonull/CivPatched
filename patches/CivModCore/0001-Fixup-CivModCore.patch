@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Wed, 31 May 2023 01:20:35 +0100
+Date: Fri, 23 Jun 2023 02:11:29 +0100
 Subject: [PATCH] Fixup CivModCore
 
 
@@ -131,3 +131,13 @@ index 082191b08165e894c97c23efff15d7192cb185f5..dbf5d5e1be70d67748f0562395767d9c
  		loadValues(setting);
  		List<PlayerSetting<?>> pluginSettings = SETTINGS_BY_PLUGIN.computeIfAbsent(
  				setting.getOwningPlugin().getName(),
+diff --git a/src/main/resources/plugin.yml b/src/main/resources/plugin.yml
+index 61485d20457c65e6931e33444df8887748858b2b..91c9b1f6b091bb83620bf40a53ff0e950600b05c 100644
+--- a/src/main/resources/plugin.yml
++++ b/src/main/resources/plugin.yml
+@@ -10,3 +10,5 @@ permissions:
+     default: op
+   cmc.debug:
+     default: op
++libraries:
++  - "org.jetbrains.kotlin:kotlin-stdlib:1.8.22"

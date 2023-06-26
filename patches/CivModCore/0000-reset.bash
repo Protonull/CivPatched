@@ -24,6 +24,8 @@ git rm -rfq \
     "src/main/java/vg/civcraft/mc/civmodcore/world/WorldXZ.java" \
     "src/main/java/vg/civcraft/mc/civmodcore/world/operations" \
     "src/main/java/vg/civcraft/mc/civmodcore/nbt/storage" \
+    "src/main/java/vg/civcraft/mc/civmodcore/nbt/extensions" \
+    "src/main/java/vg/civcraft/mc/civmodcore/nbt/NBTHelper.java" \
     "src/main/java/vg/civcraft/mc/civmodcore/particles" \
     "src/main/java/vg/civcraft/mc/civmodcore/players/settings/impl/AltConsistentSetting.java" \
     "src/main/java/vg/civcraft/mc/civmodcore/players/settings/AltRequestEvent.java" \

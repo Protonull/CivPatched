@@ -1,13 +1,13 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Wed, 14 Jun 2023 04:25:04 +0100
+Date: Sat, 17 Jun 2023 19:32:00 +0100
 Subject: [PATCH] Update item and inventory utilities
 
-Add getRepairable to ItemUtils, which is pretty identical to getDamageable, except it returns the Repairable type instead.
+Add getRepairable and segmentItem to ItemUtils.
 
-Add getMaterials to MaterialUtils, which returns a Set of all Materials.
+Add lore and enchant accessors to MetaUtils.
 
-Add getBlocksItemMaterial to MaterialUtils and a unit-test for it.
+Add getMaterials and getBlocksItemMaterial to MaterialUtils.
 
 Add getEnchants, clearEnchants, addEnchants, and setEnchants to MetaUtils. And deprecate clearEnchants on EnchantUtils.
 
@@ -116,10 +116,10 @@ index 2f1749f144bd0a95d3740ef8f978d74978313047..5b99b92dc1985591cc9b46cd3507119f
  	 * Will safely add a set of items to an inventory. If not all items are added, it's not committed to the inventory.
  	 *
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/EnchantUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/EnchantUtils.java
-index 59749d7b9c7271d5442e43ef2f06ed9ca2d8e6c1..d330c37dab95aade24213a11eaa0bd38e981358a 100644
+index eafbf5c958bfd04a357333bbadcdf78629c38ab0..890fd57503395acfd117cb24b529944f7a637b18 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/EnchantUtils.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/EnchantUtils.java
-@@ -215,12 +215,9 @@ public final class EnchantUtils {
+@@ -207,12 +207,9 @@ public final class EnchantUtils {
  	 * Removes all enchantments from an item.
  	 *
  	 * @param item The item to clear enchantment from.
@@ -135,28 +135,26 @@ index 59749d7b9c7271d5442e43ef2f06ed9ca2d8e6c1..d330c37dab95aade24213a11eaa0bd38
  
  }
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemUtils.java
-index f84ec069bd4bd46c38f473c1eb06d47bce8576c5..cf7f1dc1b28b25a5e7f9279c767bf6e5b4aa8162 100644
+index 4c2499cc40c5442b00b3b8e0120845b06541e570..007da86e33583623ca2eb1ebd504aa9392b9759a 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemUtils.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/ItemUtils.java
-@@ -18,6 +18,11 @@ import org.bukkit.inventory.meta.ItemMeta;
- import org.jetbrains.annotations.Contract;
- import vg.civcraft.mc.civmodcore.chat.ChatUtils;
+@@ -19,6 +19,9 @@ import vg.civcraft.mc.civmodcore.chat.ChatUtils;
  
-+// CivPatched Start
+ // CivPatched Start
+ import net.kyori.adventure.translation.Translatable;
 +import org.bukkit.inventory.meta.Repairable;
 +import org.jetbrains.annotations.NotNull;
-+// CivPatched End
-+
++import vg.civcraft.mc.civmodcore.utilities.MoreCollectionUtils;
+ // CivPatched End
+ 
  /**
-  * Class of static APIs for Items. Replaces ISUtils.
-  */
-@@ -188,6 +193,39 @@ public final class ItemUtils {
+@@ -179,6 +182,39 @@ public final class ItemUtils {
  		return CraftItemStack.asNMSCopy(item);
  	}
  
 +	// CivPatched Start
 +	/**
-+	 * Splits an item into safely-size stacks based on the given item's amount.
++	 * Splits an item into safely-sized stacks based on the given item's amount.
 +	 */
 +	public static @NotNull List<@NotNull ItemStack> segmentItem(
 +			final @NotNull ItemStack template
@@ -171,8 +169,8 @@ index f84ec069bd4bd46c38f473c1eb06d47bce8576c5..cf7f1dc1b28b25a5e7f9279c767bf6e5
 +			final int amount
 +	) {
 +		final int maxStackSize = template.getType().getMaxStackSize();
-+		if (maxStackSize > amount) {
-+			return Arrays.asList(template.asQuantity(amount)); // Ignore the highlighter, List.of() is unmodifiable
++		if (amount < 1 || maxStackSize > amount) {
++			return MoreCollectionUtils.collectExact(ArrayList::new, template.asQuantity(amount));
 +		}
 +		final int fullStacks = amount / maxStackSize;
 +		final int partStack = amount % maxStackSize;
@@ -190,7 +188,7 @@ index f84ec069bd4bd46c38f473c1eb06d47bce8576c5..cf7f1dc1b28b25a5e7f9279c767bf6e5
  	/**
  	 * Decrements an item's amount, or returns null if the amount reaches zero.
  	 *
-@@ -410,6 +448,26 @@ public final class ItemUtils {
+@@ -401,6 +437,26 @@ public final class ItemUtils {
  		return null;
  	}
  
@@ -218,20 +216,18 @@ index f84ec069bd4bd46c38f473c1eb06d47bce8576c5..cf7f1dc1b28b25a5e7f9279c767bf6e5
  	 * Makes an item glow by adding an enchantment and the flag for hiding enchantments, so it has the enchantment glow
  	 * without an enchantment being visible. Note that this does actually apply an enchantment to an item.
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MaterialUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MaterialUtils.java
-index 7613b5129e55b275e1122e4e709d8b11aa19d568..39156fe52971a264b0b1c014e693d1fb8b3fce36 100644
+index 480c012fa42ddcda30187217e69be745838600a5..7184c3726f082232d3fca3bdc6ca37f153f0f336 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MaterialUtils.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MaterialUtils.java
-@@ -5,7 +5,6 @@ import com.google.common.math.IntMath;
+@@ -5,12 +5,21 @@ import com.google.common.math.IntMath;
  import java.util.ArrayList;
  import java.util.List;
  import javax.annotation.Nonnull;
 -import javax.annotation.Nullable;
  import lombok.experimental.UtilityClass;
- import net.kyori.adventure.text.Component;
- import net.kyori.adventure.text.TranslatableComponent;
-@@ -14,6 +13,16 @@ import org.bukkit.Material;
+ import org.apache.commons.lang3.StringUtils;
+ import org.bukkit.Material;
  import org.bukkit.Tag;
- import org.bukkit.inventory.ItemStack;
  
 +// CivPatched Start
 +import java.util.HashSet;
@@ -246,7 +242,7 @@ index 7613b5129e55b275e1122e4e709d8b11aa19d568..39156fe52971a264b0b1c014e693d1fb
  /**
   * <p>See <a href="https://github.com/Protonull/BukkitReport/tree/master/reports">BukkitReports</a>.</p>
   *
-@@ -34,6 +43,22 @@ public final class MaterialUtils {
+@@ -31,6 +40,22 @@ public final class MaterialUtils {
  		addAll(MaterialTags.CONCRETES.getValues());
  	}};
  
@@ -269,7 +265,7 @@ index 7613b5129e55b275e1122e4e709d8b11aa19d568..39156fe52971a264b0b1c014e693d1fb
  	/**
  	 * Attempts to retrieve a material by its slug.
  	 *
-@@ -84,4 +109,124 @@ public final class MaterialUtils {
+@@ -68,4 +93,124 @@ public final class MaterialUtils {
  		return HASH_MATERIALS.get(index);
  	}
  
@@ -395,10 +391,10 @@ index 7613b5129e55b275e1122e4e709d8b11aa19d568..39156fe52971a264b0b1c014e693d1fb
 +	// CivPatched End
  }
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MetaUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MetaUtils.java
-index df12e06426c42e386c8a7367c310ce94e7fa7f94..d20147be5520fc7036b575503ac78a56d3b15752 100644
+index df12e06426c42e386c8a7367c310ce94e7fa7f94..1dd3a4ba4ee96940bab2a3e0c8bcc8b076fce0a9 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MetaUtils.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/inventory/items/MetaUtils.java
-@@ -18,6 +18,13 @@ import org.bukkit.inventory.ItemStack;
+@@ -18,6 +18,14 @@ import org.bukkit.inventory.ItemStack;
  import org.bukkit.inventory.meta.ItemMeta;
  import vg.civcraft.mc.civmodcore.chat.ChatUtils;
  
@@ -407,16 +403,43 @@ index df12e06426c42e386c8a7367c310ce94e7fa7f94..d20147be5520fc7036b575503ac78a56
 +import java.util.Map;
 +import org.apache.commons.collections4.MapUtils;
 +import org.jetbrains.annotations.NotNull;
++import vg.civcraft.mc.civmodcore.utilities.Accessor;
 +// CivPatched End
 +
  /**
   * Class of static utilities for when you already have an instance of {@link ItemMeta}, such as inside of
   * {@link ItemUtils#handleItemMeta(ItemStack, Predicate)}'s handler, thus all the methods defined below will assume the
-@@ -190,6 +197,49 @@ public final class MetaUtils {
+@@ -75,6 +83,17 @@ public final class MetaUtils {
+ 		return true;
+ 	}
+ 
++	// CivPatched Start
++	public Accessor<@NotNull List<@NotNull Component>> lore(
++			final @NotNull ItemMeta meta
++	) {
++		return Accessor.from(
++				() -> getComponentLore(meta),
++				meta::lore
++		);
++	}
++	// CivPatched End
++
+ 	/**
+ 	 * Retrieves the lore from a given item meta.
+ 	 *
+@@ -190,6 +209,57 @@ public final class MetaUtils {
  		meta.lore(lore);
  	}
  
 +	// CivPatched Start
++	public Accessor<@NotNull Map<Enchantment, Integer>> enchants(
++			final @NotNull ItemMeta meta
++	) {
++		return Accessor.from(
++				() -> getEnchants(meta),
++				(enchants) -> setEnchants(meta, enchants, true)
++		);
++	}
 +	/**
 +	 * Returns a mutable map of enchantments. This is a convenience function
 +	 * since {@link ItemMeta#getEnchants()} returns an immutable map.
@@ -462,224 +485,6 @@ index df12e06426c42e386c8a7367c310ce94e7fa7f94..d20147be5520fc7036b575503ac78a56
  	/**
  	 * Makes an item glow by adding an enchantment and the flag for hiding enchantments, so it has the enchantment glow
  	 * without an enchantment being visible. Note that this does actually apply an enchantment to an item.
-diff --git a/src/main/java/vg/civcraft/mc/civmodcore/nbt/NBTHelper.java b/src/main/java/vg/civcraft/mc/civmodcore/nbt/NBTHelper.java
-index eeeced8ac5c0f39119145f76f0811164d18da730..e0bd7dad25467052623234d2d9b9112da134f743 100644
---- a/src/main/java/vg/civcraft/mc/civmodcore/nbt/NBTHelper.java
-+++ b/src/main/java/vg/civcraft/mc/civmodcore/nbt/NBTHelper.java
-@@ -1,19 +1,29 @@
- package vg.civcraft.mc.civmodcore.nbt;
- 
- import java.util.UUID;
--import lombok.experimental.ExtensionMethod;
- import lombok.experimental.UtilityClass;
- import org.bukkit.Bukkit;
- import org.bukkit.Location;
- import org.bukkit.inventory.ItemStack;
- import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
--import vg.civcraft.mc.civmodcore.nbt.extensions.NBTTagCompoundExtensions;
- import vg.civcraft.mc.civmodcore.nbt.wrappers.NBTCompound;
- import vg.civcraft.mc.civmodcore.utilities.UuidUtils;
- 
-+// CivPatched Start
-+import java.util.logging.Level;
-+import net.minecraft.nbt.CompoundTag;
-+import org.apache.commons.lang3.NotImplementedException;
-+import org.bukkit.inventory.Inventory;
-+import org.jetbrains.annotations.NotNull;
-+import vg.civcraft.mc.civmodcore.utilities.CivLogger;
-+import vg.civcraft.mc.civmodcore.utilities.serialization.ISerializer;
-+// CivPatched End
-+
- @UtilityClass
--@ExtensionMethod(NBTTagCompoundExtensions.class)
--public final class NBTHelper {
-+// CivPatched Start
-+public class NBTHelper {
-+	private final CivLogger LOGGER = CivLogger.getLogger(NBTHelper.class);
-+	// CivPatched End
- 
- 	// ------------------------------------------------------------
- 	// Location
-@@ -26,56 +36,143 @@ public final class NBTHelper {
- 	private static final String LOCATION_YAW_KEY = "yaw";
- 	private static final String LOCATION_PITCH_KEY = "pitch";
- 
--	public static Location locationFromNBT(final NBTCompound nbt) {
--		if (nbt == null) {
--			return null;
-+	// CivPatched Start
-+	public final ISerializer.NBT<Location> LOCATION = new ISerializer.NBT<>() {
-+		@Override
-+		public @NotNull CompoundTag serialize(final @NotNull Location location) {
-+			final var nbt = new CompoundTag();
-+			try {
-+				nbt.putUUID(LOCATION_WORLD_KEY, location.getWorld().getUID());
-+			}
-+			catch (final Throwable ignored) {
-+				nbt.putUUID(LOCATION_WORLD_KEY, UuidUtils.IDENTITY);
-+			}
-+			nbt.putDouble(LOCATION_X_KEY, location.getX());
-+			nbt.putDouble(LOCATION_Y_KEY, location.getY());
-+			nbt.putDouble(LOCATION_Z_KEY, location.getZ());
-+			final float yaw = location.getYaw();
-+			if (yaw != 0) {
-+				nbt.putFloat(LOCATION_YAW_KEY, yaw);
-+			}
-+			final float pitch = location.getPitch();
-+			if (pitch != 0) {
-+				nbt.putFloat(LOCATION_PITCH_KEY, pitch);
-+			}
-+			return nbt;
-+		}
-+		@Override
-+		public @NotNull Location deserialize(final @NotNull CompoundTag nbt) {
-+			final UUID worldUUID = nbt.getUUID(LOCATION_WORLD_KEY);
-+			return new Location(
-+					UuidUtils.isNullOrIdentity(worldUUID) ? null : Bukkit.getWorld(worldUUID),
-+					nbt.getDouble(LOCATION_X_KEY),
-+					nbt.getDouble(LOCATION_Y_KEY),
-+					nbt.getDouble(LOCATION_Z_KEY),
-+					nbt.getFloat(LOCATION_YAW_KEY),
-+					nbt.getFloat(LOCATION_PITCH_KEY));
- 		}
--		final UUID worldUUID = nbt.getUUID(LOCATION_WORLD_KEY);
--		return new Location(
--				UuidUtils.isNullOrIdentity(worldUUID) ? null : Bukkit.getWorld(worldUUID),
--				nbt.getDouble(LOCATION_X_KEY),
--				nbt.getDouble(LOCATION_Y_KEY),
--				nbt.getDouble(LOCATION_Z_KEY),
--				nbt.getFloat(LOCATION_YAW_KEY),
--				nbt.getFloat(LOCATION_PITCH_KEY));
-+	};
-+	// CivPatched End
-+
-+	public static Location locationFromNBT(final NBTCompound nbt) {
-+		return nbt == null ? null : LOCATION.deserialize(nbt.getRAW()); // CivPatched
- 	}
- 
- 	public static NBTCompound locationToNBT(final Location location) {
--		if (location == null) {
--			return null;
--		}
--		final var nbt = new NBTCompound();
--		nbt.setUUID(LOCATION_WORLD_KEY, location.isWorldLoaded() ? location.getWorld().getUID() : UuidUtils.IDENTITY);
--		nbt.setDouble(LOCATION_X_KEY, location.getX());
--		nbt.setDouble(LOCATION_Y_KEY, location.getY());
--		nbt.setDouble(LOCATION_Z_KEY, location.getZ());
--		if (location.getYaw() != 0) {
--			nbt.setFloat(LOCATION_YAW_KEY, location.getYaw());
--		}
--		if (location.getPitch() != 0) {
--			nbt.setFloat(LOCATION_PITCH_KEY, location.getPitch());
--		}
--		return nbt;
-+		return location == null ? null : new NBTCompound(LOCATION.serialize(location)); // CivPatched
- 	}
- 
- 	// ------------------------------------------------------------
- 	// ItemStack
- 	// ------------------------------------------------------------
- 
--	public static ItemStack itemStackFromNBT(final NBTCompound nbt) {
--		if (nbt == null) {
--			return null;
-+	// CivPatched Start
-+	public final ISerializer.NBT<ItemStack> ITEMSTACK = new ISerializer.NBT<>() {
-+		@Override
-+		public @NotNull CompoundTag serialize(final @NotNull ItemStack item) {
-+			final var nbt = new CompoundTag();
-+			ItemUtils.getNMSItemStack(item).save(nbt);
-+			return nbt;
-+		}
-+		@Override
-+		public @NotNull ItemStack deserialize(final @NotNull CompoundTag nbt) {
-+			return net.minecraft.world.item.ItemStack.of(nbt).getBukkitStack();
- 		}
--		return net.minecraft.world.item.ItemStack.of(nbt.getRAW()).getBukkitStack();
-+	};
-+	// CivPatched End
-+
-+	public static ItemStack itemStackFromNBT(final NBTCompound nbt) {
-+		return nbt == null ? null : ITEMSTACK.deserialize(nbt.getRAW()); // CivPatched
- 	}
- 
- 	public static NBTCompound itemStackToNBT(final ItemStack item) {
--		if (item == null) {
--			return null;
--		}
--		final var nbt = new NBTCompound();
--		ItemUtils.getNMSItemStack(item).save(nbt.getRAW());
--		return nbt;
-+		return item == null ? null : new NBTCompound(ITEMSTACK.serialize(item)); // CivPatched
- 	}
- 
-+	// ------------------------------------------------------------
-+	// Inventory
-+	// ------------------------------------------------------------
-+
-+	// CivPatched Start
-+	public final ISerializer.NBT<Inventory> INVENTORY = new ISerializer.NBT<Inventory>() {
-+		@Override
-+		public @NotNull CompoundTag serialize(final @NotNull Inventory inventory) {
-+			final var nbt = new CompoundTag();
-+			final ItemStack[] contents = inventory.getContents();
-+			for (int i = 0; i < contents.length; i++) {
-+				final ItemStack item = contents[i];
-+				if (!ItemUtils.isEmptyItem(item)) {
-+					nbt.put(Integer.toString(i), ITEMSTACK.serialize(item));
-+				}
-+			}
-+			return nbt;
-+		}
-+		public void deserialize(
-+				final @NotNull Inventory inventory,
-+				final @NotNull CompoundTag nbt
-+		) {
-+			inventory.clear();
-+			final ItemStack[] contents = inventory.getContents();
-+			for (final String key : nbt.getAllKeys()) {
-+				if (!(nbt.get(key) instanceof final CompoundTag compound)) {
-+					LOGGER.log(
-+							Level.WARNING,
-+							"Inventory slot [" + key + "] is not a parsable NBT compound!",
-+							new RuntimeException()
-+					);
-+					continue;
-+				}
-+				final ItemStack parsed = ITEMSTACK.deserialize(compound);
-+				if (ItemUtils.isEmptyItem(parsed)) {
-+					// Just ignore empty items
-+					continue;
-+				}
-+				final int index;
-+				try {
-+					index = Integer.parseInt(key);
-+				}
-+				catch (final NumberFormatException thrown) {
-+					LOGGER.log(Level.WARNING,
-+							"Inventory slot [" + key + "] not a valid number! Item[" + parsed + "] will be ignored.",
-+							new RuntimeException());
-+					continue;
-+				}
-+				if (index < 0 || index >= contents.length) {
-+					LOGGER.log(Level.WARNING,
-+							"Inventory slot [" + index + "] is out of bounds of array[" + contents.length + "]! Item[" + parsed + "] will be ignored.",
-+							new RuntimeException());
-+					continue;
-+				}
-+				contents[index] = parsed;
-+			}
-+			inventory.setContents(contents);
-+		}
-+		@Deprecated
-+		@Override
-+		public @NotNull Inventory deserialize(final @NotNull CompoundTag raw) {
-+			throw new NotImplementedException();
-+		}
-+	};
-+	// CivPatched End
-+
- }
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/nbt/NBTSerializationException.java b/src/main/java/vg/civcraft/mc/civmodcore/nbt/NBTSerializationException.java
 index 8b4eb90deac0e9fc34c62448177b3e7fad6d49bc..3586d1e72aee2fa9b5b16e752131a3ad66e344e8 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/nbt/NBTSerializationException.java
