@@ -8,44 +8,24 @@ Use removeIf in GUICommand.
 Remove redundant saveDefaultConfig()
 
 diff --git a/build.gradle.kts b/build.gradle.kts
-index 395cbef720ada467aa901b82ca443181c3effe7c..0f884e8e7546e3c3f4783dac2de5de05411d8f28 100644
---- a/build.gradle.kts
+new file mode 100644
+index 0000000000000000000000000000000000000000..0f884e8e7546e3c3f4783dac2de5de05411d8f28
+--- /dev/null
 +++ b/build.gradle.kts
-@@ -1,25 +1,13 @@
--import net.civmc.civgradle.CivGradleExtension
+@@ -0,0 +1,13 @@
 +group = "civ.genre.jukealert"
 +version = "3.0.5"
 +description = "JukeAlert"
- 
--plugins {
--	id("net.civmc.civgradle") version "2.+" apply false
++
 +configure<net.civmc.civgradle.CivGradleExtension> {
 +	pluginName = project.property("description") as String
- }
- 
--subprojects {
--	apply(plugin = "java-library")
--	apply(plugin = "maven-publish")
--	apply(plugin = "net.civmc.civgradle")
--
--	configure<CivGradleExtension> {
--		pluginName = project.property("pluginName") as String
--	}
--
--	repositories {
--		mavenCentral()
--		maven("https://repo.civmc.net/repository/maven-public")
--		maven("https://repo.aikar.co/content/groups/aikar/")
--		maven("https://libraries.minecraft.net")
--		maven("https://repo.codemc.io/repository/maven-public/")
--
--		maven("https://jitpack.io")
--	}
++}
++
 +dependencies {
 +	compileOnly(project(":CivModCore"))
 +	compileOnly(project(":NameLayer"))
 +	compileOnly(project(":Citadel"))
- }
++}
 diff --git a/src/main/java/com/untamedears/jukealert/JukeAlert.java b/src/main/java/com/untamedears/jukealert/JukeAlert.java
 index 1cc38740144009fc2e5138b81867cc9cf873be9a..a2089e472dcc69d91c1385a93e885fa325ac5971 100644
 --- a/src/main/java/com/untamedears/jukealert/JukeAlert.java

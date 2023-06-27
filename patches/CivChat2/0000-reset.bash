@@ -8,7 +8,7 @@ git commit --quiet -m "Flatten project structure"
 git rm -rfq "gradle" "gradlew"
 git commit --quiet -m "Remove Gradle wrapper"
 
-git rm -rfq ".github" ".editorconfig" "gradle.properties" "settings.gradle.kts"
+git rm -rfq ".github" ".editorconfig" "build.gradle.kts" "gradle.properties" "settings.gradle.kts"
 git commit --quiet -m "Remove extraneous boilerplate"
 
 git checkout --quiet -B patches ignored

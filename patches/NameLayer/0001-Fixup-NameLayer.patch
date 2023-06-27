@@ -5,39 +5,21 @@ Subject: [PATCH] Fixup NameLayer
 
 
 diff --git a/build.gradle.kts b/build.gradle.kts
-index 9754380c17ee0124c45a52a1c6697bca959d8c29..df21cc079ca2a906aaa4dc6073b8b833db43ba6b 100644
---- a/build.gradle.kts
+new file mode 100644
+index 0000000000000000000000000000000000000000..e2c7d70c3a85af60f8b8334a7234da5b61ae7996
+--- /dev/null
 +++ b/build.gradle.kts
-@@ -1,21 +1,11 @@
--import net.civmc.civgradle.CivGradleExtension
+@@ -0,0 +1,11 @@
 +group = "civ.genre.namelayer"
 +version = "3.0.4"
 +description = "NameLayer"
- 
--plugins {
--	id("net.civmc.civgradle") version "2.+" apply false
++
 +configure<net.civmc.civgradle.CivGradleExtension> {
-+    pluginName = project.property("description") as String
- }
- 
--subprojects {
--	apply(plugin = "net.civmc.civgradle")
--	apply(plugin = "java-library")
--	apply(plugin = "maven-publish")
--
--	configure<CivGradleExtension> {
--		pluginName = project.property("pluginName") as String
--	}
--
--	repositories {
--		mavenCentral()
--		maven("https://repo.civmc.net/repository/maven-public")
--		maven("https://jitpack.io")
--	}
--}
-\ No newline at end of file
++	pluginName = project.property("description") as String
++}
++
 +dependencies {
-+    compileOnly(project(":CivModCore"))
++	compileOnly(project(":CivModCore"))
 +}
 diff --git a/src/main/resources/plugin.yml b/src/main/resources/plugin.yml
 index a8326550a7b4e02c9be2f85670bebea59159b4c1..7951b4a06e732673eb0da7bfb87d01dffe5cd2db 100644
