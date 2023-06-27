@@ -19,3 +19,6 @@
 [submodule "Citadel"]
 	path = Citadel
 	url = https://github.com/CivMC/Citadel.git
+[submodule "Bastion"]
+	path = Bastion
+	url = https://github.com/CivMC/Bastion.git

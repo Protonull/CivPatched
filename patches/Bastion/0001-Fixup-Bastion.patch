@@ -1,0 +1,25 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Tue, 27 Jun 2023 06:54:40 +0100
+Subject: [PATCH] Fixup Bastion
+
+
+diff --git a/build.gradle.kts b/build.gradle.kts
+new file mode 100644
+index 0000000000000000000000000000000000000000..9d48a9f97f3b339f097c950f07bdbdeae8c6df51
+--- /dev/null
++++ b/build.gradle.kts
+@@ -0,0 +1,13 @@
++group = "civ.genre.bastion"
++version = "3.0.1"
++description = "Bastion"
++
++configure<net.civmc.civgradle.CivGradleExtension> {
++	pluginName = project.property("description") as String
++}
++
++dependencies {
++	compileOnly(project(":CivModCore"))
++	compileOnly(project(":NameLayer"))
++	compileOnly(project(":Citadel"))
++}
