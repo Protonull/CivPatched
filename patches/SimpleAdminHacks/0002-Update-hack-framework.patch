@@ -10,7 +10,7 @@ All hacks now implement Deferrable.
 Update and encapsulate BroadcastLevel.
 
 diff --git a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/SimpleAdminHacks.java b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/SimpleAdminHacks.java
-index 6f0f622bc17739a282868860d5408fa5285fde6c..79f17b5c7d93b792cee23e7a661c4b3cdee71ff9 100644
+index 1f2715ce590d7d7db2c06e2543e6cc737e3d23d4..4f3c0bb2b30f5ddc6baf796e8d5b5c85149f8a5c 100644
 --- a/src/main/java/com/programmerdan/minecraft/simpleadminhacks/SimpleAdminHacks.java
 +++ b/src/main/java/com/programmerdan/minecraft/simpleadminhacks/SimpleAdminHacks.java
 @@ -3,11 +3,8 @@ package com.programmerdan.minecraft.simpleadminhacks;
@@ -25,7 +25,7 @@ index 6f0f622bc17739a282868860d5408fa5285fde6c..79f17b5c7d93b792cee23e7a661c4b3c
  import vg.civcraft.mc.civmodcore.ACivMod;
  
  /**
-@@ -140,38 +137,4 @@ public class SimpleAdminHacks extends ACivMod {
+@@ -141,38 +138,4 @@ public class SimpleAdminHacks extends ACivMod {
  		return this.getServer().getPluginManager().isPluginEnabled(pluginName);
  	}
  

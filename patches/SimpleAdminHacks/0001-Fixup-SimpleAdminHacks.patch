@@ -213,7 +213,7 @@ index 78662e442e8ab63396523b424f973271855154e4..64b8cd7f71eb82af83d81df48f2a615d
  public final class TestConfigHack extends BasicHack {
  
 diff --git a/src/main/resources/config.yml b/src/main/resources/config.yml
-index 28bfc82cf11d5c04f5bf0a8b2884b1479ca33640..9126bddafb22e2044864cb9515775612899380c4 100644
+index 55a65deca65b0ab9c35ad5fc309ae0df8fd6e183..0007e6bfde48f41a28ac0d6743df06bfb386f4d7 100644
 --- a/src/main/resources/config.yml
 +++ b/src/main/resources/config.yml
 @@ -110,8 +110,6 @@ hacks:

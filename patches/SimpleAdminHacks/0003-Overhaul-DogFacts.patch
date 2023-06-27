@@ -229,7 +229,7 @@ index 2d6f063e61ebe6ad3aa8f760a61dea314fdfc439..00000000000000000000000000000000
 -	}
 -}
 diff --git a/src/main/resources/config.yml b/src/main/resources/config.yml
-index 9126bddafb22e2044864cb9515775612899380c4..91d782fa3411b8ec9d70304195f8451bdd07eded 100644
+index 0007e6bfde48f41a28ac0d6743df06bfb386f4d7..f17bd3475ae851b1fae945b248ea6ad801e59735 100644
 --- a/src/main/resources/config.yml
 +++ b/src/main/resources/config.yml
 @@ -101,15 +101,6 @@ hacks:

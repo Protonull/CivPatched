@@ -361,7 +361,7 @@ index 53c52429539b3eda5caa1a722010000bd6a6d1bd..00000000000000000000000000000000
 -	}
 -}
 diff --git a/src/main/resources/config.yml b/src/main/resources/config.yml
-index 91d782fa3411b8ec9d70304195f8451bdd07eded..72325c6418311f9275d2e5f52e1ee72442b3ad0e 100644
+index f17bd3475ae851b1fae945b248ea6ad801e59735..8df6c8a0ca8339ee68f30573f5cfb3b00fa19587 100644
 --- a/src/main/resources/config.yml
 +++ b/src/main/resources/config.yml
 @@ -198,13 +198,6 @@ hacks:
@@ -378,7 +378,7 @@ index 91d782fa3411b8ec9d70304195f8451bdd07eded..72325c6418311f9275d2e5f52e1ee724
    ShipOutOfLuck:
      enabled: true
      # The list of Material's that boats cannot be placed on and will eject passengers
-@@ -468,6 +461,33 @@ hacks:
+@@ -478,6 +471,33 @@ hacks:
      # in seconds
      delay: 180
      message: "&4%player% is raiding a chest at %x% %y% %z%."

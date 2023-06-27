@@ -74,7 +74,7 @@ index 0000000000000000000000000000000000000000..fef23cb037c30d47c1646827addc2046
 +
 +}
 diff --git a/src/main/resources/config.yml b/src/main/resources/config.yml
-index 72325c6418311f9275d2e5f52e1ee72442b3ad0e..40bdea372ff89262ed46ac3c4a106051c9713103 100644
+index 8df6c8a0ca8339ee68f30573f5cfb3b00fa19587..4b53fffed7d960f14f57f5348a1789d498a11c95 100644
 --- a/src/main/resources/config.yml
 +++ b/src/main/resources/config.yml
 @@ -81,6 +81,8 @@ hacks:
@@ -87,20 +87,20 @@ index 72325c6418311f9275d2e5f52e1ee72442b3ad0e..40bdea372ff89262ed46ac3c4a106051
      enabled: true
      # Value between 0 and 1 that determines the percentage chance that a bee will replace
 diff --git a/src/main/resources/plugin.yml b/src/main/resources/plugin.yml
-index 2dc153533bf241ecd9f195f5c4ff3fd4b3ef5919..dad66fe0d2786d4387cfe831f4855d286df92434 100644
+index 9ff97acca9bcf350157773eb12a455f377a0d8f2..ef2cfe482215e1fd6dffb31ef1d8c0eaacf9edfb 100644
 --- a/src/main/resources/plugin.yml
 +++ b/src/main/resources/plugin.yml
-@@ -113,6 +113,7 @@ permissions:
-       simpleadmin.debugwand: true
+@@ -111,6 +111,7 @@ permissions:
        simpleadmin.bedlocator: true
        simpleadmin.elytrabypass: true
+       simpleadmin.grantott: true
 +      simpleadmin.bedunsetter: true
      simpleadmin.hacks:
        description: Allows control of the hacks and settings which simpleadminhacks supports
        default: op
-@@ -161,3 +162,6 @@ permissions:
-     simpleadmin.elytrabypass:
-       description: Gives the ability to bypass elytra restrictions
+@@ -162,3 +163,6 @@ permissions:
+     simpleadmin.grantott:
+       description: Gives the ability to grant players OTT usages
        default: op
 +    simpleadmin.bedunsetter:
 +      description: Gives the ability to unset your bed
