@@ -1,0 +1,38 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Tue, 27 Jun 2023 04:46:17 +0100
+Subject: [PATCH] Fixup Citadel
+
+
+diff --git a/build.gradle.kts b/build.gradle.kts
+new file mode 100644
+index 0000000000000000000000000000000000000000..511da22ad479928fb91ea663d56e63715a9b140d
+--- /dev/null
++++ b/build.gradle.kts
+@@ -0,0 +1,13 @@
++group = "civ.genre.citadel"
++version = "5.1.2"
++description = "Citadel"
++
++configure<net.civmc.civgradle.CivGradleExtension> {
++	pluginName = project.property("description") as String
++}
++
++dependencies {
++	compileOnly(project(":CivModCore"))
++	compileOnly(project(":NameLayer"))
++	compileOnly("com.gmail.filoghost.holographicdisplays:holographicdisplays-api:2.4.9")
++}
+diff --git a/src/main/resources/plugin.yml b/src/main/resources/plugin.yml
+index 56247a3d04329c7d992a4313ce689c95ebe4b841..78f3819684799e4a7ef2f5f7feca782009b0118f 100644
+--- a/src/main/resources/plugin.yml
++++ b/src/main/resources/plugin.yml
+@@ -17,7 +17,7 @@ depend:
+ softdepend:
+ - HolographicDisplays
+ description: Citadel allows you to make blocks difficult to break. When a block is reinforced, it must be broken many times before it is destroyed.
+-api-version: 1.17
++api-version: 1.18
+ permissions:
+   citadel.admin:
+     default: op

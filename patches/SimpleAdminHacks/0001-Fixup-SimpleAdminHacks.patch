@@ -8,7 +8,7 @@ Goodbye Bungee.
 Fix BedLocator oopsie.
 
 diff --git a/build.gradle.kts b/build.gradle.kts
-index 7bf669fe4fab8df60efb867c2f83548aa4941abd..d09d37a195533a507a234c2fd9af50989cf7e94f 100644
+index 7bf669fe4fab8df60efb867c2f83548aa4941abd..9cd517baffa7df7761463c40427b43236dccc8dd 100644
 --- a/build.gradle.kts
 +++ b/build.gradle.kts
 @@ -1,23 +1,17 @@
@@ -42,7 +42,7 @@ index 7bf669fe4fab8df60efb867c2f83548aa4941abd..d09d37a195533a507a234c2fd9af5098
 +dependencies {
 +    compileOnly(project(":CivModCore"))
 +    compileOnly(project(":NameLayer"))
-+    compileOnly("net.civmc.citadel:citadel-paper:5.1.2:dev")
++    compileOnly(project(":Citadel"))
 +    compileOnly("net.civmc.combattagplus:paper:2.0.0-SNAPSHOT:dev")
 +    compileOnly("net.civmc.banstick:banstick-paper:2.0.1:dev")
 +    compileOnly("com.comphenix.protocol:ProtocolLib:4.8.0")

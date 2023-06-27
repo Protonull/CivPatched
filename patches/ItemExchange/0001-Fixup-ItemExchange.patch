@@ -5,7 +5,7 @@ Subject: [PATCH] Fixup ItemExchange
 
 
 diff --git a/build.gradle.kts b/build.gradle.kts
-index 506d5dbca920b621b8d75e9b08ee2ae28bce6124..efa6f3b2565c2d458de226b986b3a32bbad3f569 100644
+index 506d5dbca920b621b8d75e9b08ee2ae28bce6124..dce4ee25eaeefa18b72f13e387d31a143a3ee53c 100644
 --- a/build.gradle.kts
 +++ b/build.gradle.kts
 @@ -1,54 +1,14 @@
@@ -70,7 +70,7 @@ index 506d5dbca920b621b8d75e9b08ee2ae28bce6124..efa6f3b2565c2d458de226b986b3a32b
 +dependencies {
 +	compileOnly(project(":CivModCore"))
 +	compileOnly(project(":NameLayer"))
-+	compileOnly("net.civmc.citadel:citadel-paper:5.0.0:dev")
++	compileOnly(project(":Citadel"))
 +	compileOnly(project(":JukeAlert"))
  }
 diff --git a/src/main/java/com/untamedears/itemexchange/utility/ModifierStorage.java b/src/main/java/com/untamedears/itemexchange/utility/ModifierStorage.java

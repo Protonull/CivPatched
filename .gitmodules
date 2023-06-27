@@ -16,3 +16,6 @@
 [submodule "CivChat2"]
 	path = CivChat2
 	url = https://github.com/CivMC/CivChat2.git
+[submodule "Citadel"]
+	path = Citadel
+	url = https://github.com/CivMC/Citadel.git
