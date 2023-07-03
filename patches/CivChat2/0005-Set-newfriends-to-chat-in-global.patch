@@ -1,0 +1,22 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Tue, 27 Jun 2023 10:54:24 +0100
+Subject: [PATCH] Set newfriends to chat in global
+
+
+diff --git a/src/main/java/vg/civcraft/mc/civchat2/listeners/CivChat2Listener.java b/src/main/java/vg/civcraft/mc/civchat2/listeners/CivChat2Listener.java
+index 5a903460d8ffecd5786feef873df3f736bbb72aa..f6bc8184e6eef70ab517fcf662a7ba0181d9116b 100644
+--- a/src/main/java/vg/civcraft/mc/civchat2/listeners/CivChat2Listener.java
++++ b/src/main/java/vg/civcraft/mc/civchat2/listeners/CivChat2Listener.java
+@@ -81,7 +81,10 @@ public class CivChat2Listener implements Listener {
+ 			Group group = GroupManager.getGroup(globalChat);
+ 			if (group != null) {
+ 				group.addMember(playerJoinEvent.getPlayer().getUniqueId(), PlayerType.MEMBERS);
+-				playerJoinEvent.getPlayer().sendMessage(ChatColor.GREEN + "You autojoined global chat, which is called '!'. Use it like this: '/g ! Hello'");
++				// CivPatched Start
++				this.chatman.addGroupChat(playerJoinEvent.getPlayer(), group);
++				playerJoinEvent.getPlayer().sendMessage(ChatColor.GREEN + "You autojoined global chat, which is called '!'.");
++				// CivPatched End
+ 			}
+ 		}
+ 	}

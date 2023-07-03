@@ -1,0 +1,18 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Sat, 1 Jul 2023 21:13:42 +0100
+Subject: [PATCH] Fix Modifier.order() bug
+
+
+diff --git a/src/main/java/com/untamedears/itemexchange/rules/interfaces/Modifier.java b/src/main/java/com/untamedears/itemexchange/rules/interfaces/Modifier.java
+index 006c679b62fc46a43724a76ca11ba208a3636f25..efb506ac77b0f97d9053605ae3c1826c26bf39ce 100644
+--- a/src/main/java/com/untamedears/itemexchange/rules/interfaces/Modifier.java
++++ b/src/main/java/com/untamedears/itemexchange/rules/interfaces/Modifier.java
+@@ -20,6 +20,6 @@ public @interface Modifier {
+ 	/**
+ 	 *
+ 	 */
+-	int order() default Integer.MAX_VALUE;
++	int order() default Short.MAX_VALUE; // CivPatched: Probably best to not compare on Integer.MAX_VALUE :P
+ 
+ }

@@ -1,0 +1,438 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Sat, 1 Jul 2023 21:17:35 +0100
+Subject: [PATCH] Update pdc and nbt packages
+
+
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/nbt/NBTSerialization.java b/src/main/java/vg/civcraft/mc/civmodcore/nbt/NBTSerialization.java
+index e7e74c032a908afa4fcc8d9ff57976b8cd0596f1..050032509d28b50b81a256712f5362d72ab7c860 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/nbt/NBTSerialization.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/nbt/NBTSerialization.java
+@@ -1,24 +1,19 @@
+ package vg.civcraft.mc.civmodcore.nbt;
+ 
+-import com.google.common.annotations.Beta;
+ import com.google.common.io.ByteArrayDataInput;
+ import com.google.common.io.ByteArrayDataOutput;
+ import com.google.common.io.ByteStreams;
+ import java.io.IOException;
+ import java.lang.reflect.InvocationTargetException;
+-import java.util.List;
+-import java.util.Map;
+ import java.util.Objects;
+ import java.util.function.Consumer;
+ import java.util.logging.Level;
+ import lombok.experimental.UtilityClass;
+ import net.minecraft.nbt.CompoundTag;
+-import net.minecraft.nbt.ListTag;
+ import net.minecraft.nbt.NbtAccounter;
+ import net.minecraft.nbt.NbtIo;
+ import org.apache.commons.lang3.ArrayUtils;
+ import org.apache.commons.lang3.reflect.MethodUtils;
+-import org.bukkit.craftbukkit.v1_18_R2.util.CraftNBTTagConfigSerializer;
+ import org.bukkit.inventory.ItemStack;
+ import org.bukkit.persistence.PersistentDataContainer;
+ import org.jetbrains.annotations.NotNull;
+@@ -56,10 +51,10 @@ public class NBTSerialization {
+ 	 *
+ 	 * @param container The container to generate an NBT compound from.
+ 	 * @return Returns a newly generated NBT compound by wrapping the PDC's inner-map.
+-	 */
++	 * @deprecated Use {@link PersistentDataContainerExtensions#asNBT(PersistentDataContainer)} instead! */ @Deprecated // CivPatched
+ 	@NotNull
+ 	public static NBTCompound fromPDC(@NotNull final PersistentDataContainer container) {
+-		return new NBTCompound(PersistentDataContainerExtensions.getRaw(container));
++		return PersistentDataContainerExtensions.asNBT(container); // CivPatched
+ 	}
+ 
+ 	/**
+@@ -87,16 +82,6 @@ public class NBTSerialization {
+ 		return nmsItem.getBukkitStack();
+ 	}
+ 
+-	@Beta
+-	public static CompoundTag fromMap(final Map<String, Object> data) {
+-		return (CompoundTag) CraftNBTTagConfigSerializer.deserialize(data);
+-	}
+-
+-	@Beta
+-	public static ListTag fromList(final List<Object> data) {
+-		return (ListTag) CraftNBTTagConfigSerializer.deserialize(data);
+-	}
+-
+ 	/**
+ 	 * Attempts to serialize an NBTCompound into a data array.
+ 	 *
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/nbt/wrappers/NBTCompound.java b/src/main/java/vg/civcraft/mc/civmodcore/nbt/wrappers/NBTCompound.java
+index f6e7c22a97aa756dc2acc7b21d0aafb4b6557ec6..1777f202d1d7239b44793c78b82ad7eace279b41 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/nbt/wrappers/NBTCompound.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/nbt/wrappers/NBTCompound.java
+@@ -21,6 +21,10 @@ import org.jetbrains.annotations.Nullable;
+ import vg.civcraft.mc.civmodcore.nbt.NBTType;
+ import vg.civcraft.mc.civmodcore.utilities.UuidUtils;
+ 
++// CivPatched Start
++import java.util.function.Function;
++// CivPatched End
++
+ public class NBTCompound {
+ 
+ 	public static final String NULL_STRING = "\u0000";
+@@ -122,10 +126,12 @@ public class NBTCompound {
+ 		if (StringUtils.equals(fromKey, toKey)) {
+ 			return;
+ 		}
+-		this.tag.tags.computeIfPresent(fromKey, (_key, value) -> {
+-			this.tag.tags.put(toKey, value);
+-			return null;
+-		});
++		// CivPatched Start
++		final Tag previousValue = this.tag.tags.remove(fromKey);
++		if (previousValue != null) {
++			this.tag.tags.put(toKey, previousValue);
++		}
++		// CivPatched End
+ 	}
+ 
+ 	/**
+@@ -376,18 +382,16 @@ public class NBTCompound {
+ 						final UUID value,
+ 						final boolean useMojangFormat) {
+ 		Objects.requireNonNull(key);
+-		if (value == null) {
+-			removeUUID(key);
++		// CivPatched Start
++		removeUUID(key);
++		if (useMojangFormat) {
++			this.tag.putLong(key + UUID_MOST_SUFFIX, value.getMostSignificantBits());
++			this.tag.putLong(key + UUID_LEAST_SUFFIX, value.getLeastSignificantBits());
+ 		}
+ 		else {
+-			if (useMojangFormat) {
+-				this.tag.putLong(key + UUID_MOST_SUFFIX, value.getMostSignificantBits());
+-				this.tag.putLong(key + UUID_LEAST_SUFFIX, value.getLeastSignificantBits());
+-			}
+-			else {
+-				this.tag.putUUID(key, value);
+-			}
++			this.tag.putUUID(key, value);
+ 		}
++		// CivPatched End
+ 	}
+ 
+ 	/**
+@@ -872,6 +876,30 @@ public class NBTCompound {
+ 		this.tag.put(key, list);
+ 	}
+ 
++	// CivPatched Start
++	public <T> @Nullable NBTList<T> getList(
++			final @NotNull String key,
++			final @NotNull Function<ListTag, NBTList<T>> constructor
++	) {
++		Objects.requireNonNull(key);
++		if (this.tag.get(key) instanceof final ListTag listTag) {
++			return constructor.apply(listTag);
++		}
++		return null;
++	}
++	public void setList(
++			final @NotNull String key,
++			final NBTList<?> list
++	) {
++		Objects.requireNonNull(key);
++		if (list == null) {
++			remove(key);
++			return;
++		}
++		this.tag.put(key, list.getRAW());
++	}
++	// CivPatched End
++
+ 	// ------------------------------------------------------------
+ 	// Object Overrides
+ 	// ------------------------------------------------------------
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/nbt/wrappers/NBTList.java b/src/main/java/vg/civcraft/mc/civmodcore/nbt/wrappers/NBTList.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..41a45569197024f69ff337486fa9cf52f36bc420
+--- /dev/null
++++ b/src/main/java/vg/civcraft/mc/civmodcore/nbt/wrappers/NBTList.java
+@@ -0,0 +1,211 @@
++package vg.civcraft.mc.civmodcore.nbt.wrappers;
++
++import java.util.AbstractList;
++import java.util.Objects;
++import java.util.function.Function;
++import net.minecraft.nbt.ByteArrayTag;
++import net.minecraft.nbt.CompoundTag;
++import net.minecraft.nbt.DoubleTag;
++import net.minecraft.nbt.FloatTag;
++import net.minecraft.nbt.IntArrayTag;
++import net.minecraft.nbt.ListTag;
++import net.minecraft.nbt.LongArrayTag;
++import net.minecraft.nbt.ShortTag;
++import net.minecraft.nbt.StringTag;
++import net.minecraft.nbt.Tag;
++import org.jetbrains.annotations.NotNull;
++import vg.civcraft.mc.civmodcore.nbt.NBTType;
++
++/**
++ * @author CivPatched
++ */
++public sealed abstract class NBTList<T> extends AbstractList<T> {
++    private final ListTag internalTag;
++    private final byte elementType;
++
++    protected NBTList(
++            final ListTag internalTag,
++            final byte elementType
++    ) {
++        this.internalTag = Objects.requireNonNullElseGet(internalTag, ListTag::new);
++        this.elementType = elementType;
++    }
++
++    public @NotNull ListTag getRAW() {
++        return this.internalTag;
++    }
++
++    public byte getElementType() {
++        return this.elementType;
++    }
++
++    public abstract @NotNull T deserialize(@NotNull Tag tag);
++    public abstract @NotNull Tag serialize(@NotNull T value);
++
++    @Override
++    public int size() {
++        return this.internalTag.size();
++    }
++
++    @Override
++    public T get(
++            final int index
++    ) {
++        return deserialize(this.internalTag.get(index));
++    }
++
++    @Override
++    public T set(
++            final int index,
++            final T element
++    ) {
++        return deserialize(this.internalTag.set(index, serialize(element)));
++    }
++
++    @Override
++    public void add(
++            final int index,
++            final T element
++    ) {
++        this.internalTag.add(index, serialize(element));
++    }
++
++    @Override
++    public T remove(
++            final int index
++    ) {
++        final Tag previousValue = this.internalTag.remove(index);
++        return previousValue == null ? null : deserialize(previousValue);
++    }
++
++    public static final class Shorts extends NBTList<Short> {
++        public Shorts(final ListTag internalTag) {
++            super(internalTag, NBTType.SHORT);
++        }
++        @Override
++        public @NotNull Short deserialize(final @NotNull Tag tag) {
++            return ((ShortTag) tag).getAsShort();
++        }
++        @Override
++        public @NotNull Tag serialize(final @NotNull Short value) {
++            return ShortTag.valueOf(value);
++        }
++    }
++
++    public static final class Floats extends NBTList<Float> {
++        public Floats(final ListTag internalTag) {
++            super(internalTag, NBTType.FLOAT);
++        }
++        @Override
++        public @NotNull Float deserialize(final @NotNull Tag tag) {
++            return ((FloatTag) tag).getAsFloat();
++        }
++        @Override
++        public @NotNull Tag serialize(final @NotNull Float value) {
++            return FloatTag.valueOf(value);
++        }
++    }
++
++    public static final class Doubles extends NBTList<Double> {
++        public Doubles(final ListTag internalTag) {
++            super(internalTag, NBTType.DOUBLE);
++        }
++        @Override
++        public @NotNull Double deserialize(final @NotNull Tag tag) {
++            return ((DoubleTag) tag).getAsDouble();
++        }
++        @Override
++        public @NotNull Tag serialize(final @NotNull Double value) {
++            return DoubleTag.valueOf(value);
++        }
++    }
++
++    public static final class ByteArrays extends NBTList<byte[]> {
++        public ByteArrays(final ListTag internalTag) {
++            super(internalTag, NBTType.BYTE_ARRAY);
++        }
++        @Override
++        public byte @NotNull [] deserialize(final @NotNull Tag tag) {
++            return ((ByteArrayTag) tag).getAsByteArray();
++        }
++        @Override
++        public @NotNull Tag serialize(final byte @NotNull [] value) {
++            return new ByteArrayTag(value);
++        }
++    }
++
++    public static final class Strings extends NBTList<String> {
++        public Strings(final ListTag internalTag) {
++            super(internalTag, NBTType.STRING);
++        }
++        @Override
++        public @NotNull String deserialize(final @NotNull Tag tag) {
++            return ((StringTag) tag).getAsString(); // Don't remove cast
++        }
++        @Override
++        public @NotNull Tag serialize(final @NotNull String value) {
++            return StringTag.valueOf(value);
++        }
++    }
++
++    public static final class Lists<T> extends NBTList<NBTList<T>> {
++        private final Function<ListTag, NBTList<T>> constructor;
++        public Lists(
++                final ListTag internalTag,
++                final @NotNull Function<ListTag, NBTList<T>> constructor
++        ) {
++            super(internalTag, NBTType.LIST);
++            this.constructor = Objects.requireNonNull(constructor);
++        }
++        @Override
++        public @NotNull NBTList<T> deserialize(final @NotNull Tag tag) {
++            return this.constructor.apply((ListTag) tag);
++        }
++        @Override
++        public @NotNull Tag serialize(final @NotNull NBTList<T> value) {
++            return value.getRAW();
++        }
++    }
++
++    public static final class Compounds extends NBTList<NBTCompound> {
++        public Compounds(final ListTag internalTag) {
++            super(internalTag, NBTType.COMPOUND);
++        }
++        @Override
++        public @NotNull NBTCompound deserialize(final @NotNull Tag tag) {
++            return new NBTCompound((CompoundTag) tag);
++        }
++        @Override
++        public @NotNull Tag serialize(final @NotNull NBTCompound value) {
++            return value.getRAW();
++        }
++    }
++
++    public static final class IntArrays extends NBTList<int[]> {
++        public IntArrays(final ListTag internalTag) {
++            super(internalTag, NBTType.INT_ARRAY);
++        }
++        @Override
++        public int @NotNull [] deserialize(final @NotNull Tag tag) {
++            return ((IntArrayTag) tag).getAsIntArray();
++        }
++        @Override
++        public @NotNull Tag serialize(final int @NotNull [] value) {
++            return new IntArrayTag(value);
++        }
++    }
++
++    public static final class LongArrays extends NBTList<long[]> {
++        public LongArrays(final ListTag internalTag) {
++            super(internalTag, NBTType.LONG_ARRAY);
++        }
++        @Override
++        public long @NotNull [] deserialize(final @NotNull Tag tag) {
++            return ((LongArrayTag) tag).getAsLongArray();
++        }
++        @Override
++        public @NotNull Tag serialize(final long @NotNull [] value) {
++            return new LongArrayTag(value);
++        }
++    }
++}
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/pdc/extensions/PersistentDataContainerExtensions.java b/src/main/java/vg/civcraft/mc/civmodcore/pdc/extensions/PersistentDataContainerExtensions.java
+index 1f27f7f0aa4f76b44e6e9bec5e9dc5878cdc4dd7..bd7a8f8c5116f7aa17a7ad5f529b89346083c7b3 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/pdc/extensions/PersistentDataContainerExtensions.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/pdc/extensions/PersistentDataContainerExtensions.java
+@@ -15,6 +15,11 @@ import org.bukkit.persistence.PersistentDataContainer;
+ import org.bukkit.persistence.PersistentDataType;
+ import vg.civcraft.mc.civmodcore.nbt.NBTType;
+ 
++// CivPatched Start
++import org.jetbrains.annotations.NotNull;
++import vg.civcraft.mc.civmodcore.nbt.wrappers.NBTCompound;
++// CivPatched End
++
+ /**
+  * Set of extension methods for {@link PersistentDataContainer}. Use {@link ExtensionMethod @ExtensionMethod} to take
+  * most advantage of this.
+@@ -31,6 +36,14 @@ public class PersistentDataContainerExtensions {
+ 		return ((CraftPersistentDataContainer) self).getRaw();
+ 	}
+ 
++	// CivPatched Start
++	public @NotNull NBTCompound asNBT(
++			final @NotNull PersistentDataContainer self
++	) {
++		return new NBTCompound(getRaw(self));
++	}
++	// CivPatched End
++
+ 	/**
+ 	 * @param self The PersistentDataContainer to get the size of.
+ 	 * @return Returns the PDC's size.
+diff --git a/src/test/java/vg/civcraft/mc/civmodcore/nbt/NBTTests.java b/src/test/java/vg/civcraft/mc/civmodcore/nbt/NBTTests.java
+index d25a3bf1d6a6ee0430b9b25251fbea20b9ec2a9a..46a4d4d36468aab8286461ccbac12c3e9afa525f 100644
+--- a/src/test/java/vg/civcraft/mc/civmodcore/nbt/NBTTests.java
++++ b/src/test/java/vg/civcraft/mc/civmodcore/nbt/NBTTests.java
+@@ -1,7 +1,5 @@
+ package vg.civcraft.mc.civmodcore.nbt;
+ 
+-import java.util.HashMap;
+-import java.util.Map;
+ import net.minecraft.nbt.CompoundTag;
+ import org.bukkit.pseudo.PseudoServer;
+ import org.junit.jupiter.api.Assertions;
+@@ -100,23 +98,4 @@ public class NBTTests {
+ 		Assertions.assertNull(nbt.getNullableString(STRING_KEY));
+ 	}
+ 
+-	@Test
+-	public void testMapDeserialisation() {
+-		// Setup
+-		final CompoundTag targetNBT = new CompoundTag() {{
+-			put("EntityTag", new CompoundTag() {{
+-				putString("id", "minecraft:vex");
+-			}});
+-		}};
+-		final Map<String, Object> testData = new HashMap<>() {{
+-			put("EntityTag", new HashMap<String, Object>() {{
+-				put("id", "minecraft:vex");
+-			}});
+-		}};
+-		// Process
+-		final CompoundTag convertedNBT = NBTSerialization.fromMap(testData);
+-		// Check
+-		Assertions.assertEquals(targetNBT, convertedNBT);
+-	}
+-
+ }

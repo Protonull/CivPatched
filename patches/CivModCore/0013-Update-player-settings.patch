@@ -12,10 +12,10 @@ Remove SETTINGS_BY_PLUGIN.
 Add removeValue to PlayerSetting.
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java b/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java
-index e761cb1c18a033647b28369a213d889c02c9a5df..db1058f5ec4a47882ea8e5b7641ddd151df75cc8 100644
+index 1b38562526f4b83951e39ab2ed755948b0ef0209..b625567a1c35b5c428ec24c83ba317bb6769c2dd 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java
-@@ -23,6 +23,7 @@ import org.jetbrains.annotations.Contract;
+@@ -15,6 +15,7 @@ import org.bukkit.plugin.java.JavaPlugin;
  
  // CivPatched Start
  import org.jetbrains.annotations.NotNull;
@@ -23,7 +23,7 @@ index e761cb1c18a033647b28369a213d889c02c9a5df..db1058f5ec4a47882ea8e5b7641ddd15
  import vg.civcraft.mc.civmodcore.utilities.defer.Deferrable;
  import vg.civcraft.mc.civmodcore.utilities.defer.DeferredFunctions;
  // CivPatched End
-@@ -48,6 +49,7 @@ public abstract class ACivMod extends JavaPlugin implements Deferrable { // CivP
+@@ -40,6 +41,7 @@ public abstract class ACivMod extends JavaPlugin implements Deferrable { // CivP
  	
  	@Override
  	public void onDisable() {

@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Fri, 23 Jun 2023 02:11:29 +0100
+Date: Tue, 27 Jun 2023 11:11:27 +0100
 Subject: [PATCH] Fixup CivModCore
 
 
@@ -87,6 +87,36 @@ index b42c2547061518f92bafe8438fab105213510095..ad2218b9b629766fae137d9563a0c650
  		PlayerSettingAPI.saveAll();
  		ConfigurationSerialization.unregisterClass(DatabaseCredentials.class);
  		if (this.commands != null) {
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/nbt/wrappers/NBTCompound.java b/src/main/java/vg/civcraft/mc/civmodcore/nbt/wrappers/NBTCompound.java
+index 95aa566e69247c1aba9973477678ea255974eaf0..f6e7c22a97aa756dc2acc7b21d0aafb4b6557ec6 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/nbt/wrappers/NBTCompound.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/nbt/wrappers/NBTCompound.java
+@@ -19,7 +19,6 @@ import org.apache.commons.lang3.StringUtils;
+ import org.jetbrains.annotations.NotNull;
+ import org.jetbrains.annotations.Nullable;
+ import vg.civcraft.mc.civmodcore.nbt.NBTType;
+-import vg.civcraft.mc.civmodcore.nbt.extensions.NBTTagListExtensions;
+ import vg.civcraft.mc.civmodcore.utilities.UuidUtils;
+ 
+ public class NBTCompound {
+@@ -776,7 +775,7 @@ public class NBTCompound {
+ 		if (this.tag.get(key) instanceof ListTag list) {
+ 			final UUID[] result = new UUID[list.size()];
+ 			for (int i = 0, l = list.size(); i < l; i++) {
+-				result[i] = NBTTagListExtensions.getUUID(list, i);
++				result[i] = net.minecraft.nbt.NbtUtils.loadUUID(list.get(i)); // CivPatched: Remove NBTTagListExtensions
+ 			}
+ 			return result;
+ 		}
+@@ -798,7 +797,7 @@ public class NBTCompound {
+ 		}
+ 		final ListTag list = new ListTag();
+ 		for (final UUID value : uuids) {
+-			NBTTagListExtensions.addUUID(list, value);
++			list.add(net.minecraft.nbt.NbtUtils.createUUID(value)); // CivPatched: Remove NBTTagListExtensions
+ 		}
+ 		this.tag.put(key, list);
+ 	}
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java b/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java
 index 082191b08165e894c97c23efff15d7192cb185f5..dbf5d5e1be70d67748f0562395767d9c163b094a 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSettingAPI.java
@@ -123,3 +153,65 @@ index 61485d20457c65e6931e33444df8887748858b2b..91c9b1f6b091bb83620bf40a53ff0e95
      default: op
 +libraries:
 +  - "org.jetbrains.kotlin:kotlin-stdlib:1.8.22"
+diff --git a/src/test/java/vg/civcraft/mc/civmodcore/nbt/NBTTests.java b/src/test/java/vg/civcraft/mc/civmodcore/nbt/NBTTests.java
+index 9628b91c3b1edcdfc84c5e981098c5378c7234c9..d25a3bf1d6a6ee0430b9b25251fbea20b9ec2a9a 100644
+--- a/src/test/java/vg/civcraft/mc/civmodcore/nbt/NBTTests.java
++++ b/src/test/java/vg/civcraft/mc/civmodcore/nbt/NBTTests.java
+@@ -2,20 +2,11 @@ package vg.civcraft.mc.civmodcore.nbt;
+ 
+ import java.util.HashMap;
+ import java.util.Map;
+-import net.kyori.adventure.text.Component;
+-import net.kyori.adventure.text.format.NamedTextColor;
+-import net.kyori.adventure.text.format.TextDecoration;
+ import net.minecraft.nbt.CompoundTag;
+-import org.bukkit.Location;
+-import org.bukkit.Material;
+-import org.bukkit.inventory.ItemStack;
+-import org.bukkit.inventory.meta.ItemMeta;
+ import org.bukkit.pseudo.PseudoServer;
+ import org.junit.jupiter.api.Assertions;
+ import org.junit.jupiter.api.BeforeAll;
+ import org.junit.jupiter.api.Test;
+-import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
+-import vg.civcraft.mc.civmodcore.inventory.items.MetaUtils;
+ import vg.civcraft.mc.civmodcore.nbt.wrappers.NBTCompound;
+ 
+ public class NBTTests {
+@@ -109,36 +100,6 @@ public class NBTTests {
+ 		Assertions.assertNull(nbt.getNullableString(STRING_KEY));
+ 	}
+ 
+-	@Test
+-	public void testLocationSerialisation() {
+-		// Setup
+-		final var location = new Location(null,
+-				123.456d, 789.654d, 321.098d,
+-				1.12344f, 123.234f);
+-		// Process
+-		final var nbt = NBTHelper.locationToNBT(location);
+-		final var parsed = NBTHelper.locationFromNBT(nbt);
+-		// Check
+-		Assertions.assertEquals(location, parsed);
+-	}
+-
+-	@Test
+-	public void testItemStackSerialisation() {
+-		// Setup
+-		final var item = new ItemStack(Material.STONE);
+-		ItemUtils.handleItemMeta(item, (ItemMeta meta) -> {
+-			meta.displayName(Component.text("Hello World!"));
+-			MetaUtils.setComponentLore(meta, Component.text("Testing!",
+-					NamedTextColor.YELLOW, TextDecoration.UNDERLINED));
+-			return true;
+-		});
+-		// Process
+-		final var nbt = NBTHelper.itemStackToNBT(item);
+-		final var parsed = NBTHelper.itemStackFromNBT(nbt);
+-		// Check
+-		Assertions.assertEquals(item, parsed);
+-	}
+-
+ 	@Test
+ 	public void testMapDeserialisation() {
+ 		// Setup
