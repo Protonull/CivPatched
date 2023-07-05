@@ -1,0 +1,54 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Wed, 5 Jul 2023 18:34:03 +0100
+Subject: [PATCH] Update world package
+
+
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/world/WorldUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/world/WorldUtils.java
+index 0a992ef61af9563830b811142ccc5ec0090df8c0..2a19e75e2bfbd4752b3a53f736ce2088eab6aaee 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/world/WorldUtils.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/world/WorldUtils.java
+@@ -27,9 +27,16 @@ import vg.civcraft.mc.civmodcore.inventory.items.MaterialUtils;
+ import vg.civcraft.mc.civmodcore.inventory.items.MoreTags;
+ import vg.civcraft.mc.civmodcore.utilities.NullUtils;
+ 
++// CivPatched Start
++import lombok.experimental.UtilityClass;
++import org.bukkit.craftbukkit.v1_18_R2.CraftWorld;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ /**
+  * Class of utility functions for Blocks, and BlockFaces referencing Blocks around a Block.
+  */
++@UtilityClass // CivPatched
+ public final class WorldUtils {
+ 
+ 	public static final Set<BlockFace> ALL_SIDES = ImmutableSet.of(
+@@ -155,6 +162,26 @@ public final class WorldUtils {
+ 		return location.getY() >= world.getMinHeight() && location.getY() < world.getMaxHeight();
+ 	}
+ 
++	// CivPatched Start
++	/**
++	 * Determines the <i>playable</i> height of a world. This is necessary due
++	 * to a longstanding issue with vanilla Nether: the Nether's maximum height
++	 * is 256, but the roof-bedrock is generated at 128, and PaperMC will, by
++	 * default, kill anyone above the roof-bedrock. This then offers a means to
++	 * more reliably determine a world's [effectively] maximum height.
++	 */
++	public int getMaximumPlayableHeight(
++			final @NotNull World world
++	) {
++		if (world.getEnvironment() == World.Environment.NETHER) {
++			return Math.min(
++					((CraftWorld) world).getHandle().paperConfig.netherVoidTopDamageHeight,
++					world.getMaxHeight()
++			);
++		}
++		return world.getMaxHeight();
++	}
++	// CivPatched End
+ 
+ 	/**
+ 	 * Determines if a world is currently loaded.
