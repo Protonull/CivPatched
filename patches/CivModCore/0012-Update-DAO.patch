@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Mon, 5 Jun 2023 08:46:55 +0100
+Date: Fri, 7 Jul 2023 02:08:05 +0100
 Subject: [PATCH] Update DAO
 
 Entirely overhaul database migrations.
@@ -305,10 +305,10 @@ index 85707ef2bfec4dc4f5f9398b578436f31ffc03a3..c19c241091f7b1590ea8564ce0823d4c
 +	// CivPatched End
  }
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/dao/DatabaseMigration.java b/src/main/java/vg/civcraft/mc/civmodcore/dao/DatabaseMigration.java
-index 852aabcc189759aa7078a530f57c8d496f62f250..198846add618ec4c6475f7b0be37d53c217986b6 100644
+index 852aabcc189759aa7078a530f57c8d496f62f250..2c49b08512b784f862ccd263e9f0fd68fa48b3e2 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/dao/DatabaseMigration.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/dao/DatabaseMigration.java
-@@ -1,56 +1,105 @@
+@@ -1,56 +1,106 @@
  package vg.civcraft.mc.civmodcore.dao;
  
 +import java.sql.Connection;
@@ -357,7 +357,7 @@ index 852aabcc189759aa7078a530f57c8d496f62f250..198846add618ec4c6475f7b0be37d53c
 +     * Run a number of queries in sequence.
 +     */
 +    static @NotNull DatabaseMigration sequence(
-+            @NotNull DatabaseMigration @NotNull ... queries
++            final @NotNull DatabaseMigration @NotNull ... queries
 +    ) {
 +        return sequence(List.of(queries));
 +    }
@@ -372,10 +372,11 @@ index 852aabcc189759aa7078a530f57c8d496f62f250..198846add618ec4c6475f7b0be37d53c
 +     * Run a number of queries in sequence.
 +     */
 +    static @NotNull DatabaseMigration sequence(
-+            @NotNull List<@NotNull DatabaseMigration> queries
++            final @NotNull List<@NotNull DatabaseMigration> queries
 +    ) {
++        final var queriesCopy = List.copyOf(queries); // This is necessary since reassigning "queries" causes issues for not being "effectively final"
 +        return (logger, connection) -> {
-+            for (final DatabaseMigration query : queries) {
++            for (final DatabaseMigration query : queriesCopy) {
 +                if (!query.execute(logger, connection)) {
 +                    return false;
 +                }

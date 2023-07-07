@@ -1,0 +1,41 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Thu, 6 Jul 2023 19:54:17 +0100
+Subject: [PATCH] Prevent mobs from interacting with reinforced blocks
+
+
+diff --git a/src/main/java/vg/civcraft/mc/citadel/listener/EntityListener.java b/src/main/java/vg/civcraft/mc/citadel/listener/EntityListener.java
+index 76d03df1d9251a17e762bbafd6b12f3862472de4..dc7046c2cdf00da0278de430cedfe4a8e7796900 100644
+--- a/src/main/java/vg/civcraft/mc/citadel/listener/EntityListener.java
++++ b/src/main/java/vg/civcraft/mc/citadel/listener/EntityListener.java
+@@ -44,6 +44,11 @@ import vg.civcraft.mc.namelayer.NameAPI;
+ import vg.civcraft.mc.namelayer.NameLayerPlugin;
+ import vg.civcraft.mc.namelayer.database.GroupManagerDao;
+ 
++// CivPatched Start
++import org.bukkit.event.entity.EntityInteractEvent;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ public class EntityListener implements Listener {
+ 
+ 	protected GroupManager gm = NameAPI.getGroupManager();
+@@ -60,6 +65,18 @@ public class EntityListener implements Listener {
+ 		}
+ 	}
+ 
++	// CivPatched Start
++	/** Prevents pigmen and villagers from opening doors. */
++	@EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
++	public void onEntityBlockInteraction(
++			final @NotNull EntityInteractEvent event
++	) {
++		if (ReinforcementLogic.getReinforcementProtecting(event.getBlock()) != null) {
++			event.setCancelled(true);
++		}
++	}
++	// CivPatched End
++
+ 	// For some ungodly reason, when you break a block below a block with gravity, it spawns a FallingBlock entity
+ 	// that then attempts to change the block. To prevent this change from ticking damage and creating a ghost block
+ 	// the entity needs to have its gravity disabled so it immediately lands.

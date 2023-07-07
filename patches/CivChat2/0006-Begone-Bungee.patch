@@ -1,0 +1,98 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexander <protonull@protonmail.com>
+Date: Fri, 7 Jul 2023 01:34:14 +0100
+Subject: [PATCH] Begone, Bungee
+
+
+diff --git a/src/main/java/vg/civcraft/mc/civchat2/CivChat2Manager.java b/src/main/java/vg/civcraft/mc/civchat2/CivChat2Manager.java
+index af755a6f00fea7a6ea9af7d5633c3d6ec4910d42..a47b5df704c67324e82d591bdc87320d25af9fc6 100644
+--- a/src/main/java/vg/civcraft/mc/civchat2/CivChat2Manager.java
++++ b/src/main/java/vg/civcraft/mc/civchat2/CivChat2Manager.java
+@@ -2,7 +2,6 @@ package vg.civcraft.mc.civchat2;
+ 
+ import com.google.common.base.Preconditions;
+ import com.google.common.base.Strings;
+-import java.awt.Color;
+ import java.util.ArrayList;
+ import java.util.HashMap;
+ import java.util.HashSet;
+@@ -10,7 +9,6 @@ import java.util.List;
+ import java.util.Map;
+ import java.util.Set;
+ import java.util.UUID;
+-import net.md_5.bungee.api.chat.TextComponent;
+ import org.bukkit.Bukkit;
+ import org.bukkit.ChatColor;
+ import org.bukkit.Location;
+@@ -29,6 +27,13 @@ import vg.civcraft.mc.namelayer.NameAPI;
+ import vg.civcraft.mc.namelayer.group.Group;
+ import vg.civcraft.mc.namelayer.permission.PermissionType;
+ 
++// CivPatched Start
++import net.kyori.adventure.text.Component;
++import net.kyori.adventure.text.format.NamedTextColor;
++import net.kyori.adventure.text.format.TextColor;
++import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
++// CivPatched End
++
+ public class CivChat2Manager {
+ 
+ 	private CivChat2Config config;
+@@ -222,23 +227,29 @@ public class CivChat2Manager {
+ 				if (receiver.getWorld().equals(sender.getWorld())) {
+ 					double receiverDistance = location.distance(receiver.getLocation());
+ 					if (receiverDistance <= range) {
+-						net.md_5.bungee.api.ChatColor newColor;
++						TextColor newColor; // CivPatched
+ 						if (config.useDynamicRangeColoring()) {
+ 							int comp = (int) (255 - (128.0 * receiverDistance) / range);
+-							newColor = net.md_5.bungee.api.ChatColor.of(new Color(comp, comp, comp));
++							newColor = TextColor.color(comp, comp, comp); // CivPatched
+ 						}
+ 						else {
+-							newColor = net.md_5.bungee.api.ChatColor.of(config.getColorAtDistance(receiverDistance));
++							newColor = TextColor.fromCSSHexString(config.getColorAtDistance(receiverDistance)); // CivPatched
++						}
++						// CivPatched Start
++						if (newColor == null) {
++							newColor = NamedTextColor.NAMES.valueOr(this.defaultColor, NamedTextColor.WHITE);
+ 						}
+-						newColor = newColor != null ? newColor : net.md_5.bungee.api.ChatColor.of(defaultColor);
++						// CivPatched End
+ 
+ 						String senderName = customNames.containsKey(sender.getUniqueId())
+ 								? customNames.get(sender.getUniqueId())
+ 								: sender.getDisplayName();
+-						TextComponent text = new TextComponent(String.format(messageFormat, senderName + ChatColor.RESET, ""));
+-						TextComponent msgPart = new TextComponent(chatMessage);
+-						msgPart.setColor(newColor);
+-						receiver.spigot().sendMessage(text, msgPart);
++						// CivPatched Start
++						receiver.sendMessage(Component.text().append(
++								LegacyComponentSerializer.legacySection().deserialize(String.format(messageFormat, senderName, "")),
++								Component.text(chatMessage, newColor)
++						));
++						// CivPatched End
+ 						receivers.add(receiver.getName());
+ 					}
+ 				}
+diff --git a/src/main/java/vg/civcraft/mc/civchat2/commands/WhoAmI.java b/src/main/java/vg/civcraft/mc/civchat2/commands/WhoAmI.java
+index c1b4eebddef3220836a3ae5bb582290df2a118ab..d064db658bb9b443f03f626632341fd5078034b1 100644
+--- a/src/main/java/vg/civcraft/mc/civchat2/commands/WhoAmI.java
++++ b/src/main/java/vg/civcraft/mc/civchat2/commands/WhoAmI.java
+@@ -4,11 +4,14 @@ import co.aikar.commands.BaseCommand;
+ import co.aikar.commands.annotation.CommandAlias;
+ import co.aikar.commands.annotation.Description;
+ import com.google.common.base.Strings;
+-import net.md_5.bungee.api.ChatColor;
+ import org.bukkit.command.CommandSender;
+ import org.bukkit.entity.Player;
+ import vg.civcraft.mc.namelayer.NameAPI;
+ 
++// CivPatched Start
++import org.bukkit.ChatColor;
++// CivPatched End
++
+ public class WhoAmI extends BaseCommand {
+ 
+ 	@CommandAlias("whoami")
