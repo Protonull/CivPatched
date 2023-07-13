@@ -3,6 +3,23 @@ From: Alexander <protonull@protonmail.com>
 Date: Sat, 1 Jul 2023 21:17:35 +0100
 Subject: [PATCH] Update pdc and nbt packages
 
+NBTSerialization:
+- Removed fromMap().
+- Removed fromList().
+- Deprecated fromPDC().
+
+NBTCompound:
+- Updated setUUID().
+- Added getList().
+- Added setList().
+
+Addded NBTList.
+
+PersistentDataContainerExtensions:
+- Added asNBT().
+
+NBTTests:
+- Removed testMapDeserialisation().
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/nbt/NBTSerialization.java b/src/main/java/vg/civcraft/mc/civmodcore/nbt/NBTSerialization.java
 index e7e74c032a908afa4fcc8d9ff57976b8cd0596f1..050032509d28b50b81a256712f5362d72ab7c860 100644

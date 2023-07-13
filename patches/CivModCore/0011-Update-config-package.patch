@@ -1,15 +1,16 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Mon, 5 Jun 2023 05:45:11 +0100
-Subject: [PATCH] Update ConfigHelper
+Date: Fri, 7 Jul 2023 15:58:13 +0100
+Subject: [PATCH] Update config package
 
-Allow ItemMap to parse serialised items.
+ConfigHelper:
+- Allows parseItemMap() to parse serialised items.
+- Fully upgraded parseItemMapDirectly().
+- Added parseEnchants().
+- Renamed getSection() to getOrCreateSection().
 
-Add parseEnchants utils.
-
-Vastly upgrade parseItemMapDirectly.
-
-Rename getSection to getOrCreateSection and have it not use an unknown default.
+ConfigParser:
+- Added reload() convenience method.
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java b/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigHelper.java
 index 9f26a8331e60bb40d32445f63eaca95c22d80e84..57c94185a6a42b507c442cc839ee278fb3aa33b8 100644
@@ -409,3 +410,37 @@ index 9f26a8331e60bb40d32445f63eaca95c22d80e84..57c94185a6a42b507c442cc839ee278f
  				}
  				int duration = configEffect.getInt("duration", 200);
  				int amplifier = configEffect.getInt("amplifier", 0);
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigParser.java b/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigParser.java
+index 901f7f07aa7a123ff106d26f34a505ec45ed2cf2..000032dcb738032278eef8f9357aad36c52b3810 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigParser.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/config/ConfigParser.java
+@@ -6,6 +6,10 @@ import org.bukkit.configuration.ConfigurationSection;
+ import org.bukkit.configuration.file.FileConfiguration;
+ import org.bukkit.plugin.Plugin;
+ 
++// CivPatched Start
++import org.bukkit.plugin.java.JavaPlugin;
++// CivPatched End
++
+ /**
+  * This is a config parsing class intended to make handling configs a little easier, and automatically parse commonly
+  * seen things within civ configs.
+@@ -67,6 +71,18 @@ public abstract class ConfigParser {
+ 		this.logReplies = false;
+ 	}
+ 
++	// CivPatched Start
++	/**
++	 * You should override {@link JavaPlugin#reloadConfig()} and call this AFTER calling super.reloadConfig()!
++	 *
++	 * @return Returns the result from {@link #parse()}.
++	 */
++	public boolean reload() {
++		reset();
++		return parse();
++	}
++	// CivPatched End
++
+ 	// ------------------------------------------------------------ //
+ 	// Getters
+ 	// ------------------------------------------------------------ //

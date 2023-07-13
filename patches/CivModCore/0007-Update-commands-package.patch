@@ -1,47 +1,107 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Wed, 14 Jun 2023 03:54:11 +0100
+Date: Wed, 12 Jul 2023 22:35:31 +0100
 Subject: [PATCH] Update commands package
 
-Aikar commands need to be registered last otherwise custom contexts (handlers for non-String paramters) wont be found and the command registration will fail.
+CivModCorePlugin:
+- Initialises PlayerTracker.
 
-Also, add custom world and console sender contexts.
+CommandManager:
+- Removed allMaterials.
+- Removed itemMaterials.
+- Removed autocompletePlayerNames.
+- Updated init(): register contexts, then completions, then commands.
+- Updated registerCompletions().
+- Updated registerContexts().
 
-Make non, materials, and itemMaterials static completions.
+Added CommandsUtils.
 
-diff --git a/src/main/java/vg/civcraft/mc/civmodcore/commands/CommandManager.java b/src/main/java/vg/civcraft/mc/civmodcore/commands/CommandManager.java
-index 9ddec69108166c28d097ddf42b4972a92e1dd78a..1b6e43591d5c0d6a2936e0fdb651cdb9859c2478 100644
---- a/src/main/java/vg/civcraft/mc/civmodcore/commands/CommandManager.java
-+++ b/src/main/java/vg/civcraft/mc/civmodcore/commands/CommandManager.java
-@@ -28,16 +28,19 @@ import org.bukkit.plugin.Plugin;
- import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
- import vg.civcraft.mc.civmodcore.utilities.CivLogger;
+Added PlayerTracker.
+
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java b/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java
+index ad2218b9b629766fae137d9563a0c650d098c6ae..726f1cbecef6a98ef4d4c68298aac0cf5e9050e4 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java
+@@ -27,6 +27,10 @@ import vg.civcraft.mc.civmodcore.world.locations.chunkmeta.stat.LoadStatisticMan
+ import vg.civcraft.mc.civmodcore.world.locations.global.CMCWorldDAO;
+ import vg.civcraft.mc.civmodcore.world.locations.global.WorldIDManager;
  
 +// CivPatched Start
-+import co.aikar.commands.InvalidCommandArgument;
-+import co.aikar.commands.MinecraftMessageKeys;
-+import org.bukkit.World;
-+import org.bukkit.command.ConsoleCommandSender;
-+import vg.civcraft.mc.civmodcore.utilities.UuidUtils;
++import vg.civcraft.mc.civmodcore.players.PlayerTracker;
 +// CivPatched End
 +
+ public final class CivModCorePlugin extends ACivMod {
+ 
+ 	private static CivModCorePlugin instance;
+@@ -79,6 +83,7 @@ public final class CivModCorePlugin extends ACivMod {
+ 		this.commands.registerCommand(new ConfigCommand());
+ 		this.commands.registerCommand(new StatCommand());
+ 		// Load APIs
++		PlayerTracker.init(this); // CivPatched
+ 		EnchantUtils.loadEnchantAbbreviations(this);
+ 		MoreTags.init();
+ 		SpawnEggUtils.init();
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/commands/CommandManager.java b/src/main/java/vg/civcraft/mc/civmodcore/commands/CommandManager.java
+index 9ddec69108166c28d097ddf42b4972a92e1dd78a..fc290bf72fbc02b320e57ac3f4a0e229562d73a0 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/commands/CommandManager.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/commands/CommandManager.java
+@@ -12,35 +12,17 @@ import com.google.common.base.Strings;
+ import java.lang.reflect.Method;
+ import java.lang.reflect.Modifier;
+ import java.util.*;
+-import java.util.concurrent.ConcurrentSkipListSet;
+ import java.util.logging.Level;
+ import javax.annotation.Nonnull;
+ 
+ import org.apache.commons.lang3.reflect.FieldUtils;
+-import org.bukkit.Bukkit;
+-import org.bukkit.Material;
+-import org.bukkit.OfflinePlayer;
+-import org.bukkit.event.EventHandler;
+-import org.bukkit.event.EventPriority;
+-import org.bukkit.event.Listener;
+-import org.bukkit.event.player.PlayerLoginEvent;
+ import org.bukkit.plugin.Plugin;
+-import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
+ import vg.civcraft.mc.civmodcore.utilities.CivLogger;
+ 
  /**
   * Command registration class wrapper around {@link BukkitCommandManager}.
   */
  public class CommandManager extends BukkitCommandManager {
- 
+-
 -	// allMaterials and itemMaterials won't change over a run, so autocomplete lists can be prebuilt globally.
 -	private final static List<String> allMaterials = Arrays.stream(Material.values()).map(Enum::name).toList();
 -
 -	private final static List<String> itemMaterials = Arrays.stream(Material.values()).filter(ItemUtils::isValidItemMaterial).map(Enum::name).toList();
 -
- 	// Track players to offer quick completion where necessary.
- 	private final Set<String> autocompletePlayerNames = new ConcurrentSkipListSet<>();
+-	// Track players to offer quick completion where necessary.
+-	private final Set<String> autocompletePlayerNames = new ConcurrentSkipListSet<>();
+-
+ 	private final CivLogger logger;
  
-@@ -76,9 +79,9 @@ public class CommandManager extends BukkitCommandManager {
- 			}
- 		}, plugin);
- 
+ 	/**
+@@ -59,26 +41,9 @@ public class CommandManager extends BukkitCommandManager {
+ 	 * {@link #unregisterCompletions()}, otherwise there may be issues.
+ 	 */
+ 	public final void init() {
+-		// Prepare our list with player names on init.
+-		// Load all known players once on initialization, then use a loginlistener to update the existing name set.
+-		Arrays.stream(Bukkit.getOfflinePlayers()).map(OfflinePlayer::getName).forEach(autocompletePlayerNames::add);
+-		/*TODO
+-		this may be better solved with a single global listener, but the implications would've needed some checks.
+-		This is pretty cheap and works fast.
+-		 */
+-
+-		Bukkit.getPluginManager().registerEvents(new Listener() {
+-			// Players joining should be added to our list, just in case they are new.
+-			@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+-			public void onLogin(PlayerLoginEvent ev) {
+-				// For autocomplete we wil update the listeners.
+-				autocompletePlayerNames.add(ev.getPlayer().getName());
+-			}
+-		}, plugin);
+-
 -		registerCommands();
 +		registerContexts(getCommandContexts()); // CivPatched
  		registerCompletions(getCommandCompletions());
@@ -50,56 +110,205 @@ index 9ddec69108166c28d097ddf42b4972a92e1dd78a..1b6e43591d5c0d6a2936e0fdb651cdb9
  	}
  
  	/**
-@@ -97,13 +100,15 @@ public class CommandManager extends BukkitCommandManager {
+@@ -97,13 +62,12 @@ public class CommandManager extends BukkitCommandManager {
  	 *                    {@link #getCommandCompletions()}.
  	 */
  	public void registerCompletions(@Nonnull final CommandCompletions<BukkitCommandCompletionContext> completions) {
 -		completions.registerCompletion("none", (context) -> Collections.emptyList());
-+		completions.registerStaticCompletion("none", Collections.emptyList()); // CivPatched: Make static
- 		// Completion lists are copied so outer code can modify the lists without breaking our inner contracts,
- 		// namely that all players should be searchable by completion.
- 		// Using Collections.immutableList is an alternative, but both variants aren't expensive.
- 		completions.registerAsyncCompletion("allplayers", (context) -> new ArrayList<>(autocompletePlayerNames));
+-		// Completion lists are copied so outer code can modify the lists without breaking our inner contracts,
+-		// namely that all players should be searchable by completion.
+-		// Using Collections.immutableList is an alternative, but both variants aren't expensive.
+-		completions.registerAsyncCompletion("allplayers", (context) -> new ArrayList<>(autocompletePlayerNames));
 -		completions.registerAsyncCompletion("materials", (context) -> new ArrayList<>(allMaterials));
 -		completions.registerAsyncCompletion("itemMaterials", (context) -> new ArrayList<>(itemMaterials));
-+		// CivPatched Start: Make static
-+		completions.registerStaticCompletion("materials", Arrays.stream(Material.values()).map(Enum::name).toList());
-+		completions.registerStaticCompletion("itemMaterials", Arrays.stream(Material.values()).filter(ItemUtils::isValidItemMaterial).map(Enum::name).toList());
++		// CivPatched Start
++		CommandsUtils.registerNoneCompletion(completions);
++		CommandsUtils.registerKnownPlayersCompletion(completions);
++		CommandsUtils.registerMaterialCompletions(completions);
++		CommandsUtils.registerItemCompletions(completions);
 +		// CivPatched End
  	}
  
  	/**
-@@ -114,6 +119,33 @@ public class CommandManager extends BukkitCommandManager {
+@@ -114,6 +78,10 @@ public class CommandManager extends BukkitCommandManager {
  	 *                 {@link #getCommandContexts()}.
  	 */
  	public void registerContexts(@Nonnull final CommandContexts<BukkitCommandExecutionContext> contexts) {
 +		// CivPatched Start
-+		contexts.registerIssuerAwareContext(ConsoleCommandSender.class, (context) -> {
-+			if (context.getSender() instanceof final ConsoleCommandSender console) {
-+				return console;
-+			}
-+			throw new InvalidCommandArgument("Command can only be called from console!", false);
-+		});
-+		// Override ACF Bukkit's default behaviour of falling back to the sender's world.
-+		contexts.registerContext(World.class, (context) -> {
-+			final String firstArg = context.getFirstArg();
-+			final World world;
-+			// Test UUID
-+			final UUID worldUUID = UuidUtils.fromString(firstArg);
-+			if (worldUUID != null) {
-+				world = Bukkit.getWorld(worldUUID);
-+			}
-+			else {
-+				// Otherwise, get from name
-+				world = Bukkit.getWorld(firstArg);
-+			}
-+			if (world != null) {
-+				context.popFirstArg();
-+				return world;
-+			}
-+			throw new InvalidCommandArgument(MinecraftMessageKeys.INVALID_WORLD);
-+		});
++		CommandsUtils.registerConsoleSenderContext(contexts);
++		CommandsUtils.replaceWorldContext(contexts);
 +		// CivPatched End
  	}
  
  	/**
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/commands/CommandsUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/commands/CommandsUtils.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..948cdc7287c5b7265947ecaf22b6d81f0bee87dc
+--- /dev/null
++++ b/src/main/java/vg/civcraft/mc/civmodcore/commands/CommandsUtils.java
+@@ -0,0 +1,113 @@
++package vg.civcraft.mc.civmodcore.commands;
++
++import co.aikar.commands.BukkitCommandContexts;
++import co.aikar.commands.CommandCompletions;
++import co.aikar.commands.CommandContexts;
++import co.aikar.commands.InvalidCommandArgument;
++import co.aikar.commands.MinecraftMessageKeys;
++import java.util.Arrays;
++import java.util.List;
++import java.util.UUID;
++import lombok.experimental.UtilityClass;
++import org.bukkit.Bukkit;
++import org.bukkit.Material;
++import org.bukkit.World;
++import org.bukkit.command.ConsoleCommandSender;
++import org.jetbrains.annotations.NotNull;
++import vg.civcraft.mc.civmodcore.inventory.items.ItemUtils;
++import vg.civcraft.mc.civmodcore.players.PlayerTracker;
++import vg.civcraft.mc.civmodcore.utilities.UuidUtils;
++
++/**
++ * @author CivPatched
++ */
++@UtilityClass
++public class CommandsUtils {
++    /**
++     * Aikar commands permit the "@nothing" completion, but that's kinda awkward. This adds an equivalent "@none".
++     */
++    public void registerNoneCompletion(
++            final @NotNull CommandCompletions<?> completions
++    ) {
++        completions.registerStaticCompletion(
++                "none",
++                List.of()
++        );
++    }
++
++    /**
++     * Completion for all player names known to the server.
++     */
++    public void registerKnownPlayersCompletion(
++            final @NotNull CommandCompletions<?> completions
++    ) {
++        completions.registerCompletion(
++                "allplayers",
++                (context) -> PlayerTracker.getPlayerNames()
++        );
++    }
++
++    /**
++     * Completion for all materials.
++     */
++    public void registerMaterialCompletions(
++            final @NotNull CommandCompletions<?> completions
++    ) {
++        completions.registerStaticCompletion(
++                "materials",
++                Arrays.stream(Material.values())
++                        .map(Enum::name)
++                        .toList()
++        );
++    }
++
++    /**
++     * Completion for item materials, excluding air.
++     */
++    public void registerItemCompletions(
++            final @NotNull CommandCompletions<?> completions
++    ) {
++        completions.registerStaticCompletion(
++                "itemMaterials",
++                Arrays.stream(Material.values())
++                        .filter(ItemUtils::isValidItemMaterial)
++                        .map(Enum::name)
++                        .toList()
++        );
++    }
++
++    /**
++     * Registers a context that requires the command-sender to be the console.
++     */
++    public void registerConsoleSenderContext(
++            final @NotNull CommandContexts<?> contexts
++    ) {
++        contexts.registerIssuerAwareContext(ConsoleCommandSender.class, (context) -> {
++            if (context.getIssuer().getIssuer() instanceof final ConsoleCommandSender console) {
++                return console;
++            }
++            throw new InvalidCommandArgument("Command can only be called from console!", false);
++        });
++    }
++
++    /**
++     * This will replace the default {@link World} context that {@link BukkitCommandContexts} registers since that
++     * defaults back to the command sender's world if the entered world cannot be found. This instead removes that
++     * behaviour, throwing an error if the world cannot be found.
++     */
++    public void replaceWorldContext(
++            final @NotNull CommandContexts<?> contexts
++    ) {
++        contexts.registerContext(World.class, (context) -> {
++            final String raw = context.popFirstArg();
++            final UUID worldUUID = UuidUtils.fromString(raw);
++            final World world = worldUUID != null
++                    ? Bukkit.getWorld(worldUUID)
++                    : Bukkit.getWorld(raw);
++            if (world == null) {
++                throw new InvalidCommandArgument(MinecraftMessageKeys.INVALID_WORLD);
++            }
++            return world;
++        });
++    }
++}
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/players/PlayerTracker.java b/src/main/java/vg/civcraft/mc/civmodcore/players/PlayerTracker.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..79189afd5e18db0185f945c0bc259d3d9c996232
+--- /dev/null
++++ b/src/main/java/vg/civcraft/mc/civmodcore/players/PlayerTracker.java
+@@ -0,0 +1,46 @@
++package vg.civcraft.mc.civmodcore.players;
++
++import co.aikar.commands.CommandCompletions;
++import java.util.Collections;
++import java.util.Set;
++import java.util.concurrent.ConcurrentSkipListSet;
++import lombok.experimental.UtilityClass;
++import org.bukkit.Bukkit;
++import org.bukkit.OfflinePlayer;
++import org.bukkit.event.EventHandler;
++import org.bukkit.event.EventPriority;
++import org.bukkit.event.Listener;
++import org.bukkit.event.player.PlayerLoginEvent;
++import org.jetbrains.annotations.NotNull;
++import vg.civcraft.mc.civmodcore.CivModCorePlugin;
++import vg.civcraft.mc.civmodcore.commands.CommandsUtils;
++
++/**
++ * This class was made for {@link CommandsUtils#registerKnownPlayersCompletion(CommandCompletions)}, but it can be
++ * useful in other cases, so it's here.
++ *
++ * @author CivPatched
++ */
++@UtilityClass
++public class PlayerTracker {
++    private final Set<String> playerNames = new ConcurrentSkipListSet<>();
++    private final Set<String> unmodifiablePlayerNames = Collections.unmodifiableSet(playerNames);
++
++    public @NotNull Set<@NotNull String> getPlayerNames() {
++        return unmodifiablePlayerNames;
++    }
++
++    public void init(
++            final @NotNull CivModCorePlugin plugin
++    ) {
++        for (final OfflinePlayer player : Bukkit.getOfflinePlayers()) {
++            playerNames.add(player.getName());
++        }
++        plugin.registerListener(new Listener() {
++            @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
++            public void onLogin(final PlayerLoginEvent event) {
++                playerNames.add(event.getPlayer().getName());
++            }
++        });
++    }
++}

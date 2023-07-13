@@ -3,30 +3,47 @@ From: Alexander <protonull@protonmail.com>
 Date: Fri, 7 Jul 2023 02:08:05 +0100
 Subject: [PATCH] Update DAO
 
-Entirely overhaul database migrations.
+CivModCorePlugin:
+- Registers DefaultDatasource as a config class.
 
-Allow ManagedDatasource to be constructed with a HikariConfig.
+ConfigHelper:
+- Added getManagedDatasource()
 
-Add DefaultDatasource, which allows other plugins to use CivModCore's database.
+ConnectionPool:
+- Added HikariConfig-based constructor.
+- Deprecated details-based constructor.
+- Deprecated getCredentials().
 
-Update MoreMapUtils.attemptGet.
+DatabaseCredentials:
+- Updated serialize().
+- Updated deserialize().
+- Added generateConfig().
+
+Overhauled DatabaseMigration.
+
+Added DefaultDatasource.
+
+ManagedDatasource:
+-
+- Added HikariConfig-based construc().
+- Added DatabaseMigration-based registerMigration().
+- Deprecated other registerMigration()'s.
+- Updated doMigrations().
+- Removed Migration record.
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java b/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java
-index ad2218b9b629766fae137d9563a0c650d098c6ae..ca968415eab3bd47c51277944663e88bccb829f2 100644
+index 726f1cbecef6a98ef4d4c68298aac0cf5e9050e4..aa2cf12ec240de99323df763980a78091bad010d 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/CivModCorePlugin.java
-@@ -27,6 +27,10 @@ import vg.civcraft.mc.civmodcore.world.locations.chunkmeta.stat.LoadStatisticMan
- import vg.civcraft.mc.civmodcore.world.locations.global.CMCWorldDAO;
+@@ -28,6 +28,7 @@ import vg.civcraft.mc.civmodcore.world.locations.global.CMCWorldDAO;
  import vg.civcraft.mc.civmodcore.world.locations.global.WorldIDManager;
  
-+// CivPatched Start
+ // CivPatched Start
 +import vg.civcraft.mc.civmodcore.dao.DefaultDatasource;
-+// CivPatched End
-+
- public final class CivModCorePlugin extends ACivMod {
+ import vg.civcraft.mc.civmodcore.players.PlayerTracker;
+ // CivPatched End
  
- 	private static CivModCorePlugin instance;
-@@ -42,6 +46,7 @@ public final class CivModCorePlugin extends ACivMod {
+@@ -46,6 +47,7 @@ public final class CivModCorePlugin extends ACivMod {
  	public void onEnable() {
  		instance = this;
  		registerConfigClass(DatabaseCredentials.class);

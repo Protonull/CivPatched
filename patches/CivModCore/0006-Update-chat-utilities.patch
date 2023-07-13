@@ -3,17 +3,41 @@ From: Alexander <protonull@protonmail.com>
 Date: Fri, 16 Jun 2023 00:56:37 +0100
 Subject: [PATCH] Update chat utilities
 
-That deprecation is a lie! It's an accidental leftover from move to Kyori.
+ChatUtils:
+- Removed fromRGB().
+- Removed collapseColour().
+- Undeprecated isNullOrEmpty().
+- Added parseComponent().
+- Removed NORMALISED_DECORATION_MAP.
+- Removed isNormalisedComponent().
+- Removed normaliseComponent().
+- Updated stringify().
+- Removed upgradeLegacyString().
+- Added displayComponent().
+- Updated/Removed newComponent().
+- Deleted cloneComponent().
+- Updated areComponentsEqual().
+- Updated createItemHoverEvent().
 
-Also, add parseComponent.
+Overhauled Componentify.
 
-Update createItemHoverEvent and deprecate asTranslatable.
+EntityUtils:
+- Removed asTranslatable().
 
-Upgrade Componentify.
+EnchantUtils:
+- Removed asTranslatable().
+- Updated getEnchantNiceName().
 
-The way components were made and appended to was really inefficient.
+ItemUtils:
+- Removed asTranslatable().
+- Updated getItemName().
 
-Remove fromRGB, collapseColour, isNormalisedComponent, normaliseComponent, upgradeLegacyString, newComponent, and cloneComponent.
+MaterialUtils:
+- Removed asTranslatable().
+
+PotionUtils:
+- Removed asTranslatable().
+- Updated getEffectNiceName().
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/chat/ChatUtils.java
 index c4f678ad5fdb2a2cb917186b93f098f7d9d037c0..40429e80e23d43d1caf50ad272a27251e9b1af70 100644

@@ -1,30 +1,207 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Wed, 14 Jun 2023 04:13:29 +0100
+Date: Thu, 13 Jul 2023 04:55:15 +0100
 Subject: [PATCH] Update utility package
 
-Add ISerializer.
+Added AmountMap.
 
-Add DeprecationUtils to help better track usages of deprecated functions.
+CivLogger:
+- Added inject().
 
-Add JavaHelpers, some utilities that really rather be part of Java itself.
+DependencyGlue:
+- Updated getDependencyInstance().
+- Updated isDependencyEnabled().
+- Updated registerGlue().
+- Privatised INTERNAL_onServerLoad().
+- Privatised INTERNAL_onPluginEnable().
+- Privatised INTERNAL_onPluginDisable().
 
-Add MoreEnumUtils.
+Added DeprecationUtils.
 
-Add MoreIterationUtils.
+Added IndexUtils.
 
-Add computeAll and mapEntry to MoreMapUtils, and redo attemptGets.
+Added JavaHelpers.
 
-Add getCharStrings to MoreStringUtils.
+KeyedUtils:
+- Added toStrings().
+- Added dittoKey().
 
-Add mapIfPresent and nonNullMapper to NullUtils.
+Added MoreEnumUtils.
 
-Add inject to CivLogger, which allows you to create a Logger and modify the logged messages in some way.
+Added MoreIterationUtils.
 
-Add getMissing to MoreIterationUtils.
+MoreMapUtils:
+- Overhauled attemptGet().
+- Added computeAll().
+- Added mapEntry().
 
-Updated DependencyGlue, making getDependencyInstance non-nullable, and adding an optional-returning dependencyInstance method.
+MoreMath:
+- Added isWithinBounds().
 
+MoreStringUtils:
+- Added getCharStrings().
+
+NullUtils:
+- Added mapIfPresent().
+- Added nonNullMapper().
+
+Added Encoder.
+
+TextTests:
+- Added testSplitEquality().
+
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/AmountMap.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/AmountMap.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..50611ddc6cd6a8198b44eb37b1287023889ea4e7
+--- /dev/null
++++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/AmountMap.java
+@@ -0,0 +1,145 @@
++package vg.civcraft.mc.civmodcore.utilities;
++
++import it.unimi.dsi.fastutil.objects.Object2IntArrayMap;
++import it.unimi.dsi.fastutil.objects.Object2IntMap;
++import it.unimi.dsi.fastutil.objects.Object2IntMaps;
++import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
++import java.util.Objects;
++import java.util.function.IntUnaryOperator;
++import org.apache.commons.lang3.NotImplementedException;
++import org.jetbrains.annotations.NotNull;
++
++/**
++ * An attempt to fix the ever-present problem of tracking amounts. There are two default implementations:
++ * {@link ArrayMap} and {@link HashMap}. Be aware that this class doesn't support key preprocessing, so you <i>will</i>
++ * need to manually call {@link org.bukkit.inventory.ItemStack#asOne()} for example if you intend to use items.
++ *
++ * @author CivPatched
++ */
++public interface AmountMap<T> extends Object2IntMap<T> {
++	/**
++	 * Removes "empties", ie: keys with non-positive amounts.
++	 */
++	default void removeEmpties() {
++		values().removeIf((amount) -> amount <= 0);
++	}
++
++	/**
++	 * @return Returns the total amount of things stored in this map.
++	 */
++	default int getTotalAmount() {
++		int amount = 0;
++		for (final int currentAmount : values()) {
++			if (currentAmount > 0) {
++				amount += currentAmount;
++			}
++		}
++		return amount;
++	}
++
++	/**
++	 * Computes the amount for a certain key. If the computer returns a non-positive amount, the key is considered
++	 * "empty" and will be removed.
++	 *
++	 * @param key The key to compute the amount of.
++	 * @param computer The computer method/lambda to call.
++	 * @return Returns the new amount value, or zero if "empty".
++	 */
++	default int computeAmount(
++            final T key,
++            final @NotNull IntUnaryOperator computer
++    ) {
++		return computeInt(key, (final T _key, Integer amount) -> {
++			amount = computer.applyAsInt(amount == null ? defaultReturnValue() : amount);
++			return amount <= 0 ? null : amount;
++		});
++	}
++
++	/**
++	 * Convenience method to add a particular amount to a given key.
++	 *
++	 * @param key The key to add to.
++	 * @param amount The amount to add, which can be null.
++	 * @return Returns the new amount value, or zero if "empty".
++	 */
++	default int changeAmountBy(
++            final T key,
++            final int amount
++    ) {
++		return computeAmount(key, (currentAmount) -> currentAmount + amount);
++	}
++
++	/**
++	 * Convenience function to increase the amount of a key by one.
++	 */
++	default int increment(
++			final T key
++	) {
++		return computeAmount(key, INCREMENT);
++	}
++
++	/**
++	 * Convenience function to decrease the amount of a key by one.
++	 */
++	default int decrement(
++			final T key
++	) {
++		return computeAmount(key, DECREMENT);
++	}
++
++	/**
++	 * @deprecated Changing the default value from 0 in an amount map is not supported!
++	 */
++	@Deprecated
++	@Override
++	default void defaultReturnValue(final int returnValue) {
++		throw new NotImplementedException("Please don't try to change the default return value!");
++	}
++
++	// ------------------------------------------------------------
++	// Default Implementations
++	// ------------------------------------------------------------
++
++	/**
++	 * Predefined increment method useful for {@link #computeAmount(Object, IntUnaryOperator)}.
++	 */
++	IntUnaryOperator INCREMENT = (amount) -> amount + 1;
++
++	/**
++	 * Predefined decrement method useful for {@link #computeAmount(Object, IntUnaryOperator)}.
++	 */
++	IntUnaryOperator DECREMENT = (amount) -> amount - 1;
++
++	/**
++	 * Array-map implementation class for {@link AmountMap}.
++	 */
++	class ArrayMap<T> extends Object2IntArrayMap<T> implements AmountMap<T> {
++		public ArrayMap() {
++			this(16);
++		}
++		public ArrayMap(final int size) {
++			super(size);
++		}
++	}
++
++	/**
++	 * Hash-map implementation class for {@link AmountMap}.
++	 */
++	class HashMap<T> extends Object2IntOpenHashMap<T> implements AmountMap<T> {
++		public HashMap() {
++			this(16);
++		}
++		public HashMap(final int size) {
++			super(size);
++		}
++	}
++
++	/**
++	 * Wrapper class to make an {@link AmountMap} unmodifiable.
++	 */
++	class Unmodifiable<T> extends Object2IntMaps.UnmodifiableMap<T> implements AmountMap<T> {
++		public Unmodifiable(final @NotNull AmountMap<T> map) {
++			super(Objects.requireNonNull(map));
++		}
++	}
++}
+\ No newline at end of file
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/CivLogger.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/CivLogger.java
 index 335f7b2d5f528999872a2ac55fc19ffc780de202..b1ff9da40ea3b317ab9468ad52c1650121646599 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/utilities/CivLogger.java
@@ -152,10 +329,10 @@ index c94ee254c64b875443c027b70360ffbddc39dad3..b9ecde2334e474bdc90766ef494cbbd1
  			onDependencyDisabled();
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/DeprecationUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/DeprecationUtils.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..7a4b6f1bdf0691b0abab5900bd74000e2d7510f1
+index 0000000000000000000000000000000000000000..89729b9edbb19a52ad70fb0ecfc0db06a9a35611
 --- /dev/null
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/DeprecationUtils.java
-@@ -0,0 +1,39 @@
+@@ -0,0 +1,37 @@
 +package vg.civcraft.mc.civmodcore.utilities;
 +
 +import java.util.logging.Level;
@@ -170,7 +347,6 @@ index 0000000000000000000000000000000000000000..7a4b6f1bdf0691b0abab5900bd74000e
 + */
 +@UtilityClass
 +public class DeprecationUtils {
-+
 +    private final Logger LOGGER = Bukkit.getLogger();
 +
 +    /**
@@ -193,17 +369,84 @@ index 0000000000000000000000000000000000000000..7a4b6f1bdf0691b0abab5900bd74000e
 +    public static class DeprecationException extends RuntimeException {
 +
 +    }
-+
 +}
 \ No newline at end of file
-diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/JavaHelpers.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/JavaHelpers.java
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/IndexUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/IndexUtils.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..0efd7387edd4e60705e719f37ac0fc86671e0dcd
+index 0000000000000000000000000000000000000000..d999e001dd3711390a77bcc54a5520bc41e97068
 --- /dev/null
-+++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/JavaHelpers.java
-@@ -0,0 +1,23 @@
++++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/IndexUtils.java
+@@ -0,0 +1,60 @@
 +package vg.civcraft.mc.civmodcore.utilities;
 +
++import com.google.common.collect.BiMap;
++import com.google.common.collect.HashBiMap;
++import java.util.ArrayList;
++import java.util.Collection;
++import java.util.Set;
++import java.util.function.Function;
++import lombok.experimental.UtilityClass;
++import net.kyori.adventure.util.Index;
++import org.jetbrains.annotations.NotNull;
++
++/**
++ * @author CivPatched
++ */
++@UtilityClass
++public class IndexUtils {
++    /**
++     * Creates a new index based on a given index, including the given values.
++     */
++    public <K, E> @NotNull Index<K, E> with(
++            final @NotNull Index<K, E> index,
++            final @NotNull Function<@NotNull E, @NotNull K> keyGetter,
++            final @NotNull Collection<@NotNull E> elements
++    ) {
++        return Index.create(
++                keyGetter,
++                MoreIterationUtils.combine(
++                        ArrayList::new,
++                        index.values(),
++                        elements
++                )
++        );
++    }
++
++    /**
++     * Creates a new index based on a given index, excluding the values by the given keys.
++     */
++    public <K, E> @NotNull Index<K, E> without(
++            final @NotNull Index<K, E> index,
++            final @NotNull Function<@NotNull E, @NotNull K> keyGetter,
++            final @NotNull Set<@NotNull K> keys
++    ) {
++        final var currentValues = new ArrayList<>(index.values());
++        currentValues.removeIf((value) -> keys.contains(keyGetter.apply(value)));
++        return Index.create(
++                keyGetter,
++                currentValues
++        );
++    }
++
++    /**
++     * Creates a BiMap based on the given index.
++     */
++    public <K, E> @NotNull BiMap<K, E> asBiMap(
++            final @NotNull Index<K, E> index
++    ) {
++        return HashBiMap.create(index.keyToValue());
++    }
++}
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/JavaHelpers.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/JavaHelpers.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..17f829f8f27c606b131c146e29b0536637e07894
+--- /dev/null
++++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/JavaHelpers.java
+@@ -0,0 +1,35 @@
++package vg.civcraft.mc.civmodcore.utilities;
++
++import java.util.Objects;
++import java.util.function.Function;
 +import java.util.function.Supplier;
 +import lombok.experimental.UtilityClass;
 +import org.jetbrains.annotations.NotNull;
@@ -213,44 +456,106 @@ index 0000000000000000000000000000000000000000..0efd7387edd4e60705e719f37ac0fc86
 + */
 +@UtilityClass
 +public class JavaHelpers {
-+
 +    /**
 +     * Convenience function to yield a value from multiple lines, inline.
 +     * Keep an eye on: https://openjdk.org/jeps/447
 +     */
-+    public static <T> T yield(
++    public <T> T yield(
 +            final @NotNull Supplier<T> supplier
 +    ) {
 +        return supplier.get();
 +    }
 +
++    /**
++     * Convenience function similar in nature to {@link Objects#requireNonNullElseGet(Object, Supplier)}, except it
++     * allows for a unitary function intended for small functions, usually methods, like {@link Object#clone()}.
++     */
++    public <T> T compute(
++            final T value,
++            final @NotNull Function<@NotNull T, T> ifPresent,
++            final @NotNull Supplier<@NotNull T> orElse
++    ) {
++        return value == null ? orElse.get() : ifPresent.apply(value);
++    }
 +}
-diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreCollectionUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreCollectionUtils.java
-index febd2e2247f4b90725a64c20a33245768e684979..deb52408971bf2ce43fd9cc601eafac7453003f4 100644
---- a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreCollectionUtils.java
-+++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreCollectionUtils.java
-@@ -217,5 +217,4 @@ public final class MoreCollectionUtils {
- 		}
- 		return lazyList;
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/KeyedUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/KeyedUtils.java
+index 02224e523a22acf75efc35816ea07c962ebd3129..88f855d9ed235bb3e6d266859fb3947aa7bd13e2 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/utilities/KeyedUtils.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/KeyedUtils.java
+@@ -6,11 +6,32 @@ import lombok.experimental.UtilityClass;
+ import org.bukkit.Keyed;
+ import org.bukkit.NamespacedKey;
+ 
++// CivPatched Start
++import java.util.ArrayList;
++import java.util.Collection;
++import java.util.List;
++import org.jetbrains.annotations.NotNull;
++// CivPatched End
++
+ /**
+  * Utility class to make dealing with namespace keys easier.
+  */
+ @UtilityClass
+ public final class KeyedUtils {
++	// CivPatched Start
++	/**
++	 * Convert a collection of keyed-instances into a representative collection of strings.
++	 */
++	public <T extends Keyed> @NotNull Collection<@NotNull String> toStrings(
++			final Collection<@NotNull T> keyeds
++	) {
++		final var strings = new ArrayList<String>(keyeds.size());
++		for (final Keyed keyed : keyeds) {
++			strings.add(keyed.getKey().asString());
++		}
++		return List.copyOf(strings);
++	}
++	// CivPatched End
+ 
+ 	/**
+ 	 * Converts a stringified namespaced-key back into a {@link NamespacedKey}.
+@@ -36,7 +57,6 @@ public final class KeyedUtils {
+ 	 * @exception IllegalArgumentException Will throw if either part fails a "[a-z0-9._-]+" check, or if the total
+ 	 *     combined length is longer than 256.
+ 	 */
+-	@SuppressWarnings("deprecation")
+ 	@Nonnull
+ 	public static NamespacedKey fromParts(@Nonnull final String namespace, @Nonnull final String key) {
+ 		return new NamespacedKey(namespace, key);
+@@ -68,10 +88,19 @@ public final class KeyedUtils {
+ 	 * @param key The namespaced-key.
+ 	 * @return Returns a new {@link NamespacedKey} for testing purposes.
+ 	 */
+-	@SuppressWarnings("deprecation")
+ 	@Nonnull
+ 	public static NamespacedKey testKey(@Nonnull final String key) {
+ 		return new NamespacedKey("test", key);
  	}
--
+ 
++	// CivPatched Start
++	/**
++	 * Creates a <a href="https://www.merriam-webster.com/dictionary/ditto">ditto</a> key. Useful for nested keys.
++	 */
++	public @NotNull NamespacedKey dittoKey(
++			final @NotNull String key
++	) {
++		return new NamespacedKey(".", key);
++	}
++	// CivPatched End
  }
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreEnumUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreEnumUtils.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..692b5df27f083c7da6ead64fca1b2b9c578b64af
+index 0000000000000000000000000000000000000000..b6d4284a65fd8c52a6aadc5825f724bc7331b04c
 --- /dev/null
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreEnumUtils.java
-@@ -0,0 +1,82 @@
+@@ -0,0 +1,67 @@
 +package vg.civcraft.mc.civmodcore.utilities;
 +
-+import java.util.Arrays;
++import java.util.ArrayList;
 +import java.util.Collection;
-+import java.util.List;
-+import java.util.stream.Collectors;
-+import java.util.stream.Stream;
 +import lombok.experimental.UtilityClass;
 +import org.apache.commons.lang3.EnumUtils;
-+import org.apache.commons.lang3.StringUtils;
 +import org.jetbrains.annotations.NotNull;
 +
 +/**
@@ -260,13 +565,14 @@ index 0000000000000000000000000000000000000000..692b5df27f083c7da6ead64fca1b2b9c
 + */
 +@UtilityClass
 +public class MoreEnumUtils {
-+
 +    /**
 +     * @param <E> The enum type itself.
 +     * @param value The enum value to stringify.
 +     * @return Returns a string-version of the given enum, or "null".
 +     */
-+    public <E extends Enum<E>> @NotNull String getName(final E value) {
++    public <E extends Enum<E>> @NotNull String getName(
++            final E value
++    ) {
 +        return value == null ? "null" : value.name();
 +    }
 +
@@ -275,10 +581,10 @@ index 0000000000000000000000000000000000000000..692b5df27f083c7da6ead64fca1b2b9c
 +     * @param enumClass The enum class to get the names of.
 +     * @return Returns a set of all enum-names of the given enum-class.
 +     */
-+    public <E extends Enum<E>> @NotNull List<String> getNames(final @NotNull Class<E> enumClass) {
-+        return Stream.of(enumClass.getEnumConstants())
-+                .map(MoreEnumUtils::getName)
-+                .collect(Collectors.toList());
++    public <E extends Enum<E>> @NotNull Collection<@NotNull String> getNames(
++            final @NotNull Class<E> enumClass
++    ) {
++        return getNames(enumClass.getEnumConstants());
 +    }
 +
 +    /**
@@ -286,10 +592,14 @@ index 0000000000000000000000000000000000000000..692b5df27f083c7da6ead64fca1b2b9c
 +     * @param enums The enums to convert into names.
 +     * @return Returns a set of all enum-names of the given enums.
 +     */
-+    public <E extends Enum<E>> @NotNull List<String> getNames(final E @NotNull [] enums) {
-+        return Arrays.stream(enums)
-+                .map(MoreEnumUtils::getName)
-+                .collect(Collectors.toList());
++    public <E extends Enum<E>> @NotNull Collection<@NotNull String> getNames(
++            final E @NotNull [] enums
++    ) {
++        final var result = new ArrayList<String>(enums.length);
++        for (final E current : enums) {
++            result.add(getName(current));
++        }
++        return result;
 +    }
 +
 +    /**
@@ -297,50 +607,38 @@ index 0000000000000000000000000000000000000000..692b5df27f083c7da6ead64fca1b2b9c
 +     * @param enums The enums to convert into names.
 +     * @return Returns a set of all enum-names of the given enums.
 +     */
-+    public <E extends Enum<E>> @NotNull List<String> getNames(final @NotNull Collection<E> enums) {
-+        return enums
-+                .stream()
-+                .map(MoreEnumUtils::getName)
-+                .collect(Collectors.toList());
++    public <E extends Enum<E>> @NotNull Collection<@NotNull String> getNames(
++            final @NotNull Collection<E> enums
++    ) {
++        final var result = new ArrayList<String>(enums.size());
++        for (final E current : enums) {
++            result.add(getName(current));
++        }
++        return result;
 +    }
-+
-+    /**
-+     * @param <E> The enum type itself.
-+     * @param enums The enums to join together into a string.
-+     * @return Returns a string representing the given enums. Can be empty.
-+     */
-+    public <E extends Enum<E>> @NotNull String join(final E @NotNull [] enums) {
-+        return StringUtils.join(getNames(enums), ",");
-+    }
-+
-+    /**
-+     * @param <E> The enum type itself.
-+     * @param enums The enums to join together into a string.
-+     * @return Returns a string representing the given enums. Can be empty.
-+     */
-+    public <E extends Enum<E>> @NotNull String join(final @NotNull Collection<E> enums) {
-+        return StringUtils.join(getNames(enums), ",");
-+    }
-+
 +}
 \ No newline at end of file
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreIterationUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreIterationUtils.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..f97425c8e52fff51ebf0e0ed67cf3caccbd09341
+index 0000000000000000000000000000000000000000..26a227550383d294c1f324c903dd97d52c293bc5
 --- /dev/null
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreIterationUtils.java
-@@ -0,0 +1,80 @@
+@@ -0,0 +1,197 @@
 +package vg.civcraft.mc.civmodcore.utilities;
 +
 +import java.util.ArrayList;
 +import java.util.Collection;
++import java.util.Collections;
 +import java.util.HashMap;
 +import java.util.Iterator;
 +import java.util.List;
 +import java.util.Map;
++import java.util.function.BiPredicate;
 +import java.util.function.Function;
++import java.util.function.IntFunction;
 +import java.util.function.Predicate;
 +import lombok.experimental.UtilityClass;
++import org.apache.commons.collections4.IterableUtils;
 +import org.jetbrains.annotations.NotNull;
 +
 +/**
@@ -348,7 +646,6 @@ index 0000000000000000000000000000000000000000..f97425c8e52fff51ebf0e0ed67cf3cac
 + */
 +@UtilityClass
 +public class MoreIterationUtils {
-+
 +    /**
 +     * @param <T> The iterator's element type.
 +     * @param iterator The iterator to remove elements from.
@@ -383,7 +680,7 @@ index 0000000000000000000000000000000000000000..f97425c8e52fff51ebf0e0ed67cf3cac
 +     * locations by their world. Each unique world would be a kay, and the
 +     * value would be a list of all the locations with that world.
 +     */
-+    public <E, K> Map<K, List<E>> groupIntoMapByKey(
++    public <E, K> @NotNull Map<K, List<E>> groupIntoMapByKey(
 +            final @NotNull Collection<E> collection,
 +            final @NotNull Function<E, K> discriminator
 +    ) {
@@ -398,6 +695,34 @@ index 0000000000000000000000000000000000000000..f97425c8e52fff51ebf0e0ed67cf3cac
 +    }
 +
 +    /**
++     * Attempts to retrieve an element from an array based on a given index. Negative indexes index relative to the end
++     * of the array.
++     */
++    public <T> T getElement(
++            final T @NotNull [] array,
++            final int index
++    ) {
++        if (index >= 0) {
++            return array[index];
++        }
++        return array[array.length + index];
++    }
++
++    /**
++     * Attempts to retrieve an element from a collection based on a given index. Negative indexes index relative to the
++     * end of the collection.
++     */
++    public <T> T getElement(
++            final @NotNull Collection<T> collection,
++            final int index
++    ) {
++        if (index >= 0) {
++            return IterableUtils.get(collection, index);
++        }
++        return IterableUtils.get(collection, collection.size() + index);
++    }
++
++    /**
 +     * Checks whether a given collection of elements are contained within a
 +     * reference collection, returning all elements that are NOT contained.
 +     */
@@ -408,6 +733,92 @@ index 0000000000000000000000000000000000000000..f97425c8e52fff51ebf0e0ed67cf3cac
 +        elements = new ArrayList<>(elements);
 +        elements.removeIf(from::contains);
 +        return elements;
++    }
++
++    /**
++     * Iterates through two arrays checking that each element is equal to its counterpart according to the given
++     * predicate.
++     */
++    public <T> boolean areEqual(
++            final T[] lhs,
++            final T[] rhs,
++            final @NotNull BiPredicate<T, T> checker
++    ) {
++        if (lhs == rhs) {
++            return true;
++        }
++        if (lhs == null ^ rhs == null) {
++            return false;
++        }
++        if (lhs.length != rhs.length) {
++            return false;
++        }
++        for (int i = 0; i < lhs.length; i++) {
++            if (!checker.test(lhs[i], rhs[i])) {
++                return false;
++            }
++        }
++        return true;
++    }
++
++    /**
++     * Iterates through two collections checking that each element is equal to its counterpart according to the given
++     * predicate.
++     */
++    public <T> boolean areEqual(
++            final Collection<T> lhs,
++            final Collection<T> rhs,
++            final @NotNull BiPredicate<T, T> checker
++    ) {
++        if (lhs == rhs) {
++            return true;
++        }
++        if (lhs == null ^ rhs == null) {
++            return false;
++        }
++        if (lhs.size() != rhs.size()) {
++            return false;
++        }
++        final Iterator<T> lhsIterator = lhs.iterator(), rhsIterator = rhs.iterator();
++        while (lhsIterator.hasNext() && rhsIterator.hasNext()) {
++            if (!checker.test(lhsIterator.next(), rhsIterator.next())) {
++                return false;
++            }
++        }
++        return true;
++    }
++
++    /**
++     * Collects varargs together into a collection of your choosing. This is basically a mutable version of
++     * {@link List#of(Object[])}.
++     */
++    @SafeVarargs
++    public <E, C extends Collection<E>> @NotNull C collect(
++            final @NotNull IntFunction<@NotNull C> constructor,
++            final E @NotNull ... elements
++    ) {
++        final C collection = constructor.apply(elements.length);
++        Collections.addAll(collection, elements);
++        return collection;
++    }
++
++    /**
++     * Combines a series of collections into a singular collection.
++     */
++    @SafeVarargs
++    public <E, C extends Collection<E>> C combine(
++            final @NotNull IntFunction<C> constructor,
++            final @NotNull Collection<E> @NotNull ... collections
++    ) {
++        int size = 0;
++        for (final Collection<E> collection : collections) {
++            size += collection.size();
++        }
++        final C result = constructor.apply(size);
++        for (final Collection<E> collection : collections) {
++            result.addAll(collection);
++        }
++        return result;
 +    }
 +}
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreMapUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreMapUtils.java
@@ -537,6 +948,57 @@ index 7d3cf8949491b914933ce445e4e545d8fe22871e..09daa3ea03a2c11e8596b73dd01773f8
  
  	/**
  	 * Sets all the given keys a particular value.
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreMath.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreMath.java
+index 84d134d202a2c9955eb94e2183235d10be41e052..8a67687aed9a54598fe5fee74f454e03a8be82c4 100644
+--- a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreMath.java
++++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreMath.java
+@@ -185,4 +185,46 @@ public final class MoreMath {
+ 		return value < 0 ? Math.ceil(value) : Math.floor(value);
+ 	}
+ 
++	// CivPatched Start
++	/**
++	 * Tests whether a given value is within a minimum and maximum bounds.
++	 */
++	public boolean isWithinBounds(
++			final int value,
++			final int min,
++			final int max
++	) {
++		return value >= min && value <= max;
++	}
++	/**
++	 * Tests whether a given value is within a minimum and maximum bounds.
++	 */
++	public boolean isWithinBounds(
++			final long value,
++			final long min,
++			final long max
++	) {
++		return value >= min && value <= max;
++	}
++	/**
++	 * Tests whether a given value is within a minimum and maximum bounds.
++	 */
++	public boolean isWithinBounds(
++			final float value,
++			final float min,
++			final float max
++	) {
++		return value >= min && value <= max;
++	}
++	/**
++	 * Tests whether a given value is within a minimum and maximum bounds.
++	 */
++	public boolean isWithinBounds(
++			final double value,
++			final double min,
++			final double max
++	) {
++		return value >= min && value <= max;
++	}
++	// CivPatched End
+ }
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreStringUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreStringUtils.java
 index 91937661adbe7395864a4ceb09a1e925a74b2b76..f3dc6b8f3f3b54ee18dc4bd31bdeaea327d63d4e 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/utilities/MoreStringUtils.java
@@ -636,17 +1098,17 @@ index b6cc83872716bfedc2b4114ad3fc920294f78a4f..d83155a1a87e8a991e6ac253d4397467
 +	}
 +	// CivPatched End
  }
-diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/serialization/ISerializer.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/serialization/ISerializer.java
+diff --git a/src/main/java/vg/civcraft/mc/civmodcore/utilities/serialization/Encoder.java b/src/main/java/vg/civcraft/mc/civmodcore/utilities/serialization/Encoder.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..afe2d7bf61e54f001024d9575efd283fb36d6d45
+index 0000000000000000000000000000000000000000..8330435a4d8c278e4f252bf3b7c062f0ed5de902
 --- /dev/null
-+++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/serialization/ISerializer.java
-@@ -0,0 +1,141 @@
++++ b/src/main/java/vg/civcraft/mc/civmodcore/utilities/serialization/Encoder.java
+@@ -0,0 +1,136 @@
 +package vg.civcraft.mc.civmodcore.utilities.serialization;
 +
 +import java.util.Objects;
++import java.util.function.Function;
 +import lombok.Synchronized;
-+import net.minecraft.nbt.CompoundTag;
 +import org.bukkit.persistence.PersistentDataAdapterContext;
 +import org.bukkit.persistence.PersistentDataType;
 +import org.jetbrains.annotations.NotNull;
@@ -661,28 +1123,24 @@ index 0000000000000000000000000000000000000000..afe2d7bf61e54f001024d9575efd283f
 + *
 + * @author CivPatched
 + */
-+public interface ISerializer<T, R> {
++public interface Encoder<T, R> {
++    @NotNull R encode(@NotNull T instance);
++    @NotNull T decode(@NotNull R raw);
 +
-+    @NotNull R serialize(@NotNull T instance);
-+
-+    @NotNull T deserialize(@NotNull R raw);
-+
-+    /**
-+     * Template interface for byte serialization.
-+     *
-+     * @param <C> The type that can be serialised to and from byte data.
-+     */
-+    interface Bytes<C> extends ISerializer<C, byte[]> {
-+
-+    }
-+
-+    /**
-+     * Template interface for NBT serialization.
-+     *
-+     * @param <C> The type that can be serialised to and from NBT.
-+     */
-+    interface NBT<C> extends ISerializer<C, CompoundTag> {
-+
++    static <T, R> @NotNull Encoder<T, R> from(
++            final @NotNull Function<@NotNull T, @NotNull R> encoder,
++            final @NotNull Function<@NotNull R, @NotNull T> decoder
++    ) {
++        return new Encoder<>() {
++            @Override
++            public @NotNull R encode(final @NotNull T instance) {
++                return encoder.apply(instance);
++            }
++            @Override
++            public @NotNull T decode(final @NotNull R raw) {
++                return decoder.apply(raw);
++            }
++        };
 +    }
 +
 +    /**
@@ -690,7 +1148,7 @@ index 0000000000000000000000000000000000000000..afe2d7bf61e54f001024d9575efd283f
 +     *
 +     * @param <C> The type that can be serialised to and from NBT.
 +     */
-+    class LegacyNBT<C extends NBTSerializable> implements ISerializer<C, NBTCompound> {
++    class LegacyNBT<C extends NBTSerializable> implements Encoder<C, NBTCompound> {
 +        private final NBTDeserializer<C> deserializer;
 +
 +        /**
@@ -708,14 +1166,14 @@ index 0000000000000000000000000000000000000000..afe2d7bf61e54f001024d9575efd283f
 +        }
 +
 +        @Override
-+        public @NotNull NBTCompound serialize(final @NotNull C instance) {
++        public @NotNull NBTCompound encode(final @NotNull C instance) {
 +            final var nbt = new NBTCompound();
 +            instance.toNBT(nbt);
 +            return nbt;
 +        }
 +
 +        @Override
-+        public @NotNull C deserialize(final @NotNull NBTCompound raw) {
++        public @NotNull C decode(final @NotNull NBTCompound raw) {
 +            return this.deserializer.fromNBT(raw);
 +        }
 +    }
@@ -726,7 +1184,7 @@ index 0000000000000000000000000000000000000000..afe2d7bf61e54f001024d9575efd283f
 +     * @param <C> The <b>C</b>omplex type.
 +     * @param <P> The <b>P</b>rimitive type.
 +     */
-+    abstract class PDC<C, P> implements ISerializer<C, P>, PersistentDataType<P, C> {
++    abstract class PDC<C, P> implements Encoder<C, P>, PersistentDataType<P, C> {
 +        private final Object $lock;
 +        private final Class<C> complexClass;
 +        private final Class<P> primitiveClass;
@@ -761,7 +1219,7 @@ index 0000000000000000000000000000000000000000..afe2d7bf61e54f001024d9575efd283f
 +        ) {
 +            synchronized (this.$lock) {
 +                this.adapter = context;
-+                final P result = serialize(complex);
++                final P result = encode(complex);
 +                this.adapter = null;
 +                return result;
 +            }
@@ -775,13 +1233,12 @@ index 0000000000000000000000000000000000000000..afe2d7bf61e54f001024d9575efd283f
 +        ) {
 +            synchronized (this.$lock) {
 +                this.adapter = context;
-+                final C result = deserialize(primitive);
++                final C result = decode(primitive);
 +                this.adapter = null;
 +                return result;
 +            }
 +        }
 +    }
-+
 +}
 diff --git a/src/test/java/vg/civcraft/mc/civmodcore/text/TextTests.java b/src/test/java/vg/civcraft/mc/civmodcore/text/TextTests.java
 index ba039e91ac3148dae36bf0083cd447715af2ebcc..ad2bb43bbdbe81ac1e950b7faa4ddf04b9c73703 100644

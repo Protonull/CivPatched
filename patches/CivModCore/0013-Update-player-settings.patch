@@ -1,15 +1,27 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Alexander <protonull@protonmail.com>
-Date: Wed, 14 Jun 2023 20:36:12 +0100
+Date: Thu, 13 Jul 2023 04:41:56 +0100
 Subject: [PATCH] Update player settings
 
-Allows players to open a specific config window.
+ACivMod:
+- Deregisters PlayerSettingAPI on disable.
 
-Restore setting deregistering.
+ConfigCommand:
+- Updated openConfig() to allow to specific submenu opening.
 
-Remove SETTINGS_BY_PLUGIN.
+PlayerSetting:
+- Updated applyInfoToItemStack().
+- Updated getGuiRepresentation().
+- Updated getValue().
+- Added removeValue().
 
-Add removeValue to PlayerSetting.
+PlayerSettingAPI:
+- Removed SETTINGS_BY_PLUGIN.
+- Added getSubMenus().
+- Updated registerSetting().
+- Added deregisterAllPluginSettings().
+- Added deregisterSetting().
+- Updated saveAll().
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java b/src/main/java/vg/civcraft/mc/civmodcore/ACivMod.java
 index 1b38562526f4b83951e39ab2ed755948b0ef0209..b625567a1c35b5c428ec24c83ba317bb6769c2dd 100644
@@ -32,7 +44,7 @@ index 1b38562526f4b83951e39ab2ed755948b0ef0209..b625567a1c35b5c428ec24c83ba317bb
  		getDeferredFunctions().UNSAFE_run(); // CivPatched
  	}
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSetting.java b/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSetting.java
-index 09a166aee942b87b1de52288ddba478deb6a99e5..a5c2aadc2409145b72ccb2646c83b9a32f9c476c 100644
+index 09a166aee942b87b1de52288ddba478deb6a99e5..5e85a53902b453b93b71c1376e80c870cf27308f 100644
 --- a/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSetting.java
 +++ b/src/main/java/vg/civcraft/mc/civmodcore/players/settings/PlayerSetting.java
 @@ -2,7 +2,6 @@ package vg.civcraft.mc.civmodcore.players.settings;
@@ -43,7 +55,7 @@ index 09a166aee942b87b1de52288ddba478deb6a99e5..a5c2aadc2409145b72ccb2646c83b9a3
  import java.util.HashMap;
  import java.util.List;
  import java.util.Map;
-@@ -13,10 +12,14 @@ import org.bukkit.ChatColor;
+@@ -13,10 +12,15 @@ import org.bukkit.ChatColor;
  import org.bukkit.entity.Player;
  import org.bukkit.inventory.ItemStack;
  import org.bukkit.plugin.java.JavaPlugin;
@@ -54,12 +66,13 @@ index 09a166aee942b87b1de52288ddba478deb6a99e5..a5c2aadc2409145b72ccb2646c83b9a3
 +// CivPatched Start
 +import org.apache.commons.lang3.StringUtils;
 +import vg.civcraft.mc.civmodcore.inventory.items.MetaUtils;
++import vg.civcraft.mc.civmodcore.utilities.JavaHelpers;
 +// CivPatched End
 +
  /**
   * Contains a value for every players for one setting
   */
-@@ -47,11 +50,16 @@ public abstract class PlayerSetting<T> {
+@@ -47,11 +51,16 @@ public abstract class PlayerSetting<T> {
  	}
  
  	protected void applyInfoToItemStack(ItemStack item, UUID player) {
@@ -81,7 +94,7 @@ index 09a166aee942b87b1de52288ddba478deb6a99e5..a5c2aadc2409145b72ccb2646c83b9a3
  	}
  
  	/**
-@@ -85,13 +93,10 @@ public abstract class PlayerSetting<T> {
+@@ -85,13 +94,13 @@ public abstract class PlayerSetting<T> {
  	 * @return ItemStack to show for this setting
  	 */
  	public ItemStack getGuiRepresentation(UUID player) {
@@ -93,13 +106,16 @@ index 09a166aee942b87b1de52288ddba478deb6a99e5..a5c2aadc2409145b72ccb2646c83b9a3
 -			copy = visualization.clone();
 -		}
 +		// CivPatched Start
-+		ItemStack copy = getVisualization(); // Use Getter
-+		copy = copy != null ? copy.clone() : new ItemStack(MaterialUtils.getMaterialHash(getValue(player)));
++		final ItemStack copy = JavaHelpers.compute(
++				getVisualization(),
++				ItemStack::clone,
++				() -> new ItemStack(MaterialUtils.getMaterialHash(getValue(player)))
++		);
 +		// CivPatched End
  		applyInfoToItemStack(copy, player);
  		return copy;
  	}
-@@ -120,7 +125,7 @@ public abstract class PlayerSetting<T> {
+@@ -120,7 +129,7 @@ public abstract class PlayerSetting<T> {
  	public T getValue(UUID player) {
  		T value = values.get(player);
  		if (value == null) {
@@ -108,7 +124,7 @@ index 09a166aee942b87b1de52288ddba478deb6a99e5..a5c2aadc2409145b72ccb2646c83b9a3
  		}
  		return value;
  	}
-@@ -221,6 +226,18 @@ public abstract class PlayerSetting<T> {
+@@ -221,6 +230,18 @@ public abstract class PlayerSetting<T> {
  		values.put(player, value);
  	}
  

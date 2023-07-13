@@ -3,7 +3,7 @@ From: Alexander <protonull@protonmail.com>
 Date: Wed, 14 Jun 2023 03:59:20 +0100
 Subject: [PATCH] Update player package
 
-Added PlayerNames, standardising player name retrieval.
+Added PlayerNames.
 
 Added PlayerUtils.
 

@@ -3,9 +3,8 @@ From: Alexander <protonull@protonmail.com>
 Date: Wed, 14 Jun 2023 20:21:05 +0100
 Subject: [PATCH] Update EventUtils
 
-Add cancelPrepareItemCraftEvent.
-
-Add injectOnDisable.
+- Added cancelPrepareItemCraftEvent().
+- Added injectOnDisable().
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/events/EventUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/events/EventUtils.java
 index bb45cc7787f5a6aa3d282f665a4238758b721107..b990638133d4574eae2f0caf218662b6c46c7235 100644

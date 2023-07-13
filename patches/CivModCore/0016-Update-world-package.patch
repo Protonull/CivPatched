@@ -3,6 +3,8 @@ From: Alexander <protonull@protonmail.com>
 Date: Wed, 5 Jul 2023 18:34:03 +0100
 Subject: [PATCH] Update world package
 
+WorldUtils:
+- Added getMaximumPlayableHeight().
 
 diff --git a/src/main/java/vg/civcraft/mc/civmodcore/world/WorldUtils.java b/src/main/java/vg/civcraft/mc/civmodcore/world/WorldUtils.java
 index 0a992ef61af9563830b811142ccc5ec0090df8c0..2a19e75e2bfbd4752b3a53f736ce2088eab6aaee 100644
