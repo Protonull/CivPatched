@@ -9,12 +9,12 @@ Remove redundant saveDefaultConfig()
 
 diff --git a/build.gradle.kts b/build.gradle.kts
 new file mode 100644
-index 0000000000000000000000000000000000000000..0f884e8e7546e3c3f4783dac2de5de05411d8f28
+index 0000000000000000000000000000000000000000..b919c06664fdd34b92ce5a9676dda315cd77d144
 --- /dev/null
 +++ b/build.gradle.kts
 @@ -0,0 +1,13 @@
 +group = "civ.genre.jukealert"
-+version = "3.0.5"
++version = "3.0.6"
 +description = "JukeAlert"
 +
 +configure<net.civmc.civgradle.CivGradleExtension> {
