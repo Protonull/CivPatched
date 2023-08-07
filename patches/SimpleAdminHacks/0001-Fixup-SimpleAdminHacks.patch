@@ -9,12 +9,12 @@ Fix BedLocator oopsie.
 
 diff --git a/build.gradle.kts b/build.gradle.kts
 new file mode 100644
-index 0000000000000000000000000000000000000000..208d21b92fa421fd907f0c380da333b0608cb1f2
+index 0000000000000000000000000000000000000000..64fa0a28082f135a4185bf22cd1b149a977f1ca8
 --- /dev/null
 +++ b/build.gradle.kts
 @@ -0,0 +1,17 @@
 +group = "civ.genre.simpleadminhacks"
-+version = "2.2.1"
++version = "2.2.3"
 +description = "SimpleAdminHacks"
 +
 +configure<net.civmc.civgradle.CivGradleExtension> {
