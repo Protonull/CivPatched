@@ -6,12 +6,12 @@ Subject: [PATCH] Fixup CivChat2
 
 diff --git a/build.gradle.kts b/build.gradle.kts
 new file mode 100644
-index 0000000000000000000000000000000000000000..2483a1156dfea3cd1ba2e7f628cf56683295f4f6
+index 0000000000000000000000000000000000000000..d5071db1a086e307e328ddb6022244f478239e0c
 --- /dev/null
 +++ b/build.gradle.kts
 @@ -0,0 +1,12 @@
 +group = "civ.genre.civchat2"
-+version = "2.0.3"
++version = "2.1.0"
 +description = "CivChat2"
 +
 +configure<net.civmc.civgradle.CivGradleExtension> {

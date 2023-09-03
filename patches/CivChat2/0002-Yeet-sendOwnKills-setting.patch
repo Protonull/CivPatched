@@ -6,24 +6,24 @@ Subject: [PATCH] Yeet sendOwnKills setting
 Why this was ever added is beyond comprehension.
 
 diff --git a/src/main/java/vg/civcraft/mc/civchat2/listeners/KillListener.java b/src/main/java/vg/civcraft/mc/civchat2/listeners/KillListener.java
-index 05ebb27ec0d96bd12df1dd40cd2ac2cfa61e8477..f29f99b5263c0f50d083d0a31b3ebf3e7e3fac03 100644
+index 908b910751ae96a68951c9e1ee992ca9334451eb..0f42a67ec2fc89dc29293c34722fd58213a489a0 100644
 --- a/src/main/java/vg/civcraft/mc/civchat2/listeners/KillListener.java
 +++ b/src/main/java/vg/civcraft/mc/civchat2/listeners/KillListener.java
-@@ -34,9 +34,6 @@ public class KillListener implements Listener {
+@@ -35,9 +35,6 @@ public class KillListener implements Listener {
  			return;
  		}
  		Player killer = victim.getKiller();
 -		if (!settingsMan.getSendOwnKills(killer.getUniqueId())) {
 -			return;
 -		}
- 		String itemDescriptor;
+ 		String msg;
  		ItemStack item = killer.getInventory().getItemInMainHand();
- 		if (item == null || MaterialUtils.isAir(item.getType())) {
+ 		String victimFormattedName = String.format("%s%s", ChatColor.ITALIC, victim.getDisplayName());
 diff --git a/src/main/java/vg/civcraft/mc/civchat2/utility/CivChat2SettingsManager.java b/src/main/java/vg/civcraft/mc/civchat2/utility/CivChat2SettingsManager.java
-index 59eada35f0c826ce3ab0af2476d880a2da8f6f5b..3045ca53e62f8a98c9127f9601b48e87bc210ff1 100644
+index 9e61152617fccfcd8e509e6ea2679c5d8ef3a17d..65096f554a275d1c489afc37d39833b15ee37523 100644
 --- a/src/main/java/vg/civcraft/mc/civchat2/utility/CivChat2SettingsManager.java
 +++ b/src/main/java/vg/civcraft/mc/civchat2/utility/CivChat2SettingsManager.java
-@@ -14,7 +14,6 @@ public class CivChat2SettingsManager {
+@@ -15,7 +15,6 @@ public class CivChat2SettingsManager {
  
  	private BooleanSetting showJoins;
  	private BooleanSetting showLeaves;
@@ -31,7 +31,7 @@ index 59eada35f0c826ce3ab0af2476d880a2da8f6f5b..3045ca53e62f8a98c9127f9601b48e87
  	private BooleanSetting receiveKills;
  	private BooleanSetting receiveKillsFromIgnoredPlayers;
  	private BooleanSetting showChatGroup;
-@@ -37,10 +36,6 @@ public class CivChat2SettingsManager {
+@@ -39,10 +38,6 @@ public class CivChat2SettingsManager {
  				"Should player leave messages be shown?");
  		PlayerSettingAPI.registerSetting(showLeaves, menu);
  
@@ -42,7 +42,7 @@ index 59eada35f0c826ce3ab0af2476d880a2da8f6f5b..3045ca53e62f8a98c9127f9601b48e87
  		receiveKills = new BooleanSetting(CivChat2.getInstance(), true, "Receive kill broadcasts",
  				"civChatReceiveKills", "Do you want to receive broadcasts for nearby kills");
  		PlayerSettingAPI.registerSetting(receiveKills, menu);
-@@ -74,10 +69,6 @@ public class CivChat2SettingsManager {
+@@ -79,10 +74,6 @@ public class CivChat2SettingsManager {
  		return showLeaves.getValue(uuid);
  	}
  	
